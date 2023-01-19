@@ -42,11 +42,16 @@ pagination.create = function (currentPage, pageCount, queryObj) {
 
     delete queryObj._;
 
-    
+    interface Pages {
+        page: number,
+        active: boolean,
+        qs: string,
+        separator?: boolean,
+    }
     const pages = pagesToShow.map((page) => {
         queryObj.page = page;
         return { page: page, active: page === currentPage, qs: qs.stringify(queryObj)};
-    }) ;
+    }) as Pages[];
 
     for (i = pages.length - 1; i > 0; i -= 1) {
         if (pages[i].page - 2 === pages[i - 1].page) {
@@ -60,9 +65,18 @@ pagination.create = function (currentPage, pageCount, queryObj) {
             });
         }
     }
-    
+    interface Data {
+        rel: [{rel: string, href: string}],
+        pages: number,
+        currentPage: number,
+        pageCount: number,
+        prev: Pages,
+        next: Pages,
+        first: Pages,
+        last: Pages,
+    }
 
-    const data = { rel: [], pages: pages, currentPage: currentPage, pageCount: pageCount };
+    const data = { rel: [], pages: pages, currentPage: currentPage, pageCount: pageCount } as unknown as Data;
     queryObj.page = previous;
     data.prev = { page: previous, active: currentPage > 1, qs: qs.stringify(queryObj) };
     queryObj.page = next;
