@@ -63,17 +63,16 @@ export = function (Messaging: MessagingInfo) {
             throw new Error('[[error:invalid-chat-message]]');
         }
 
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const maximumChatMessageLength: number = (meta.config.maximumChatMessageLength as number) || 1000;
+        const { maximumChatMessageLength } = meta.config as {maximumChatMessageLength: number};
+        const maxChatMessageLength = maximumChatMessageLength || 1000;
         content = String(content).trim();
         let { length } = content;
         ({ content, length } = await plugins.hooks.fire('filter:messaging.checkContent', { content, length }) as MessageWrapper);
         if (!content) {
             throw new Error('[[error:invalid-chat-message]]');
         }
-        if (length > maximumChatMessageLength) {
-            throw new Error(`[[error:chat-message-too-long, ${maximumChatMessageLength}]]`);
+        if (length > maxChatMessageLength) {
+            throw new Error(`[[error:chat-message-too-long, ${maxChatMessageLength}]]`);
         }
     };
 
