@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -8,10 +8,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-const meta = require('../meta');
-const plugins = require('../plugins');
-const db = require('../database');
-const user = require('../user');
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+const meta_1 = __importDefault(require("../meta"));
+const plugins_1 = __importDefault(require("../plugins"));
+const database_1 = __importDefault(require("../database"));
+const user_1 = __importDefault(require("../user"));
 module.exports = function (Messaging) {
     Messaging.sendMessage = (data) => __awaiter(this, void 0, void 0, function* () {
         yield Messaging.checkContent(data.content);
@@ -25,10 +28,12 @@ module.exports = function (Messaging) {
         if (!content) {
             throw new Error('[[error:invalid-chat-message]]');
         }
-        const maximumChatMessageLength = meta.config.maximumChatMessageLength || 1000;
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        const maximumChatMessageLength = meta_1.default.config.maximumChatMessageLength || 1000;
         content = String(content).trim();
         let { length } = content;
-        ({ content, length } = yield plugins.hooks.fire('filter:messaging.checkContent', { content, length }));
+        ({ content, length } = (yield plugins_1.default.hooks.fire('filter:messaging.checkContent', { content, length })));
         if (!content) {
             throw new Error('[[error:invalid-chat-message]]');
         }
@@ -37,7 +42,9 @@ module.exports = function (Messaging) {
         }
     });
     Messaging.addMessage = (data) => __awaiter(this, void 0, void 0, function* () {
-        const mid = yield db.incrObjectField('global', 'nextMid');
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        const mid = yield database_1.default.incrObjectField('global', 'nextMid');
         const timestamp = data.timestamp || Date.now();
         let message = {
             content: String(data.content),
@@ -46,16 +53,22 @@ module.exports = function (Messaging) {
             roomId: data.roomId,
             deleted: 0,
             system: data.system || 0,
-            ip: 0,
+            ip: '',
         };
         if (data.ip) {
             message.ip = data.ip;
         }
-        message = yield plugins.hooks.fire('filter:messaging.save', message);
-        yield db.setObject(`message:${mid}`, message);
+        message = (yield plugins_1.default.hooks.fire('filter:messaging.save', message));
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        yield database_1.default.setObject(`message:${mid}`, message);
         const isNewSet = yield Messaging.isNewSet(data.uid, data.roomId, timestamp);
-        let uids = yield db.getSortedSetRange(`chat:room:${data.roomId}:uids`, 0, -1);
-        uids = yield user.blocks.filterUids(data.uid, uids);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        let uids = yield database_1.default.getSortedSetRange(`chat:room:${data.roomId}:uids`, 0, -1);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        uids = (yield user_1.default.blocks.filterUids(data.uid, uids));
         yield Promise.all([
             Messaging.addRoomToUsers(data.roomId, uids, timestamp),
             Messaging.addMessageToUsers(data.roomId, uids, mid, timestamp),
@@ -68,7 +81,7 @@ module.exports = function (Messaging) {
         messages[0].newSet = isNewSet;
         messages[0].mid = mid;
         messages[0].roomId = data.roomId;
-        plugins.hooks.fire('action:messaging.save', { message: messages[0], data: data });
+        yield plugins_1.default.hooks.fire('action:messaging.save', { message: messages[0], data: data });
         return messages[0];
     });
     Messaging.addSystemMessage = (content, uid, roomId) => __awaiter(this, void 0, void 0, function* () {
@@ -85,13 +98,17 @@ module.exports = function (Messaging) {
             return;
         }
         const keys = uids.map(uid => `uid:${uid}:chat:rooms`);
-        yield db.sortedSetsAdd(keys, timestamp, roomId);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        yield database_1.default.sortedSetsAdd(keys, timestamp, roomId);
     });
     Messaging.addMessageToUsers = (roomId, uids, mid, timestamp) => __awaiter(this, void 0, void 0, function* () {
         if (!uids.length) {
             return;
         }
         const keys = uids.map(uid => `uid:${uid}:chat:room:${roomId}:mids`);
-        yield db.sortedSetsAdd(keys, timestamp, mid);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        yield database_1.default.sortedSetsAdd(keys, timestamp, mid);
     });
 };
