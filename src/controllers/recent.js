@@ -24,7 +24,7 @@ const privileges_1 = __importDefault(require("../privileges"));
 //     page: string
 // }
 // The next line calls a function in a module that has not been updated to TS yet
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+// eslint-disable-next-line
 const relative_path = nconf_1.default.get('relative_path');
 function canPostTopic(uid) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -37,7 +37,7 @@ function getData(req, url, sort) {
     return __awaiter(this, void 0, void 0, function* () {
         const page = parseInt((req.query.page), 10) || 1;
         // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        // eslint-disable-next-line
         let term = helpers_1.default.terms[req.query.term];
         const { cid, tags } = req.query;
         const filter = req.query.filter || '';
@@ -45,19 +45,21 @@ function getData(req, url, sort) {
             return null;
         }
         // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        // eslint-disable-next-line
         term = term || 'alltime';
         const [settings, categoryData, rssToken, canPost, isPrivileged] = yield Promise.all([
             user_1.default.getSettings(req.uid),
             helpers_1.default.getSelectedCategory(cid),
             // The next line calls a function in a module that has not been updated to TS yet
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            // eslint-disable-next-line
             user_1.default.auth.getFeedToken(req.uid),
             canPostTopic(req.uid),
             user_1.default.isPrivileged(req.uid),
         ]);
         const start = Math.max(0, (page - 1) * settings.topicsPerPage);
         const stop = start + settings.topicsPerPage - 1;
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line
         const data = yield topics_1.default.getSortedTopics({
             cids: cid,
             tags: tags,
@@ -100,7 +102,6 @@ function getData(req, url, sort) {
         return data;
     });
 }
-;
 function get(req, res, next) {
     return __awaiter(this, void 0, void 0, function* () {
         const data = yield getData(req, 'recent', 'recent');
