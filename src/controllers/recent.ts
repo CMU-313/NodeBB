@@ -1,5 +1,6 @@
 import nconf from 'nconf';
 import { Request, Response } from 'express';
+import { CategoryObject, SettingsObject } from '../types';
 
 import user from '../user';
 import categories from '../categories';
@@ -14,21 +15,20 @@ interface DataRequest extends Request {
     loggedIn: boolean
 }
 
-// interface QueryParams {
-//     page: string
-// }
+type SelectedCategoryData = {
+    selectedCategory: CategoryObject,
+    selectedCids: number[]
+}
 
-// The next line calls a function in a module that has not been updated to TS yet
-// eslint-disable-next-line
-const relative_path = nconf.get('relative_path');
+const relative_path: string = nconf.get('relative_path') as string;
 
 async function canPostTopic(uid): Promise<boolean> {
-    let cids = await categories.getAllCidsFromSet('categories:cid');
-    cids = await privileges.categories.filterCids('topics:create', cids, uid);
+    let cids: number[] = await categories.getAllCidsFromSet('categories:cid') as number[];
+    cids = await privileges.categories.filterCids('topics:create', cids, uid) as number[];
     return cids.length > 0;
 }
 
-async function getData(req: DataRequest, url: string, sort): Data? {
+async function getData(req: DataRequest, url: string, sort) {
     const page = parseInt((req.query.page) as string, 10) || 1;
 
     // The next line calls a function in a module that has not been updated to TS yet
@@ -41,16 +41,12 @@ async function getData(req: DataRequest, url: string, sort): Data? {
         return null;
     }
 
-    // The next line calls a function in a module that has not been updated to TS yet
-    // eslint-disable-next-line
     term = term || 'alltime';
 
-    const [settings, categoryData, rssToken, canPost, isPrivileged] = await Promise.all([
+    const [settings, categoryData, rssToken, canPost, isPrivileged]:
+    [SettingsObject, SelectedCategoryData, number, boolean, boolean] = await Promise.all([
         user.getSettings(req.uid),
         helpers.getSelectedCategory(cid),
-
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line
         user.auth.getFeedToken(req.uid),
         canPostTopic(req.uid),
         user.isPrivileged(req.uid),

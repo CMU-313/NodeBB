@@ -20,16 +20,11 @@ const meta_1 = __importDefault(require("../meta"));
 const helpers_1 = __importDefault(require("./helpers"));
 const pagination_1 = __importDefault(require("../pagination"));
 const privileges_1 = __importDefault(require("../privileges"));
-// interface QueryParams {
-//     page: string
-// }
-// The next line calls a function in a module that has not been updated to TS yet
-// eslint-disable-next-line
 const relative_path = nconf_1.default.get('relative_path');
 function canPostTopic(uid) {
     return __awaiter(this, void 0, void 0, function* () {
         let cids = yield categories_1.default.getAllCidsFromSet('categories:cid');
-        cids = yield privileges_1.default.categories.filterCids('topics:create', cids, uid);
+        cids = (yield privileges_1.default.categories.filterCids('topics:create', cids, uid));
         return cids.length > 0;
     });
 }
@@ -44,14 +39,10 @@ function getData(req, url, sort) {
         if (!term && req.query.term) {
             return null;
         }
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line
         term = term || 'alltime';
         const [settings, categoryData, rssToken, canPost, isPrivileged] = yield Promise.all([
             user_1.default.getSettings(req.uid),
             helpers_1.default.getSelectedCategory(cid),
-            // The next line calls a function in a module that has not been updated to TS yet
-            // eslint-disable-next-line
             user_1.default.auth.getFeedToken(req.uid),
             canPostTopic(req.uid),
             user_1.default.isPrivileged(req.uid),
