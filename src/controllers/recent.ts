@@ -1,5 +1,5 @@
 import nconf from 'nconf';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 
 import user from '../user';
 import categories from '../categories';
@@ -18,7 +18,15 @@ interface DataRequest extends Request {
 //     page: string
 // }
 
+// The next line calls a function in a module that has not been updated to TS yet
+// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 const relative_path = nconf.get('relative_path');
+
+async function canPostTopic(uid) {
+    let cids = await categories.getAllCidsFromSet('categories:cid');
+    cids = await privileges.categories.filterCids('topics:create', cids, uid);
+    return cids.length > 0;
+}
 
 async function getData(req: DataRequest, url: string, sort) {
     const page = parseInt((req.query.page) as string, 10) || 1;
@@ -26,7 +34,6 @@ async function getData(req: DataRequest, url: string, sort) {
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     let term = helpers.terms[req.query.term];
-
     const { cid, tags } = req.query;
     const filter = req.query.filter || '';
 
@@ -98,16 +105,10 @@ async function getData(req: DataRequest, url: string, sort) {
     return data;
 };
 
-export default async function get(req, res, next) {
+export default async function get(req: DataRequest, res: Response, next) {
     const data = await getData(req, 'recent', 'recent');
     if (!data) {
         return next();
     }
     res.render('recent', data);
-};
-
-async function canPostTopic(uid) {
-    let cids = await categories.getAllCidsFromSet('categories:cid');
-    cids = await privileges.categories.filterCids('topics:create', cids, uid);
-    return cids.length > 0;
 }
