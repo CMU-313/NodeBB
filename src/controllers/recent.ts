@@ -11,7 +11,7 @@ import pagination from '../pagination';
 import privileges from '../privileges';
 
 interface DataRequest extends Request {
-    uid: number
+    uid: string
     loggedIn: boolean
 }
 
@@ -45,11 +45,15 @@ async function getData(req: DataRequest, url: string, sort) {
 
     const [settings, categoryData, rssToken, canPost, isPrivileged]:
     [SettingsObject, SelectedCategoryData, number, boolean, boolean] = await Promise.all([
-        user.getSettings(req.uid),
-        helpers.getSelectedCategory(cid),
-        user.auth.getFeedToken(req.uid),
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        user.getSettings(req.uid) as SettingsObject,
+        helpers.getSelectedCategory(cid) as SelectedCategoryData,
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        user.auth.getFeedToken(req.uid) as number,
         canPostTopic(req.uid),
-        user.isPrivileged(req.uid),
+        user.isPrivileged(req.uid) as boolean,
     ]);
 
     const start = Math.max(0, (page - 1) * settings.topicsPerPage);

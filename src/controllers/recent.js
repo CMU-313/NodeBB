@@ -41,8 +41,12 @@ function getData(req, url, sort) {
         }
         term = term || 'alltime';
         const [settings, categoryData, rssToken, canPost, isPrivileged] = yield Promise.all([
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             user_1.default.getSettings(req.uid),
             helpers_1.default.getSelectedCategory(cid),
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
             user_1.default.auth.getFeedToken(req.uid),
             canPostTopic(req.uid),
             user_1.default.isPrivileged(req.uid),
