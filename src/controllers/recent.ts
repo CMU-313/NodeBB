@@ -1,6 +1,6 @@
 import nconf from 'nconf';
 import { Request, Response } from 'express';
-import { CategoryObject, SettingsObject } from '../types';
+import { Pagination, SettingsObject, Breadcrumbs } from '../types';
 
 import user from '../user';
 import categories from '../categories';
@@ -15,9 +15,50 @@ interface DataRequest extends Request {
     loggedIn: boolean
 }
 
-type SelectedCategoryData = {
-    selectedCategory: CategoryObject,
-    selectedCids: number[]
+type CategoryData = {
+    selectedCategory: SelectedCategory,
+    selectedCids: string[]
+}
+
+type SelectedCategory = {
+    cid: string,
+    name: string
+}
+
+type Filter = {
+    name: string,
+    selected: boolean
+}
+
+type Term = {
+    name: string,
+    selected: boolean
+}
+
+type Data = {
+    cids: string,
+    tags: string[],
+    uid: string,
+    start: number,
+    stop: number,
+    filters: Filter[],
+    term: Term[],
+    sort: string,
+    floatPinned: boolean
+    title: string,
+    breadcrumbs: Breadcrumbs,
+    canPost: boolean,
+    showSelect: boolean,
+    showTopicTools: boolean,
+    allCategoriesUrl: string
+    selectedCategory: SelectedCategory,
+    selectedCids: string[],
+    rssFeedUrl: string,
+    selectedFilter: Filter,
+    terms: Term[],
+    selectedTerm: Term,
+    pagination: Pagination,
+    topicCount: number
 }
 
 const relative_path: string = nconf.get('relative_path') as string;
@@ -28,12 +69,12 @@ async function canPostTopic(uid): Promise<boolean> {
     return cids.length > 0;
 }
 
-async function getData(req: DataRequest, url: string, sort) {
+async function getData(req: DataRequest, url: string, sort: string) {
     const page = parseInt((req.query.page) as string, 10) || 1;
 
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line
-    let term = helpers.terms[req.query.term];
+    let term: string = helpers.terms[req.query.term];
     const { cid, tags } = req.query;
     const filter = req.query.filter || '';
 
@@ -44,11 +85,11 @@ async function getData(req: DataRequest, url: string, sort) {
     term = term || 'alltime';
 
     const [settings, categoryData, rssToken, canPost, isPrivileged]:
-    [SettingsObject, SelectedCategoryData, number, boolean, boolean] = await Promise.all([
+    [SettingsObject, CategoryData, number, boolean, boolean] = await Promise.all([
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         user.getSettings(req.uid) as SettingsObject,
-        helpers.getSelectedCategory(cid) as SelectedCategoryData,
+        helpers.getSelectedCategory(cid) as CategoryData,
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         user.auth.getFeedToken(req.uid) as number,
@@ -60,8 +101,8 @@ async function getData(req: DataRequest, url: string, sort) {
     const stop = start + settings.topicsPerPage - 1;
 
     // The next line calls a function in a module that has not been updated to TS yet
-    // eslint-disable-next-line
-    const data = await topics.getSortedTopics({
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+    const data: Data = await topics.getSortedTopics({
         cids: cid,
         tags: tags,
         uid: req.uid,
@@ -78,7 +119,9 @@ async function getData(req: DataRequest, url: string, sort) {
     const baseUrl = isDisplayedAsHome ? '' : url;
 
     if (isDisplayedAsHome) {
-        data.title = meta.config.homePageTitle || '[[pages:home]]';
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        data.title = (meta.config.homePageTitle) as string || '[[pages:home]]';
     } else {
         data.title = `[[pages:${url}]]`;
         data.breadcrumbs = helpers.buildBreadcrumbs([{ text: `[[${url}:title]]` }]);
@@ -90,6 +133,8 @@ async function getData(req: DataRequest, url: string, sort) {
     data.allCategoriesUrl = baseUrl + helpers.buildQueryString(req.query, 'cid', '');
     data.selectedCategory = categoryData.selectedCategory;
     data.selectedCids = categoryData.selectedCids;
+    // The next line calls a function in a module that has not been updated to TS yet
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
     data['feeds:disableRSS'] = meta.config['feeds:disableRSS'] || 0;
     data.rssFeedUrl = `${relative_path}/${url}.rss`;
     if (req.loggedIn) {
