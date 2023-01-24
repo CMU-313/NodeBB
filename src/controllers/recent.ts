@@ -1,4 +1,5 @@
 import nconf from 'nconf';
+import { Request } from 'express';
 
 import user from '../user';
 import categories from '../categories';
@@ -8,30 +9,41 @@ import helpers from './helpers';
 import pagination from '../pagination';
 import privileges from '../privileges';
 
+interface DataRequest extends Request {
+    uid: number
+    loggedIn: boolean
+}
+
+// interface QueryParams {
+//     page: string
+// }
+
 const relative_path = nconf.get('relative_path');
 
-async function get (req, res, next) {
-    const data = await getData(req, 'recent', 'recent');
-    if (!data) {
-        return next();
-    }
-    res.render('recent', data);
-};
+async function getData(req: DataRequest, url: string, sort) {
+    const page = parseInt((req.query.page) as string, 10) || 1;
 
-async function getData (req, url, sort) {
-    const page = parseInt(req.query.page, 10) || 1;
+    // The next line calls a function in a module that has not been updated to TS yet
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     let term = helpers.terms[req.query.term];
+
     const { cid, tags } = req.query;
     const filter = req.query.filter || '';
 
     if (!term && req.query.term) {
         return null;
     }
+
+    // The next line calls a function in a module that has not been updated to TS yet
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     term = term || 'alltime';
 
     const [settings, categoryData, rssToken, canPost, isPrivileged] = await Promise.all([
         user.getSettings(req.uid),
         helpers.getSelectedCategory(cid),
+
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         user.auth.getFeedToken(req.uid),
         canPostTopic(req.uid),
         user.isPrivileged(req.uid),
@@ -84,6 +96,14 @@ async function getData (req, url, sort) {
     data.pagination = pagination.create(page, pageCount, req.query);
     helpers.addLinkTags({ url: url, res: req.res, tags: data.pagination.rel });
     return data;
+};
+
+export default async function get(req, res, next) {
+    const data = await getData(req, 'recent', 'recent');
+    if (!data) {
+        return next();
+    }
+    res.render('recent', data);
 };
 
 async function canPostTopic(uid) {
