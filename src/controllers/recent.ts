@@ -16,7 +16,7 @@ interface DataRequest extends Request {
 }
 
 type SelectedCategory = {
-    cid: string,
+    cid: number,
     name: string
 }
 
@@ -32,18 +32,18 @@ type Term = {
 
 type CategoryData = {
     selectedCategory: SelectedCategory,
-    selectedCids: string[]
+    selectedCids: number[]
 }
 
 type Data = {
-    cids: string[],
+    cids: number[],
     tags: string[],
     filters: Filter[],
     breadcrumbs: Breadcrumbs,
     terms: Term[],
 
     selectedCategory: SelectedCategory,
-    selectedCids: string[],
+    selectedCids: number[],
     selectedFilter: Filter,
     selectedTerm: Term,
 
