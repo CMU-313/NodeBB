@@ -10,10 +10,19 @@ import helpers from './helpers';
 import pagination from '../pagination';
 import privileges from '../privileges';
 
-interface DataRequest extends Request {
-    uid: number
-    loggedIn: boolean
+type Query = {
+    page: string,
+    term: string,
+    filter: string,
+    pinned: boolean,
+    cid: number,
+    tags: string[]
 }
+
+// interface DataRequest extends Request {
+//     uid: number
+//     loggedIn: boolean,
+// }
 
 type SelectedCategory = {
     cid: number,
@@ -69,19 +78,20 @@ type Data = {
 
 const relative_path: string = nconf.get('relative_path') as string;
 
-async function canPostTopic(uid: number): Promise<boolean> {
+export async function canPostTopic(uid: number): Promise<boolean> {
     let cids: number[] = await categories.getAllCidsFromSet('categories:cid') as number[];
     cids = await privileges.categories.filterCids('topics:create', cids, uid) as number[];
     return cids.length > 0;
 }
 
 // Promise<Data | null> causes test coverage to go down
-async function getData(req: DataRequest, url: string, sort: string): Promise<Data> | null {
+export async function getData(req: Request<Query> & { uid: number, loggedIn: boolean },
+    url: string, sort: string): Promise<Data> | null {
     const page: number = parseInt((req.query.page) as string, 10) || 1;
 
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line
-    let term: string = helpers.terms[req.query.term];
+    let term: string | undefined = helpers.terms[req.query.term];
     const { cid, tags } = req.query;
     const filter = req.query.filter || '';
 
@@ -159,7 +169,8 @@ async function getData(req: DataRequest, url: string, sort: string): Promise<Dat
     return data;
 }
 
-export default async function get(req: DataRequest, res: Response, next: NextFunction) {
+export async function get(req: Request<Query> & { uid: number, loggedIn: boolean },
+    res: Response, next: NextFunction) {
     const data = await getData(req, 'recent', 'recent');
     if (!data) {
         return next();

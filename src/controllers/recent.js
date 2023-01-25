@@ -12,6 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.get = exports.getData = exports.canPostTopic = void 0;
 const nconf_1 = __importDefault(require("nconf"));
 const user_1 = __importDefault(require("../user"));
 const categories_1 = __importDefault(require("../categories"));
@@ -28,6 +29,7 @@ function canPostTopic(uid) {
         return cids.length > 0;
     });
 }
+exports.canPostTopic = canPostTopic;
 // Promise<Data | null> causes test coverage to go down
 function getData(req, url, sort) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -102,6 +104,7 @@ function getData(req, url, sort) {
         return data;
     });
 }
+exports.getData = getData;
 function get(req, res, next) {
     return __awaiter(this, void 0, void 0, function* () {
         const data = yield getData(req, 'recent', 'recent');
@@ -111,4 +114,4 @@ function get(req, res, next) {
         res.render('recent', data);
     });
 }
-exports.default = get;
+exports.get = get;
