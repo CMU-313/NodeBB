@@ -15,11 +15,6 @@ interface DataRequest extends Request {
     loggedIn: boolean
 }
 
-type CategoryData = {
-    selectedCategory: SelectedCategory,
-    selectedCids: string[]
-}
-
 type SelectedCategory = {
     cid: string,
     name: string
@@ -35,29 +30,40 @@ type Term = {
     selected: boolean
 }
 
+type CategoryData = {
+    selectedCategory: SelectedCategory,
+    selectedCids: string[]
+}
+
 type Data = {
-    cids: string,
+    cids: string[],
     tags: string[],
-    uid: string,
-    start: number,
-    stop: number,
     filters: Filter[],
-    term: Term[],
-    sort: string,
-    floatPinned: boolean
-    title: string,
     breadcrumbs: Breadcrumbs,
+    terms: Term[],
+
+    selectedCategory: SelectedCategory,
+    selectedCids: string[],
+    selectedFilter: Filter,
+    selectedTerm: Term,
+
+    uid: string,
+    sort: string,
+    title: string,
+    rssFeedUrl: string,
+
+    term: Term,
+    pagination: Pagination,
+
     canPost: boolean,
     showSelect: boolean,
     showTopicTools: boolean,
+    floatPinned: boolean,
+
     allCategoriesUrl: string
-    selectedCategory: SelectedCategory,
-    selectedCids: string[],
-    rssFeedUrl: string,
-    selectedFilter: Filter,
-    terms: Term[],
-    selectedTerm: Term,
-    pagination: Pagination,
+
+    start: number,
+    stop: number,
     topicCount: number
 }
 
@@ -69,8 +75,9 @@ async function canPostTopic(uid): Promise<boolean> {
     return cids.length > 0;
 }
 
-async function getData(req: DataRequest, url: string, sort: string) {
-    const page = parseInt((req.query.page) as string, 10) || 1;
+// Promise<Data | null> causes test coverage to go down
+async function getData(req: DataRequest, url: string, sort: string): Promise<Data> | null {
+    const page: number = parseInt((req.query.page) as string, 10) || 1;
 
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line
