@@ -120,7 +120,7 @@ async function getData(req: DataRequest, url: string, sort: string): Promise<Dat
         sort: sort,
         floatPinned: req.query.pinned,
         query: req.query,
-    });
+    }) as Data;
 
     const isDisplayedAsHome = !(req.originalUrl.startsWith(`${relative_path}/api/${url}`) || req.originalUrl.startsWith(`${relative_path}/${url}`));
     const baseUrl = isDisplayedAsHome ? '' : url;
