@@ -11,7 +11,7 @@ import pagination from '../pagination';
 import privileges from '../privileges';
 
 interface DataRequest extends Request {
-    uid: string
+    uid: number
     loggedIn: boolean
 }
 
@@ -47,7 +47,6 @@ type Data = {
     selectedFilter: Filter,
     selectedTerm: Term,
 
-    uid: string,
     sort: string,
     title: string,
     rssFeedUrl: string,
@@ -62,6 +61,7 @@ type Data = {
 
     allCategoriesUrl: string
 
+    uid: number,
     start: number,
     stop: number,
     topicCount: number
@@ -69,7 +69,7 @@ type Data = {
 
 const relative_path: string = nconf.get('relative_path') as string;
 
-async function canPostTopic(uid): Promise<boolean> {
+async function canPostTopic(uid: number): Promise<boolean> {
     let cids: number[] = await categories.getAllCidsFromSet('categories:cid') as number[];
     cids = await privileges.categories.filterCids('topics:create', cids, uid) as number[];
     return cids.length > 0;
