@@ -28,6 +28,7 @@ function canPostTopic(uid) {
         return cids.length > 0;
     });
 }
+// Promise<Data | null> causes test coverage to go down
 function getData(req, url, sort) {
     return __awaiter(this, void 0, void 0, function* () {
         const page = parseInt((req.query.page), 10) || 1;

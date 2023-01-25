@@ -1,5 +1,5 @@
 import nconf from 'nconf';
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { Pagination, SettingsObject, Breadcrumbs } from '../types';
 
 import user from '../user';
@@ -159,7 +159,7 @@ async function getData(req: DataRequest, url: string, sort: string): Promise<Dat
     return data;
 }
 
-export default async function get(req: DataRequest, res: Response, next: () => void) {
+export default async function get(req: DataRequest, res: Response, next: NextFunction) {
     const data = await getData(req, 'recent', 'recent');
     if (!data) {
         return next();
