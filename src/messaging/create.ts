@@ -41,8 +41,7 @@ interface Message {
     deleted?: number;
 }
 
-interface MessageWrapper {
-    message: Message;
+interface Content {
     content: string;
     length: number;
 }
@@ -67,7 +66,7 @@ export = function (Messaging: MessagingInfo) {
         const maxChatMessageLength = maximumChatMessageLength || 1000;
         content = String(content).trim();
         let { length } = content;
-        ({ content, length } = await plugins.hooks.fire('filter:messaging.checkContent', { content, length }) as MessageWrapper);
+        ({ content, length } = await plugins.hooks.fire('filter:messaging.checkContent', { content, length }) as Content);
         if (!content) {
             throw new Error('[[error:invalid-chat-message]]');
         }
