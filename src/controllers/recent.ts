@@ -19,11 +19,6 @@ type Query = {
     tags: string[]
 }
 
-// interface DataRequest extends Request {
-//     uid: number
-//     loggedIn: boolean,
-// }
-
 type SelectedCategory = {
     cid: number,
     name: string
@@ -89,9 +84,7 @@ export async function getData(req: Request<Query> & { uid: number, loggedIn: boo
     url: string, sort: string): Promise<Data> | null {
     const page: number = parseInt((req.query.page) as string, 10) || 1;
 
-    // The next line calls a function in a module that has not been updated to TS yet
-    // eslint-disable-next-line
-    let term: string | undefined = helpers.terms[req.query.term];
+    let term: string | undefined = helpers.terms[req.query.term] as (string | undefined);
     const { cid, tags } = req.query;
     const filter = req.query.filter || '';
 
@@ -118,7 +111,7 @@ export async function getData(req: Request<Query> & { uid: number, loggedIn: boo
     const stop = start + settings.topicsPerPage - 1;
 
     // The next line calls a function in a module that has not been updated to TS yet
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const data: Data = await topics.getSortedTopics({
         cids: cid,
         tags: tags,
@@ -137,7 +130,7 @@ export async function getData(req: Request<Query> & { uid: number, loggedIn: boo
 
     if (isDisplayedAsHome) {
         // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         data.title = (meta.config.homePageTitle) as string || '[[pages:home]]';
     } else {
         data.title = `[[pages:${url}]]`;
