@@ -129,9 +129,7 @@ export async function getData(req: Request<Query> & { uid: number, loggedIn: boo
     const baseUrl = isDisplayedAsHome ? '' : url;
 
     if (isDisplayedAsHome) {
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        data.title = (meta.config.homePageTitle) as string || '[[pages:home]]';
+        data.title = (meta.config as { homePageTitle: string }).homePageTitle || '[[pages:home]]';
     } else {
         data.title = `[[pages:${url}]]`;
         data.breadcrumbs = helpers.buildBreadcrumbs([{ text: `[[${url}:title]]` }]);
@@ -143,9 +141,7 @@ export async function getData(req: Request<Query> & { uid: number, loggedIn: boo
     data.allCategoriesUrl = baseUrl + helpers.buildQueryString(req.query, 'cid', '');
     data.selectedCategory = categoryData.selectedCategory;
     data.selectedCids = categoryData.selectedCids;
-    // The next line calls a function in a module that has not been updated to TS yet
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
-    data['feeds:disableRSS'] = meta.config['feeds:disableRSS'] || 0;
+    data['feeds:disableRSS'] = (meta.config as { 'feeds:disableRSS': number })['feeds:disableRSS'] || 0;
     data.rssFeedUrl = `${relative_path}/${url}.rss`;
     if (req.loggedIn) {
         data.rssFeedUrl += `?uid=${req.uid}&token=${rssToken}`;

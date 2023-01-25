@@ -71,9 +71,7 @@ function getData(req, url, sort) {
         const isDisplayedAsHome = !(req.originalUrl.startsWith(`${relative_path}/api/${url}`) || req.originalUrl.startsWith(`${relative_path}/${url}`));
         const baseUrl = isDisplayedAsHome ? '' : url;
         if (isDisplayedAsHome) {
-            // The next line calls a function in a module that has not been updated to TS yet
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            data.title = (meta_1.default.config.homePageTitle) || '[[pages:home]]';
+            data.title = meta_1.default.config.homePageTitle || '[[pages:home]]';
         }
         else {
             data.title = `[[pages:${url}]]`;
@@ -85,8 +83,6 @@ function getData(req, url, sort) {
         data.allCategoriesUrl = baseUrl + helpers_1.default.buildQueryString(req.query, 'cid', '');
         data.selectedCategory = categoryData.selectedCategory;
         data.selectedCids = categoryData.selectedCids;
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
         data['feeds:disableRSS'] = meta_1.default.config['feeds:disableRSS'] || 0;
         data.rssFeedUrl = `${relative_path}/${url}.rss`;
         if (req.loggedIn) {
