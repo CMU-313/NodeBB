@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "allowJs": false,
-    "target": "es6",
-    "module": "commonjs",
+    "target": "ES2017",
+    "module": "commonJS",
     "moduleResolution": "node",
     "esModuleInterop": true,
   },
@@ -14,4 +14,5 @@
   "exclude":[
     "node_modules",
   ]
+
 }
