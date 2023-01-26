@@ -15,11 +15,11 @@ const intFields = [
 ];
 
 interface multi_topic {
-    getTopicsFields(tids: number[], fields: string[]): Promise<Array<(keyof TopicObject)>>;
+    getTopicsFields(tids: number[], fields: string[]): Promise<Array<(keyof TopicObject) | TopicObject>>;
     getTopicField(tid: number, field: string): Promise<keyof TopicObject>;
-    getTopicFields(tid: number, fields: string[]): Promise<(keyof TopicObject)>;
-    getTopicData(tid: number): Promise<(keyof TopicObject)>;
-    getTopicsData(tids: number[]): Promise<Array<(keyof TopicObject)>>;
+    getTopicFields(tid: number, fields: string[]): Promise<(keyof TopicObject) | TopicObject>;
+    getTopicData(tid: number): Promise<(keyof TopicObject) | TopicObject>;
+    getTopicsData(tids: number[]): Promise<Array<(keyof TopicObject)| TopicObject>>;
     getCategoryData(tid: number): Promise<number[]>;
     setTopicField(tid: number, field: string, value: number): Promise<void>;
     setTopicFields(tid: number, data: number[]): Promise<void>;
@@ -107,14 +107,14 @@ function modifyTopic(topic: TopicObject, fields: string[]): TagObject {
 }
 
 interface resulter {
-    topics: Array<(keyof TopicObject)>;
+    topics: Array<(keyof TopicObject) | TopicObject>;
 }
 
 
 export = function (Topics: multi_topic) {
     Topics.getTopicsFields = async function (tids: number[], fields: string[]) {
         if (!Array.isArray(tids) || !tids.length) {
-            const empty: Array<(keyof TopicObject)> = [];
+            const empty: Array<(keyof TopicObject)| TopicObject> = [];
             return empty;
         }
 
@@ -134,24 +134,23 @@ export = function (Topics: multi_topic) {
             fields: fields,
             keys: keys,
         }) as resulter;
-        // const result: result = { tids: tids, topics: topics, fields: fields, keys: keys };
         result.topics.forEach(topic => modifyTopic(topic, fields));
         return result.topics;
     };
 
     Topics.getTopicField = async function (tid: number, field: string) {
-        const topic : keyof TopicObject = await Topics.getTopicFields(tid, [field]);
+        const topic : (keyof TopicObject | TopicObject) = await Topics.getTopicFields(tid, [field]);
         const retval: keyof TopicObject = topic[field] as keyof TopicObject;
         return topic ? retval : null;
     };
 
     Topics.getTopicFields = async function (tid: number, fields: string[]) {
-        const topics : Array<(keyof TopicObject)> = await Topics.getTopicsFields([tid], fields);
+        const topics : Array<(keyof TopicObject) | TopicObject> = await Topics.getTopicsFields([tid], fields);
         return topics ? topics[0] : null;
     };
 
     Topics.getTopicData = async function (tid: number) {
-        const topics : Array<(keyof TopicObject)> = await Topics.getTopicsFields([tid], []);
+        const topics : Array<(keyof TopicObject) | TopicObject> = await Topics.getTopicsFields([tid], []);
         return topics && topics.length ? topics[0] : null;
     };
 
