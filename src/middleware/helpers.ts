@@ -5,22 +5,38 @@ import slugify = require('../slugify');
 import { NextFunction, Request, Response } from 'express';
 import meta = require('../meta');
 
-type template = {
+interface template {
     topic: string;
 }
 
-type category = {
+interface category {
     cid : string;
     name: string;
 }
 
-type templateData = {
+interface templateData {
     template : template;
     category: category;
     breadcrumbs: string;
 }
 
-export function try(middleware) => {
+interface constructor {
+    name : string;
+}
+
+interface middleware {
+    constructor : constructor;
+}
+
+declare global {
+    namespace Express {
+      interface Request {
+        loggedIn: Boolean;
+      }
+    }
+  }
+
+export function tryFunction(middleware: middleware) {
     if (middleware && middleware.constructor && middleware.constructor.name === 'AsyncFunction') {
         return async function (req: Request, res: Response, next: NextFunction) {
             try {
@@ -79,4 +95,4 @@ export function buildBodyClass(req: Request, res: Response, templateData : templ
     return parts.join(' ');
 };
 
-export{}
+
