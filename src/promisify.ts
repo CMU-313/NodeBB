@@ -2,19 +2,18 @@
 import util from 'util';
 
 interface moduleExport {
-    env?: environ;
-    extends?: string[];
-    ignorePatterns?: string[];
+    env?: environ,
+    extends?: string[],
+    ignorePatterns?: string[],
     overrides?: [],
     parser?: string,
     parserOptions?: parseOptions,
     plugins?: string[],
-    rules?: rulesDict;
-    mode?: string;
-    preset?: string;
-    testEnvironment?: string;
-    function1?: () => Promise<void>;
-    function2?: (...args: unknown[]) => void;
+    rules?: rulesDict,
+    mode?: string,
+    preset?: string,
+    testEnvironment?: string,
+    key: (...args: unknown[]) => void
 }
 
 interface parseOptions {
@@ -48,7 +47,6 @@ export default function (theModule: moduleExport, ignoreKeys: string[]) {
         return fn && fn.constructor && fn.constructor.name === 'AsyncFunction';
     }
 
-    // Params are functions that have any possible args and outputs
     function wrapCallback(origFn: (...args: unknown[]) => void, callbackFn: (...args: unknown[]) => void) {
         return async function wrapperCallback(...args: unknown[]) {
             if (args.length && typeof args[args.length - 1] === 'function') {
@@ -60,7 +58,6 @@ export default function (theModule: moduleExport, ignoreKeys: string[]) {
         };
     }
 
-    // Params are functions that have any possible args and outputs
     function wrapPromise(origFn: (...args: unknown[]) => void, promiseFn: (...args: unknown[]) => void) {
         return function wrapperPromise(...args: unknown[]) {
             if (args.length && typeof args[args.length - 1] === 'function') {

@@ -25,7 +25,6 @@ function default_1(theModule, ignoreKeys) {
     function isAsyncFunction(fn) {
         return fn && fn.constructor && fn.constructor.name === 'AsyncFunction';
     }
-    // Params are functions that have any possible args and outputs
     function wrapCallback(origFn, callbackFn) {
         return function wrapperCallback(...args) {
             return __awaiter(this, void 0, void 0, function* () {
@@ -38,7 +37,6 @@ function default_1(theModule, ignoreKeys) {
             });
         };
     }
-    // Params are functions that have any possible args and outputs
     function wrapPromise(origFn, promiseFn) {
         return function wrapperPromise(...args) {
             if (args.length && typeof args[args.length - 1] === 'function') {
