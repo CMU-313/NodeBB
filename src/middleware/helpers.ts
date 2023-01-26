@@ -6,8 +6,8 @@ import slugify from '../slugify';
 
 import meta from '../meta';
 
-import helpers from module.exports;
-//const helpers = module.exports;
+//import helpers from module.exports;
+const helpers = module.exports;
 
 helpers.try = function (middleware) {
     if (middleware && middleware.constructor && middleware.constructor.name === 'AsyncFunction') {
