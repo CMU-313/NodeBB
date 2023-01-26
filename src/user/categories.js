@@ -2,11 +2,11 @@
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-Object.defineProperty(exports, "__esModule", { value: true });
 const lodash_1 = __importDefault(require("lodash"));
+const database_1 = __importDefault(require("../database"));
 const categories_1 = __importDefault(require("../categories"));
 const plugins_1 = __importDefault(require("../plugins"));
-function default_1(User, db) {
+module.exports = function default_1(User) {
     // Unsafe member access .setCategoryWatchState on 'any' value
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
@@ -28,7 +28,7 @@ function default_1(User, db) {
         // Unsafe call of 'any' typed value
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        await db.sortedSetsAdd(cids.map(cid => `cid:${cid}:uid:watch:state`), state, uid);
+        await database_1.default.sortedSetsAdd(cids.map(cid => `cid:${cid}:uid:watch:state`), state, uid);
     };
     // Unsafe member access .getCategoryWatchState on an 'any' value
     // The next line calls a function in a module that has not been updated to TS yet
@@ -122,5 +122,4 @@ function default_1(User, db) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         await User.setCategoryWatchState(uid, cid, categories_1.default.watchStates.watching);
     };
-}
-exports.default = default_1;
+};

@@ -4,11 +4,11 @@ import db from '../database';
 import categories from '../categories';
 import plugins from '../plugins';
 
-export default function default_1(User, db: db) {
+export = function default_1(User) {
     // Unsafe member access .setCategoryWatchState on 'any' value
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    User.setCategoryWatchState = async function (uid: string, cids: string[], state: string) : Promise<categories> {
+    User.setCategoryWatchState = async function (uid: string, cids: string[], state: string) {
         if (!(parseInt(uid, 10) > 0)) {
             return;
         }
