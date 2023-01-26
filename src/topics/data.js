@@ -17,7 +17,6 @@ const categories_1 = __importDefault(require("../categories"));
 const utils_1 = __importDefault(require("../utils"));
 const translator_1 = __importDefault(require("../translator"));
 const plugins_1 = __importDefault(require("../plugins"));
-// import { TagObject, TopicObject, multi_topic } from '../types';
 const intFields = [
     'tid', 'cid', 'uid', 'mainPid', 'postcount',
     'viewcount', 'postercount', 'deleted', 'locked', 'pinned',
@@ -94,70 +93,93 @@ function modifyTopic(topic, fields) {
     }
 }
 module.exports = function (Topics) {
-    Topics.getTopicsFields = (tids, fields) => __awaiter(this, void 0, void 0, function* () {
-        if (!Array.isArray(tids) || !tids.length) {
-            const empty = [];
-            return empty;
-        }
-        // "scheduled" is derived from "timestamp"
-        if (fields.includes('scheduled') && !fields.includes('timestamp')) {
-            fields.push('timestamp');
-        }
-        const keys = tids.map(tid => `topic:${tid}`);
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const topics = yield database_1.default.getObjects(keys, fields);
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const result = yield plugins_1.default.hooks.fire('filter:topic.getFields', {
-            tids: tids,
-            topics: topics,
-            fields: fields,
-            keys: keys,
+    Topics.getTopicsFields = function (tids, fields) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!Array.isArray(tids) || !tids.length) {
+                const empty = [];
+                return empty;
+            }
+            // "scheduled" is derived from "timestamp"
+            if (fields.includes('scheduled') && !fields.includes('timestamp')) {
+                fields.push('timestamp');
+            }
+            const keys = tids.map(tid => `topic:${tid}`);
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            const topics = yield database_1.default.getObjects(keys, fields);
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            const result = yield plugins_1.default.hooks.fire('filter:topic.getFields', {
+                tids: tids,
+                topics: topics,
+                fields: fields,
+                keys: keys,
+            });
+            // const result: result = { tids: tids, topics: topics, fields: fields, keys: keys };
+            result.topics.forEach(topic => modifyTopic(topic, fields));
+            return result.topics;
         });
-        result.topics.forEach(topic => modifyTopic(topic, fields));
-        return result.topics;
-    });
-    Topics.getTopicField = (tid, field) => __awaiter(this, void 0, void 0, function* () {
-        const topic = yield Topics.getTopicFields(tid, [field]);
-        const retval = topic[field];
-        return topic ? retval : null;
-    });
-    Topics.getTopicFields = (tid, fields) => __awaiter(this, void 0, void 0, function* () {
-        const topics = yield Topics.getTopicsFields([tid], fields);
-        return topics ? topics[0] : null;
-    });
-    Topics.getTopicData = (tid) => __awaiter(this, void 0, void 0, function* () {
-        const topics = yield Topics.getTopicsFields([tid], []);
-        return topics && topics.length ? topics[0] : null;
-    });
-    Topics.getTopicsData = (tids) => __awaiter(this, void 0, void 0, function* () { return yield Topics.getTopicsFields(tids, []); });
-    Topics.getCategoryData = (tid) => __awaiter(this, void 0, void 0, function* () {
-        const cid = yield Topics.getTopicField(tid, 'cid');
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const retval = yield categories_1.default.getCategoryData(cid);
-        return retval;
-        // return await categories.getCategoryData(cid);
-    });
-    Topics.setTopicField = (tid, field, value) => __awaiter(this, void 0, void 0, function* () {
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        yield database_1.default.setObjectField(`topic:${tid}`, field, value);
-    });
-    Topics.setTopicFields = (tid, data) => __awaiter(this, void 0, void 0, function* () {
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        yield database_1.default.setObject(`topic:${tid}`, data);
-    });
-    Topics.deleteTopicField = (tid, field) => __awaiter(this, void 0, void 0, function* () {
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        yield database_1.default.deleteObjectField(`topic:${tid}`, field);
-    });
-    Topics.deleteTopicFields = (tid, fields) => __awaiter(this, void 0, void 0, function* () {
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        yield database_1.default.deleteObjectFields(`topic:${tid}`, fields);
-    });
+    };
+    Topics.getTopicField = function (tid, field) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const topic = yield Topics.getTopicFields(tid, [field]);
+            const retval = topic[field];
+            return topic ? retval : null;
+        });
+    };
+    Topics.getTopicFields = function (tid, fields) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const topics = yield Topics.getTopicsFields([tid], fields);
+            return topics ? topics[0] : null;
+        });
+    };
+    Topics.getTopicData = function (tid) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const topics = yield Topics.getTopicsFields([tid], []);
+            return topics && topics.length ? topics[0] : null;
+        });
+    };
+    Topics.getTopicsData = function (tids) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield Topics.getTopicsFields(tids, []);
+        });
+    };
+    Topics.getCategoryData = function (tid) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const cid = yield Topics.getTopicField(tid, 'cid');
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            const retval = yield categories_1.default.getCategoryData(cid);
+            return retval;
+            // return await categories.getCategoryData(cid);
+        });
+    };
+    Topics.setTopicField = function (tid, field, value) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            yield database_1.default.setObjectField(`topic:${tid}`, field, value);
+        });
+    };
+    Topics.setTopicFields = function (tid, data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            yield database_1.default.setObject(`topic:${tid}`, data);
+        });
+    };
+    Topics.deleteTopicField = function (tid, field) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            yield database_1.default.deleteObjectField(`topic:${tid}`, field);
+        });
+    };
+    Topics.deleteTopicFields = function (tid, fields) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            yield database_1.default.deleteObjectFields(`topic:${tid}`, fields);
+        });
+    };
 };
