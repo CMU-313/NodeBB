@@ -36,7 +36,7 @@ declare global {
     }
   }
 
-export function tryFunction(middleware: middleware) {
+export function try(middleware: middleware) {
     if (middleware && middleware.constructor && middleware.constructor.name === 'AsyncFunction') {
         return async function (req: Request, res: Response, next: NextFunction) {
             try {
