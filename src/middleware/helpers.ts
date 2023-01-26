@@ -1,14 +1,28 @@
 import winston = require('winston');
+
 import validator = require('validator');
 import slugify = require('../slugify');
-
+import { NextFunction, Request, Response } from 'express';
 import meta = require('../meta');
 
-const helpers = module.exports;
+type template = {
+    topic: string;
+}
 
-helpers.try = function (middleware) {
+type category = {
+    cid : string;
+    name: string;
+}
+
+type templateData = {
+    template : template;
+    category: category;
+    breadcrumbs: string;
+}
+
+export function try(middleware) => {
     if (middleware && middleware.constructor && middleware.constructor.name === 'AsyncFunction') {
-        return async function (req, res, next) {
+        return async function (req: Request, res: Response, next: NextFunction) {
             try {
                 await middleware(req, res, next);
             } catch (err) {
@@ -16,7 +30,7 @@ helpers.try = function (middleware) {
             }
         };
     }
-    return function (req, res, next) {
+    return function (req: Request, res: Response, next: NextFunction) {
         try {
             middleware(req, res, next);
         } catch (err) {
@@ -25,7 +39,7 @@ helpers.try = function (middleware) {
     };
 };
 
-helpers.buildBodyClass = function (req, res, templateData = {}) {
+export function buildBodyClass(req: Request, res: Response, templateData : templateData) {
     const clean = req.path.replace(/^\/api/, '').replace(/^\/|\/$/g, '');
     const parts = clean.split('/').slice(0, 3);
     parts.forEach((p, index) => {
@@ -64,3 +78,5 @@ helpers.buildBodyClass = function (req, res, templateData = {}) {
     }
     return parts.join(' ');
 };
+
+export{}
