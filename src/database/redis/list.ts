@@ -26,12 +26,16 @@ export default function (module: { client: { lpush: (arg0: string, arg1:
         }
         await module.client.rpop(key) as void | Promise<void>;
     }
+
+    interface batchType {
+        lrem: (key: string, num: number, value: any) => void
+    }
     async function listRemoveAll(key:string, value:number):Promise<void> {
         if (!key) {
             return;
         }
         if (Array.isArray(value)) {
-            const batch = module.client.batch();
+            const batch: batchType = module.client.batch() as batchType;
             // The next line calls a function in a module that has not been updated to TS yet
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
             value.forEach(value => batch.lrem(key, 0, value));
