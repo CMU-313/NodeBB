@@ -42,8 +42,12 @@ function escapeTitle(topicData: TopicObject) {
     }
 }
 
-function modifyTopic(topic: TopicObject, fields: string[]): TagObject {
-    if (!topic) {
+function isTopic(topic: TopicObject | keyof TopicObject): topic is TopicObject {
+    return (topic as TopicObject).title !== undefined;
+}
+
+function modifyTopic(topic: (TopicObject | (keyof TopicObject)), fields: string[]): TagObject {
+    if (!topic || !isTopic(topic)) {
         return;
     }
     // The next line calls a function in a module that has not been updated to TS yet

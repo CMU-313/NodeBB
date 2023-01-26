@@ -37,8 +37,11 @@ function escapeTitle(topicData) {
         }
     }
 }
+function isTopic(topic) {
+    return topic.title !== undefined;
+}
 function modifyTopic(topic, fields) {
-    if (!topic) {
+    if (!topic || !isTopic(topic)) {
         return;
     }
     // The next line calls a function in a module that has not been updated to TS yet
@@ -115,7 +118,6 @@ module.exports = function (Topics) {
                 fields: fields,
                 keys: keys,
             });
-            // const result: result = { tids: tids, topics: topics, fields: fields, keys: keys };
             result.topics.forEach(topic => modifyTopic(topic, fields));
             return result.topics;
         });
