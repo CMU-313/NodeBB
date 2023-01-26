@@ -1,12 +1,9 @@
+import winston = require('winston');
+import validator = require('validator');
+import slugify = require('../slugify');
 
-import winston from 'winston';
+import meta = require('../meta');
 
-import validator from 'validator';
-import slugify from '../slugify';
-
-import meta from '../meta';
-
-//import helpers from module.exports;
 const helpers = module.exports;
 
 helpers.try = function (middleware) {
