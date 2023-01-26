@@ -1,11 +1,12 @@
 import helpers from './helpers';
+
 export = function (module: { client: { lpush: (arg0: string, arg1:
     number) => any; rpush: (arg0: string, arg1: number) => any; rpop:
     (arg0: string)=> void | PromiseLike<void>; batch: () => any; lrem:
     (arg0: string, arg1: number, arg2: number) => any; ltrim: (arg0: string,
     arg1: number, arg2: number) => any; lrange: (arg0: string, arg1: number,
     arg2: number) => any; llen: (arg0: string) => any; }; }) {
-    async function listPrepend( key: string, value: number, ):Promise<void> {
+    async function listPrepend(key: string, value: number):Promise<void> {
         if (!key) {
             return;
         }
