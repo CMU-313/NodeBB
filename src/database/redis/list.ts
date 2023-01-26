@@ -1,12 +1,11 @@
 import helpers from './helpers';
-
-export default function (module: { client: { lpush: (arg0: string, arg1:
+export = function (module: { client: { lpush: (arg0: string, arg1:
     number) => any; rpush: (arg0: string, arg1: number) => any; rpop:
     (arg0: string)=> void | PromiseLike<void>; batch: () => any; lrem:
     (arg0: string, arg1: number, arg2: number) => any; ltrim: (arg0: string,
     arg1: number, arg2: number) => any; lrange: (arg0: string, arg1: number,
     arg2: number) => any; llen: (arg0: string) => any; }; }) {
-    async function listPrepend(key:string, value:number):Promise<void> {
+    async function listPrepend( key: string, value: number, ):Promise<void> {
         if (!key) {
             return;
         }
@@ -30,6 +29,9 @@ export default function (module: { client: { lpush: (arg0: string, arg1:
     interface batchType {
         lrem: (key: string, num: number, value: any) => void
     }
+
+
+
     async function listRemoveAll(key:string, value:number):Promise<void> {
         if (!key) {
             return;
