@@ -10,22 +10,26 @@ import privileges from '../privileges';
 import cache from '../cache';
 
 
+type functionType = (tid) => void;
 
 export default function (Categories) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     Categories.purge = async function (cid: number, uid: number) {
         await batch.processSortedSet(`cid:${cid}:tids`, async <T extends IterableCollection<T>>(tids: T) => {
-            await async.eachLimit(tids, 10, async (tid) => {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-                await topics.purgePostsAndTopic(tid, uid);
-            });
+            const temp = (tid) => {
+                /* eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,
+@typescript-eslint/no-unsafe-call */
+                topics.purgePostsAndTopic(tid, uid);
+            }
+            await async.eachLimit(tids, 10, temp);
         }, { alwaysStartAt: 0 });
+
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const pinnedTids: IterableCollection<unknown> = await db.getSortedSetRevRange(`cid:${cid}:tids:pinned`, 0, -1);
-        await async.eachLimit(pinnedTids, 10, async (tid) => {
+        await async.eachLimit(pinnedTids, 10, (async (tid) => {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
             await topics.purgePostsAndTopic(tid, uid);
-        });
+        }) as functionType);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const categoryData: { name: string; } = await Categories.getCategoryData(cid);
 
