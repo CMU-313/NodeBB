@@ -1,4 +1,4 @@
-'use strict';
+
 
 
 import validator from 'validator';
@@ -39,19 +39,15 @@ interface Categories{
     getCategoriesFields: (cids: string[], fields: string[]) => Promise<Category[]>;
     getCategoryData: (cid: string)=> Promise<Category>;
     getCategoriesData: (cids: string[]) => Promise<Category[]>;
-    getCategoryField: (cid: string, field: string) => Promise<any>;
+    getCategoryField: (cid: string, field: string) => Promise<Category>;
     getCategoryFields: (cid: string, fields: string[]) => Promise<Category>;
     getAllCategoryFields: (fields: string[]) => Promise<Category[]>;
-    //getAllCidsFromSet: ('categories:cid') => cid;
+    getAllCidsFromSet: (string) => string[];
     setCategoryField: (cid: string, field: string, value: number) => Promise<void>;
     incrementCategoryFieldBy: (cid: string, field: string, value: number) => Promise<void>;
-}
-
-//module.exports = (Categories: Categories) {
-    //Categories.getCategoriesFields = async function (cids, fields) */
-    
-export default (Categories: Categories) =>{  
-    Categories.getCategoriesFields =  async function (cids: string[], fields: string[]){
+}  
+export default (Categories: Categories) => {
+    Categories.getCategoriesFields = async function (cids: string[], fields: string[]) {
         if (!Array.isArray(cids) || !cids.length) {
             return [];
         }
@@ -72,7 +68,7 @@ export default (Categories: Categories) =>{
         return result.categories;
     };
 
-    Categories.getCategoryData =  async function (cid: string) {
+    Categories.getCategoryData = async function (cid: string) {
         const categories: Category[] = await Categories.getCategoriesFields([cid], []);
         return categories && categories.length ? categories[0] : null;
     };
@@ -81,28 +77,28 @@ export default (Categories: Categories) =>{
         return await Categories.getCategoriesFields(cids, []);
     };
 
-    Categories.getCategoryField= async function(cid: string, field: string) {
+    Categories.getCategoryField = async function (cid: string, field: string) {
         const category: Category = await Categories.getCategoryFields(cid, [field]);
         return category ? category[field] : null;
     };
 
-    Categories.getCategoryFields= async function(cid: string, fields: string[]) {
+    Categories.getCategoryFields = async function (cid: string, fields: string[]) {
         const categories: Category[] = await Categories.getCategoriesFields([cid], fields);
         return categories ? categories[0] : null;
     };
 
-    Categories.getAllCategoryFields= async function(fields: string[]) {
+    Categories.getAllCategoryFields = async function (fields: string[]) {
         const cids:string[] = await Categories.getAllCidsFromSet('categories:cid');
         return await Categories.getCategoriesFields(cids, fields);
     };
 
-    Categories.setCategoryField = async function(cid: string, field: string, value: number) {
+    Categories.setCategoryField = async function (cid: string, field: string, value: number) {
         // The next line calls a function in a module that has not been updated to TS yet
         //eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         await db.setObjectField(`category:${cid}`, field, value);
     };
 
-    Categories.incrementCategoryFieldBy= async function(cid: string, field: string, value: number) {
+    Categories.incrementCategoryFieldBy = async function (cid: string, field: string, value: number) {
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         await db.incrObjectFieldBy(`category:${cid}`, field, value);
