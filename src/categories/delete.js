@@ -20,17 +20,19 @@ export default function (Categories) {
     Categories.purge = function (cid, uid) {
         return __awaiter(this, void 0, void 0, function* () {
             yield batch.processSortedSet(`cid:${cid}:tids`, (tids) => __awaiter(this, void 0, void 0, function* () {
-                yield async.eachLimit(tids, 10, (tid) => __awaiter(this, void 0, void 0, function* () {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-                    yield topics.purgePostsAndTopic(tid, uid);
-                }));
+                const temp = (tid) => {
+                    /* eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,
+    @typescript-eslint/no-unsafe-call */
+                    topics.purgePostsAndTopic(tid, uid);
+                };
+                yield async.eachLimit(tids, 10, temp);
             }), { alwaysStartAt: 0 });
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
             const pinnedTids = yield db.getSortedSetRevRange(`cid:${cid}:tids:pinned`, 0, -1);
-            yield async.eachLimit(pinnedTids, 10, (tid) => __awaiter(this, void 0, void 0, function* () {
+            yield async.eachLimit(pinnedTids, 10, ((tid) => __awaiter(this, void 0, void 0, function* () {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
                 yield topics.purgePostsAndTopic(tid, uid);
-            }));
+            })));
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
             const categoryData = yield Categories.getCategoryData(cid);
             yield purgeCategory(cid, categoryData);
