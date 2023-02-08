@@ -11,6 +11,7 @@ const plugins = require('./plugins');
 const db = require('./database');
 
 const social = module.exports;
+// This was not used anymore!
 
 social.postSharing = null;
 
