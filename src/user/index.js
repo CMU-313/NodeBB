@@ -1,7 +1,6 @@
 'use strict';
 
 const _ = require('lodash');
-
 const groups = require('../groups');
 const plugins = require('../plugins');
 const db = require('../database');
