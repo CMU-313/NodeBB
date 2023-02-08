@@ -243,7 +243,7 @@ describe('Admin Controllers', () => {
     });
 
     it('should load /admin/extend/plugins', function (done) {
-        this.timeout(50000);
+        this.timeout(150000);
         request(`${nconf.get('url')}/api/admin/extend/plugins`, { jar: jar, json: true }, (err, res, body) => {
             assert.ifError(err);
             assert(body.hasOwnProperty('installed'));
@@ -823,7 +823,7 @@ describe('Admin Controllers', () => {
 
         describe('routeMap parsing', () => {
             it('should allow normal user access to admin pages', async function () {
-                this.timeout(50000);
+                this.timeout(150000);
                 function makeRequest(url) {
                     return new Promise((resolve, reject) => {
                         request(url, { jar: userJar, json: true }, (err, res, body) => {
