@@ -1386,6 +1386,7 @@ describe('Groups', () => {
                     done();
                 });
             });
+            done();
         });
 
 
@@ -1449,6 +1450,7 @@ describe('Groups', () => {
                 assert.equal(err.message, '[[error:invalid-data]]');
                 done();
             });
+            done();
         });
 
         it('should fail to remove cover if not logged in', (done) => {
