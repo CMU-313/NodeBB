@@ -1,26 +1,24 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-const lodash_1 = __importDefault(require("lodash"));
-const database_1 = __importDefault(require("../database"));
-const categories_1 = __importDefault(require("../categories"));
-const plugins_1 = __importDefault(require("../plugins"));
-module.exports = function default_1(User) {
+import _ from 'lodash';
+
+import db from '../database';
+import categories from '../categories';
+import plugins from '../plugins';
+
+export = function default_1(User) {
     // Unsafe member access .setCategoryWatchState on 'any' value
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    User.setCategoryWatchState = async function (uid, cids, state) {
+    User.setCategoryWatchState = async function (uid: string, cids: string[], state: string) {
         if (!(parseInt(uid, 10) > 0)) {
             return;
         }
-        const ws = categories_1.default.watchStates;
-        const isStateValid = Object.values(ws).includes(parseInt(state, 10));
+        const ws: number[] = categories.watchStates as number[];
+        const isStateValid: boolean = Object.values(ws).includes(parseInt(state, 10));
         if (!isStateValid) {
             throw new Error('[[error:invalid-watch-state]]');
         }
         cids = Array.isArray(cids) ? cids : [cids];
-        const exists = await categories_1.default.exists(cids);
+        const exists: boolean[] = await categories.exists(cids) as boolean[];
         if (exists.includes(false)) {
             throw new Error('[[error:no-category]]');
         }
@@ -28,98 +26,107 @@ module.exports = function default_1(User) {
         // Unsafe call of 'any' typed value
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        await database_1.default.sortedSetsAdd(cids.map(cid => `cid:${cid}:uid:watch:state`), state, uid);
+        await db.sortedSetsAdd(cids.map(cid => `cid:${cid}:uid:watch:state`), state, uid);
     };
+
     // Unsafe member access .getCategoryWatchState on an 'any' value
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    User.getCategoryWatchState = async function (uid) {
+    User.getCategoryWatchState = async function (uid: string) {
         if (!(parseInt(uid, 10) > 0)) {
             return {};
         }
-        const cids = await categories_1.default.getAllCidsFromSet('categories:cid');
+
+        const cids: string[] = await categories.getAllCidsFromSet('categories:cid') as string[];
         // Unsafe call of an 'any' typed value
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const states = await categories_1.default.getWatchState(cids, uid);
-        return lodash_1.default.zipObject(cids, states);
+        const states: string[] = await categories.getWatchState(cids, uid) as string[];
+        return _.zipObject(cids, states);
     };
+
     // Unsafe member access .getIgnoredCategories on an 'any' value
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    User.getIgnoredCategories = async function (uid) {
+    User.getIgnoredCategories = async function (uid: string) {
         if (!(parseInt(uid, 10) > 0)) {
             return [];
         }
+
         // Unsafe member access .getCategoriesByStates on an 'any' value
         // Unsafe call of an 'any' typed value
         // Unsafe member access .ignoring on an 'any' value
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const cids = await User.getCategoriesByStates(uid, [categories_1.default.watchStates.ignoring]);
+        const cids: string[] = await User.getCategoriesByStates(uid, [categories.watchStates.ignoring]) as string[];
         // Unsafe member access .cids on an 'any' value
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        return (await plugins_1.default.hooks.fire('filter:user.getIgnoredCategories', {
+        return (await plugins.hooks.fire('filter:user.getIgnoredCategories', {
             uid: uid,
             cids: cids,
-        })).cids;
+        })).cids as string;
     };
+
     // Unsafe member access .getWatchedCategories on an 'any' value
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    User.getWatchedCategories = async function (uid) {
+    User.getWatchedCategories = async function (uid: string) {
         if (!(parseInt(uid, 10) > 0)) {
             return [];
         }
+
         // Unsafe member access .getCategoriesByStates on an 'any' value
         // Unsafe call of an 'any' typed value
         // Unsafe member access .watching on an 'any' value
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const cids = await User.getCategoriesByStates(uid, [categories_1.default.watchStates.watching]);
+        const cids: string[] = await User.getCategoriesByStates(uid, [categories.watchStates.watching]) as string[];
         // Unsafe member access .cids on an 'any' value
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        return (await plugins_1.default.hooks.fire('filter:user.getWatchedCategories', {
+        return (await plugins.hooks.fire('filter:user.getWatchedCategories', {
             uid: uid,
             cids: cids,
-        })).cids;
+        })).cids as string;
     };
+
     // Unsafe member access .getCategoriesByStates on an 'any' value
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    User.getCategoriesByStates = async function (uid, states) {
+    User.getCategoriesByStates = async function (uid: string, states: string) {
         if (!(parseInt(uid, 10) > 0)) {
-            return await categories_1.default.getAllCidsFromSet('categories:cid');
+            return await categories.getAllCidsFromSet('categories:cid') as string[];
         }
-        const cids = await categories_1.default.getAllCidsFromSet('categories:cid');
+        const cids: string[] = await categories.getAllCidsFromSet('categories:cid') as string[];
         // Unsafe call of an 'any' typed value
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const userState = await categories_1.default.getWatchState(cids, uid);
+        const userState: string = await categories.getWatchState(cids, uid) as string;
         return cids.filter((cid, index) => states.includes(userState[index]));
     };
+
     // Unsafe member access .ignoreCategory on an 'any' value
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    User.ignoreCategory = async function (uid, cid) {
+    User.ignoreCategory = async function (uid: string, cid: string[]) {
         // Unsafe member access .setCategoryWatchState on an 'any' value
         // Unsafe call of an 'any' typed value
         // Unsafe member access .ignoring on an 'any' value
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        await User.setCategoryWatchState(uid, cid, categories_1.default.watchStates.ignoring);
+        await User.setCategoryWatchState(uid, cid, categories.watchStates.ignoring);
     };
+
     // Unsafe member access .watchCategory on an 'any' value
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    User.watchCategory = async function (uid, cid) {
+    User.watchCategory = async function (uid: string, cid: string[]) {
         // Unsafe member access .setCategoryWatchState on an 'any' value
         // Unsafe call of an 'any' typed value
         // Unsafe member access .watching on an 'any' value
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        await User.setCategoryWatchState(uid, cid, categories_1.default.watchStates.watching);
+        await User.setCategoryWatchState(uid, cid, categories.watchStates.watching);
     };
-};
+}
