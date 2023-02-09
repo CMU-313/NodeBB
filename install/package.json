@@ -29,6 +29,7 @@
     },
     "dependencies": {
         "@adactive/bootstrap-tagsinput": "0.8.2",
+        "@commander-js/extra-typings": "9.4.1",
         "@isaacs/ttlcache": "1.2.1",
         "@nodebb/bootswatch": "3.4.2",
         "@socket.io/redis-adapter": "8.0.0",
