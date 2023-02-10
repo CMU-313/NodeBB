@@ -1796,6 +1796,7 @@ describe('Controllers', () => {
                     assert.ifError(err);
                     assert.equal(res.statusCode, 404);
                     groups.leave('administrators', fooUid, done);
+                    done();
                 });
             });
         });
