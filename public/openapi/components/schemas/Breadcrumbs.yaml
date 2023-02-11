@@ -14,3 +14,4 @@ Breadcrumbs:
             type: number
         required:
           - text
+          

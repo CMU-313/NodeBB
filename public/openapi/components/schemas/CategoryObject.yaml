@@ -2,7 +2,7 @@ CategoryObject:
   allOf:
     - type: object
       properties:
-        cid:
+        cid: 
           type: number
           description: A category identifier assigned upon category creation (this value cannot be changed)
         name:

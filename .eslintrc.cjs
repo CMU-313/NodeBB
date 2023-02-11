@@ -68,3 +68,4 @@ function find_compiled_js() {
             }
         ]
     };
+    
