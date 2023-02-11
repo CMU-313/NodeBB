@@ -1,25 +1,52 @@
-"use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const winston = require("winston");
-const cron = require("cron");
-const db = require("../database");
-const meta = require("../meta");
+import winston = require('winston');
+import cron = require('cron');
+import db = require('../database');
+import meta = require('../meta');
+
+interface CronJob {
+    stop: () => void
+}
+
+interface CronJobConstruct {
+    new (
+        cronTime?: string,
+        onTick?: () => Promise<void>,
+        onComplete?: () => Promise<void>,
+        startNow?: boolean
+    ): CronJob
+}
+
+interface Digest {
+    execute: (arg0: {
+        interval?: string
+        subscribers?: Array<number>
+    }) => Promise<void>
+}
+
+interface JobUser {
+    startJobs: () => void,
+    stopJobs: () => void,
+    digest: Digest,
+    reset: Reset
+}
+
+interface Reset {
+    clean: () => Promise<void>
+}
+
+interface Jobs {
+    [key: string]: CronJob
+}
+
 // The next line calls a function in a module that has not been updated to TS yet
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-const cronJob = cron.CronJob;
-const jobs = {};
-module.exports = function (User) {
-    function startDigestJob(name, cronString, term) {
-        jobs[name] = new cronJob(cronString, (() => __awaiter(this, void 0, void 0, function* () {
+const cronJob = cron.CronJob as CronJobConstruct;
+
+const jobs: Jobs = {};
+
+module.exports = function (User: JobUser) {
+    function startDigestJob(name: string, cronString: string, term: string) {
+        jobs[name] = new cronJob(cronString, (async () => {
             winston.verbose(`[user/jobs] Digest job (${name}) started.`);
             try {
                 if (name === 'digest.weekly') {
@@ -27,37 +54,43 @@ module.exports = function (User) {
                     // Disable max length because next disable comment is too long
                     // eslint-disable-next-line max-len
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-                    const counter = yield db.increment('biweeklydigestcounter');
+                    const counter = await db.increment('biweeklydigestcounter') as number;
                     if (counter % 2) {
-                        yield User.digest.execute({ interval: 'biweek' });
+                        await User.digest.execute({ interval: 'biweek' });
                     }
                 }
-                yield User.digest.execute({ interval: term });
+                await User.digest.execute({ interval: term });
+            } catch (err) {
+                winston.error((err as Error).stack);
             }
-            catch (err) {
-                winston.error(err.stack);
-            }
-        })), null, true);
+        }), null, true);
         winston.verbose(`[user/jobs] Starting job (${name})`);
     }
+
     User.startJobs = function () {
         winston.verbose('[user/jobs] (Re-)starting jobs...');
-        let { digestHour } = meta.config;
+
+        let { digestHour } = meta.config as { digestHour: number };
+
         // Fix digest hour if invalid
         if (isNaN(digestHour)) {
             digestHour = 17;
-        }
-        else if (digestHour > 23 || digestHour < 0) {
+        } else if (digestHour > 23 || digestHour < 0) {
             digestHour = 0;
         }
+
         User.stopJobs();
+
         startDigestJob('digest.daily', `0 ${digestHour} * * *`, 'day');
         startDigestJob('digest.weekly', `0 ${digestHour} * * 0`, 'week');
         startDigestJob('digest.monthly', `0 ${digestHour} 1 * *`, 'month');
+
         jobs['reset.clean'] = new cronJob('0 0 * * *', User.reset.clean, null, true);
         winston.verbose('[user/jobs] Starting job (reset.clean)');
+
         winston.verbose(`[user/jobs] jobs started`);
     };
+
     User.stopJobs = function () {
         let terminated = 0;
         // Terminate any active cron jobs
