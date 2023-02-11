@@ -154,6 +154,7 @@
         "@types/lodash": "^4.14.191",
         "@types/nconf": "^0.10.3",
         "@types/semver": "^7.3.13",
+        "@types/validator": "^13.7.0",
         "@typescript-eslint/eslint-plugin": "^5.48.0",
         "@typescript-eslint/parser": "^5.48.0",
         "coveralls": "3.1.1",
