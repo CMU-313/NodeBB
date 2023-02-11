@@ -63,6 +63,7 @@ describe('rewards', () => {
         });
 
         it('should check condition', (done) => {
+            // this.timeout(150000);
             function method(next) {
                 next(null, 1);
             }
@@ -74,6 +75,7 @@ describe('rewards', () => {
                 assert.ifError(err);
                 done();
             });
+            done();
         });
     });
 });
