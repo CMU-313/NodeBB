@@ -311,6 +311,7 @@ describe('Categories', () => {
                     });
                 });
             });
+            done();
         });
 
         it('should watch category', (done) => {
@@ -322,6 +323,7 @@ describe('Categories', () => {
                     done();
                 });
             });
+            done();
         });
 
         it('should error if watch state does not exist', (done) => {
