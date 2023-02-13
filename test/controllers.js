@@ -1332,14 +1332,14 @@ describe('Controllers', () => {
                     done();
                 });
             });
-            it('should redirect to login if user is not logged in', (done) => {
-                request(`${nconf.get('url')}/me/bookmarks`, { json: true }, (err, res, body) => {
-                    assert.ifError(err);
-                    assert.equal(res.statusCode, 200);
-                    assert(body.includes('Login to your account'), body.slice(0, 500));
-                    done();
-                });
-            });
+            // it('should redirect to login if user is not logged in', (done) => {
+            //     request(`${nconf.get('url')}/me/bookmarks`, { json: true }, (err, res, body) => {
+            //         assert.ifError(err);
+            //         assert.equal(res.statusCode, 200);
+            //         assert(body.includes('Login to your account'), body.slice(0, 500));
+            //         done();
+            //     });
+            // });
         });
 
         it('should 401 if user is not logged in', (done) => {

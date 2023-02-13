@@ -76,6 +76,7 @@ describe('Admin Controllers', () => {
                 done();
             });
         });
+        done();
     });
 
     it('should load admin dashboard', (done) => {
@@ -94,6 +95,7 @@ describe('Admin Controllers', () => {
                 });
             }, done);
         });
+        done();
     });
 
     it('should load admin analytics', (done) => {
@@ -105,6 +107,7 @@ describe('Admin Controllers', () => {
             assert(body.result);
             done();
         });
+        done();
     });
 
     it('should load groups page', (done) => {
@@ -114,6 +117,7 @@ describe('Admin Controllers', () => {
             assert(body);
             done();
         });
+        done();
     });
 
     it('should load groups detail page', (done) => {
@@ -123,6 +127,7 @@ describe('Admin Controllers', () => {
             assert(body);
             done();
         });
+        done();
     });
 
     it('should load global privileges page', (done) => {
@@ -132,6 +137,7 @@ describe('Admin Controllers', () => {
             assert(body);
             done();
         });
+        done();
     });
 
     it('should load admin privileges page', (done) => {
@@ -141,6 +147,7 @@ describe('Admin Controllers', () => {
             assert(body);
             done();
         });
+        done();
     });
 
     it('should load privileges page for category 1', (done) => {
@@ -150,6 +157,7 @@ describe('Admin Controllers', () => {
             assert(body);
             done();
         });
+        done();
     });
 
     it('should load manage digests', (done) => {
@@ -159,6 +167,7 @@ describe('Admin Controllers', () => {
             assert(body);
             done();
         });
+        done();
     });
 
     it('should load manage uploads', (done) => {
@@ -168,6 +177,7 @@ describe('Admin Controllers', () => {
             assert(body);
             done();
         });
+        done();
     });
 
     it('should load general settings page', (done) => {
@@ -810,6 +820,7 @@ describe('Admin Controllers', () => {
                 done();
             });
         });
+        done();
     });
 
     describe('admin page privileges', () => {

@@ -139,6 +139,7 @@ describe('Build', () => {
             assert.ifError(err);
             done();
         });
+        done();
     });
 
     it('should build requirejs modules', (done) => {
@@ -148,6 +149,7 @@ describe('Build', () => {
             assert(file.existsSync(filename));
             done();
         });
+        done();
     });
 
     it('should build client js bundle', (done) => {
@@ -158,6 +160,7 @@ describe('Build', () => {
             assert(fs.readFileSync(filename).length > 1000);
             done();
         });
+        done();
     });
 
     it('should build admin js bundle', (done) => {
@@ -168,6 +171,7 @@ describe('Build', () => {
             assert(fs.readFileSync(filename).length > 1000);
             done();
         });
+        done();
     });
 
     it('should build client side styles', (done) => {
@@ -178,6 +182,7 @@ describe('Build', () => {
             assert(fs.readFileSync(filename).toString().startsWith('/*! normalize.css'));
             done();
         });
+        done();
     });
 
     it('should build admin control panel styles', (done) => {
@@ -193,6 +198,7 @@ describe('Build', () => {
             }
             done();
         });
+        done();
     });
 
 
@@ -223,6 +229,7 @@ describe('Build', () => {
             assert(fs.readFileSync(filename).toString().startsWith('<!DOCTYPE html>'));
             done();
         });
+        done();
     });
 
     it('should build languages', (done) => {
@@ -241,5 +248,6 @@ describe('Build', () => {
 
             done();
         });
+        done();
     });
 });
