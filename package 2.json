@@ -146,7 +146,7 @@
         "zxcvbn": "4.4.2"
     },
     "devDependencies": {
-        "@apidevtools/swagger-parser": "^10.1.0",
+        "@apidevtools/swagger-parser": "10.0.3",
         "@commitlint/cli": "17.3.0",
         "@commitlint/config-angular": "17.3.0",
         "@types/async": "^3.2.16",
@@ -154,7 +154,6 @@
         "@types/lodash": "^4.14.191",
         "@types/nconf": "^0.10.3",
         "@types/semver": "^7.3.13",
-        "@types/validator": "^13.7.0",
         "@typescript-eslint/eslint-plugin": "^5.48.0",
         "@typescript-eslint/parser": "^5.48.0",
         "coveralls": "3.1.1",
@@ -180,7 +179,7 @@
         "url": "https://github.com/NodeBB/NodeBB/issues"
     },
     "engines": {
-        "node": ">=16"
+        "node": ">=12"
     },
     "maintainers": [
         {
