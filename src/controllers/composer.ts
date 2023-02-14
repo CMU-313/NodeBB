@@ -70,6 +70,7 @@ type ComposerData = {
     noscript?: string
 }
 
+
 type QueueResult = {
     uid: number,
     queued: boolean,
@@ -139,3 +140,4 @@ export async function post(req: Request<object, object, ComposerData> & { uid: n
         }
     }
 }
+
