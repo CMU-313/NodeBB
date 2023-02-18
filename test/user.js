@@ -654,6 +654,7 @@ describe('User', () => {
                         done();
                     });
                 });
+                done();
             });
         });
 
