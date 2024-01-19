@@ -1,82 +1,99 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const ttlcache_1 = __importDefault(require("@isaacs/ttlcache"));
-const pubsub_1 = __importDefault(require("../pubsub"));
-function default_1(opts) {
-    var _a;
-    const ttlCache = new ttlcache_1.default(opts);
-    const cache = {
+import TTLCache, { Options } from '@isaacs/ttlcache';
+import pubsub from '../pubsub';
+
+export default function <K extends string | number | symbol = string | number | symbol, V = unknown>
+(opts: Options<K, V> & { name: string, enabled?: boolean }) {
+    const ttlCache: TTLCache<K, V> = new TTLCache(opts);
+
+    const cache: {
+        name: string,
+        hits: number,
+        misses: number,
+        enabled: boolean,
+        set: (key: K, value: V, ttl: number) => void,
+        get: (key: K) => V | undefined;
+        del: (keys: K | K[]) => void,
+        delete: (keys: K | K[]) => void,
+        reset: () => void,
+        clear: () => void,
+        getUnCachedKeys: (keys: K[], cachedData: Record<K, V>) => K[],
+        dump: () => [K, V][],
+        peek: (key: K) => V,
+        purgeStale: () => boolean,
+        size: number,
+        getRemainingTTL: (key: K) => number,
+        has: (key: K) => boolean,
+        setTTL: (key: K, ttl?: number) => void,
+        entries: () => Generator<[K, V]>,
+        keys: () => Generator<K>,
+        values: () => Generator<V>,
+        [Symbol.iterator](): Iterator<[K, V]>,
+    } = {
         name: opts.name,
         hits: 0,
         misses: 0,
-        enabled: (_a = opts === null || opts === void 0 ? void 0 : opts.enabled) !== null && _a !== void 0 ? _a : true,
-        set: function (key, value, ttl) {
+        enabled: opts?.enabled ?? true,
+        set: function (key: K, value: V, ttl: number): void {
             if (!cache.enabled) {
                 return;
             }
-            const opts = {};
+            const opts: TTLCache.SetOptions = {};
             if (ttl) {
                 opts.ttl = ttl;
             }
             ttlCache.set.apply(ttlCache, [key, value, opts]);
         },
-        get: function (key) {
+        get: function (key: K): V | undefined {
             if (!cache.enabled) {
                 return undefined;
             }
             const data = ttlCache.get(key);
             if (data === undefined) {
                 cache.misses += 1;
-            }
-            else {
+            } else {
                 cache.hits += 1;
             }
             return data;
         },
-        del: function (keys) {
+        del: function (keys: K | K[]): void {
             if (!Array.isArray(keys)) {
-                const keysArr = [keys];
-                pubsub_1.default.publish(`${cache.name}:ttlCache:del`, keysArr);
+                const keysArr: K[] = [keys];
+                pubsub.publish(`${cache.name}:ttlCache:del`, keysArr);
                 keysArr.forEach(key => ttlCache.delete(key));
-            }
-            else {
-                pubsub_1.default.publish(`${cache.name}:ttlCache:del`, keys);
+            } else {
+                pubsub.publish(`${cache.name}:ttlCache:del`, keys);
                 keys.forEach(key => ttlCache.delete(key));
             }
         },
-        delete: function (keys) {
+        delete: function (keys: K | K[]): void {
             if (!Array.isArray(keys)) {
-                const keysArr = [keys];
-                pubsub_1.default.publish(`${cache.name}:ttlCache:del`, keysArr);
+                const keysArr: K[] = [keys];
+                pubsub.publish(`${cache.name}:ttlCache:del`, keysArr);
                 keysArr.forEach(key => ttlCache.delete(key));
-            }
-            else {
-                pubsub_1.default.publish(`${cache.name}:ttlCache:del`, keys);
+            } else {
+                pubsub.publish(`${cache.name}:ttlCache:del`, keys);
                 keys.forEach(key => ttlCache.delete(key));
             }
         },
-        reset: function () {
-            pubsub_1.default.publish(`${cache.name}:ttlCache:reset`);
+        reset: function (): void {
+            pubsub.publish(`${cache.name}:ttlCache:reset`);
             ttlCache.clear();
             cache.hits = 0;
             cache.misses = 0;
         },
-        clear: function () {
-            pubsub_1.default.publish(`${cache.name}:ttlCache:reset`);
+        clear: function (): void {
+            pubsub.publish(`${cache.name}:ttlCache:reset`);
             ttlCache.clear();
             cache.hits = 0;
             cache.misses = 0;
         },
-        getUnCachedKeys: function (keys, cachedData) {
+        getUnCachedKeys: function (keys: K[], cachedData: Record<K, V>): K[] {
             if (!cache.enabled) {
                 return keys;
             }
-            let data;
-            let isCached;
-            const unCachedKeys = keys.filter((key) => {
+            let data: V | undefined;
+            let isCached: boolean;
+            const unCachedKeys: K[] = keys.filter((key: K) => {
                 data = cache.get(key);
                 isCached = data !== undefined;
                 if (isCached) {
@@ -84,23 +101,24 @@ function default_1(opts) {
                 }
                 return !isCached;
             });
+
             const hits = keys.length - unCachedKeys.length;
             const misses = keys.length - hits;
             cache.hits += hits;
             cache.misses += misses;
             return unCachedKeys;
         },
-        dump: function () {
+        dump: function (): [K, V][] {
             return Array.from(ttlCache.entries());
         },
-        peek: function (key) {
+        peek: function (key: K): V {
             return ttlCache.get(key, { updateAgeOnGet: false });
         },
         purgeStale: () => ttlCache.purgeStale(),
         size: ttlCache.size,
-        getRemainingTTL: (key) => ttlCache.getRemainingTTL(key),
-        has: (key) => ttlCache.has(key),
-        setTTL: (key, ttl) => ttlCache.setTTL(key, ttl),
+        getRemainingTTL: (key: K) => ttlCache.getRemainingTTL(key),
+        has: (key: K) => ttlCache.has(key),
+        setTTL: (key: K, ttl?: number) => ttlCache.setTTL(key, ttl),
         entries: () => ttlCache.entries(),
         keys: () => ttlCache.keys(),
         values: () => ttlCache.values(),
@@ -124,16 +142,18 @@ function default_1(opts) {
             enumerable: true,
         });
     });
-    pubsub_1.default.on(`${cache.name}:ttlCache:reset`, () => {
+
+    pubsub.on(`${cache.name}:ttlCache:reset`, () => {
         ttlCache.clear();
         cache.hits = 0;
         cache.misses = 0;
     });
-    pubsub_1.default.on(`${cache.name}:ttlCache:del`, (keys) => {
+
+    pubsub.on(`${cache.name}:ttlCache:del`, (keys: K[]) => {
         if (Array.isArray(keys)) {
             keys.forEach(key => ttlCache.delete(key));
         }
     });
+
     return cache;
 }
-exports.default = default_1;
