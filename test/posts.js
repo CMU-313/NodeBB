@@ -1243,3 +1243,58 @@ describe('Posts\'', async () => {
         });
     });
 });
+
+// Vy's added tests starts here and go until end of this file.
+
+describe('socketPosts.getVoters', () => {
+    it('should throw an error if data is invalid', async () => {
+        try {
+            await socketPosts.getVoters({}, null);
+        } catch (err) {
+            assert.strictEqual(err.message, '[[error:invalid-data]]');
+        }
+    });
+
+    it('should throw an error if user does not have permission to see votes', async () => {
+        meta.config.votesArePublic = false;
+        privileges.categories.isAdminOrMod(false);
+        try {
+            await socketPosts.getVoters({ uid: 1 }, { pid: 1, cid: 1 });
+        } catch (err) {
+            assert.strictEqual(err.message, '[[error:no-privileges]]');
+        }
+    });
+});
+
+describe('socketPosts.getUpvoters', () => {
+    it('should throw an error if pids is not an array', async () => {
+        try {
+            await socketPosts.getUpvoters({}, 123);
+        } catch (err) {
+            assert.strictEqual(err.message, '[[error:invalid-data]]');
+        }
+    });
+
+    it('should return an empty array if pids is empty', async () => {
+        const result = await socketPosts.getUpvoters({}, []);
+        assert.deepStrictEqual(result, []);
+    });
+
+    it('should handle more than 6 upvoters correctly', async () => {
+        const mockGetUpvotedUidsByPids = pids => pids.map(pid => Array.from({ length: pid }, (_, i) => `user${i + 1}`));
+        const mockGetUsernamesByUids = uids => Promise.resolve(uids.slice(0, 5));
+
+        const originalGetUpvotedUidsByPids = posts.getUpvotedUidsByPids;
+        const originalGetUsernamesByUids = user.getUsernamesByUids;
+        posts.getUpvotedUidsByPids = mockGetUpvotedUidsByPids;
+        user.getUsernamesByUids = mockGetUsernamesByUids;
+
+        const result = await socketPosts.getUpvoters({}, [8]);
+        assert.strictEqual(result.length, 1);
+        assert.strictEqual(result[0].otherCount, 3);
+        assert.strictEqual(result[0].usernames.length, 5);
+
+        posts.getUpvotedUidsByPids = originalGetUpvotedUidsByPids;
+        user.getUsernamesByUids = originalGetUsernamesByUids;
+    });
+});
