@@ -139,6 +139,16 @@ describe('socket.io', () => {
         });
     });
 
+    it('should error when making banned users admins', async () => {
+        let err;
+        try {
+            await socketAdmin.user.makeAdmins({ uid: adminUid }, [regularUid]);
+        } catch (_err) {
+            err = _err;
+        }
+        assert.strictEqual(err.message, '[[error:cant-make-banned-users-admin]]');
+    });
+
     it('should unban a user', async () => {
         const apiUser = require('../src/api/users');
         await apiUser.unban({ uid: adminUid }, { uid: regularUid });
@@ -157,6 +167,16 @@ describe('socket.io', () => {
         });
     });
 
+    it('should error when making admins with invalid uids', async () => {
+        let err;
+        try {
+            await socketAdmin.user.makeAdmins({ uid: adminUid }, null);
+        } catch (_err) {
+            err = _err;
+        }
+        assert.strictEqual(err.message, '[[error:invalid-data]]');
+    });
+
     it('should make user non-admin', (done) => {
         socketAdmin.user.removeAdmins({ uid: adminUid }, [regularUid], (err) => {
             assert.ifError(err);
@@ -166,6 +186,28 @@ describe('socket.io', () => {
                 done();
             });
         });
+    });
+
+    it('should error when removing admins with invalid uids', async () => {
+        let err;
+        try {
+            await socketAdmin.user.removeAdmins({ uid: adminUid }, null);
+        } catch (_err) {
+            err = _err;
+        }
+        assert.strictEqual(err.message, '[[error:invalid-data]]');
+    });
+
+    it('should error when removing the last admin', async () => {
+        let err;
+        const count = await groups.getMemberCount('administrators');
+        assert(count === 1);
+        try {
+            await socketAdmin.user.removeAdmins({ uid: adminUid }, [adminUid]);
+        } catch (_err) {
+            err = _err;
+        }
+        assert.strictEqual(err.message, '[[error:cant-remove-last-admin]]');
     });
 
     describe('user create/delete', () => {
@@ -225,6 +267,16 @@ describe('socket.io', () => {
             assert.ifError(err);
             done();
         });
+    });
+
+    it('should error when reseting lockouts with invalid uids', async () => {
+        let err;
+        try {
+            await socketAdmin.user.resetLockouts({ uid: adminUid }, null);
+        } catch (_err) {
+            err = _err;
+        }
+        assert.strictEqual(err.message, '[[error:invalid-data]]');
     });
 
     describe('validation emails', () => {
