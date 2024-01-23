@@ -1,6 +1,3 @@
-
-'use strict';
-
 const plugins = require('../plugins');
 const db = require('../database');
 
@@ -18,13 +15,28 @@ interface UserType {
 }
 
 module.exports = function (User: UserType) {
-    User.follow = async function (uid: string, followuid: string): Promise<void> {
-        await toggleFollow('follow', uid, followuid);
-    };
+    async function getFollow(uid: string, type: string, start: number, stop: number): Promise<UserType[]> {
+        if (parseInt(uid, 10) <= 0) {
+            return [];
+        }
+        
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        const uids: string[] = await db.getSortedSetRevRange(`${type}:${uid}`, start, stop) as string[];
 
-    User.unfollow = async function (uid: string, unfollowuid: string): Promise<void> {
-        await toggleFollow('unfollow', uid, unfollowuid);
-    };
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        const data = await plugins.hooks.fire(`filter:user.${type}`, {
+            uids: uids,
+            uid: uid,
+            start: start,
+            stop: stop,
+        });
+
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        return await User.getUsers(data.uids, uid) as UserType[];
+    }
 
     async function toggleFollow(type: string, uid: string, theiruid: string): Promise<void> {
         if (parseInt(uid, 10) <= 0 || parseInt(theiruid, 10) <= 0) {
@@ -72,6 +84,14 @@ module.exports = function (User: UserType) {
         ]);
     }
 
+    User.follow = async function (uid: string, followuid: string): Promise<void> {
+        await toggleFollow('follow', uid, followuid);
+    };
+
+    User.unfollow = async function (uid: string, unfollowuid: string): Promise<void> {
+        await toggleFollow('unfollow', uid, unfollowuid);
+    };
+
     User.getFollowing = async function (uid: string, start: number, stop: number): Promise<UserType[]> {
         return await getFollow(uid, 'following', start, stop);
     };
@@ -80,19 +100,7 @@ module.exports = function (User: UserType) {
         return await getFollow(uid, 'followers', start, stop);
     };
 
-    async function getFollow(uid: string, type: string, start: number, stop: number): Promise<UserType[]> {
-        if (parseInt(uid, 10) <= 0) {
-            return [];
-        }
-        const uids: string[] = await db.getSortedSetRevRange(`${type}:${uid}`, start, stop);
-        const data = await plugins.hooks.fire(`filter:user.${type}`, {
-            uids: uids,
-            uid: uid,
-            start: start,
-            stop: stop,
-        });
-        return await User.getUsers(data.uids, uid);
-    }
+    
 
     User.isFollowing = async function (uid: string, theirid: string): Promise<boolean> {
         if (parseInt(uid, 10) <= 0 || parseInt(theirid, 10) <= 0) {
