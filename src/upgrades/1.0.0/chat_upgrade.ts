@@ -1,37 +1,47 @@
+
 'use strict';
+import * as async from 'async';
+import * as  winston from 'winston';
+import db from '../../database';
 
+interface Message {
+    fromuid: string;
+    touid: string;
+    timestamp: string;
+}
 
-const async = require('async');
-const winston = require('winston');
-const db = require('../../database');
+interface GlobalData {
+    nextMid?: number;
+    nextChatRoomId?: number;
+}
 
-module.exports = {
+interface Rooms {
+    [pairID: string]: number;
+}
+
+export = {
     name: 'Upgrading chats',
     timestamp: Date.UTC(2015, 11, 15),
-    method: function (callback) {
-        db.getObjectFields('global', ['nextMid', 'nextChatRoomId'], (err, globalData) => {
+    method: function (callback: (err?: Error | null) => void) {
+        db.getObjectFields('global', ['nextMid', 'nextChatRoomId'], (err, globalData: GlobalData) => {
             if (err) {
                 return callback(err);
             }
-
-            const rooms = {};
+            const rooms: Rooms = {};
             let roomId = globalData.nextChatRoomId || 1;
             let currentMid = 1;
-
             async.whilst((next) => {
                 next(null, currentMid <= globalData.nextMid);
             }, (next) => {
-                db.getObject(`message:${currentMid}`, (err, message) => {
+                db.getObject(`message:${currentMid}`, (err, message: Message) => {
                     if (err || !message) {
                         winston.verbose('skipping chat message ', currentMid);
                         currentMid += 1;
                         return next(err);
                     }
-
                     const pairID = [parseInt(message.fromuid, 10), parseInt(message.touid, 10)].sort().join(':');
                     const msgTime = parseInt(message.timestamp, 10);
-
-                    function addMessageToUids(roomId, callback) {
+                    function addMessageToUids(roomId: number, callback: (err?: Error | null) => void) {
                         async.parallel([
                             function (next) {
                                 db.sortedSetAdd(`uid:${message.fromuid}:chat:room:${roomId}:mids`, msgTime, currentMid, next);
@@ -41,7 +51,6 @@ module.exports = {
                             },
                         ], callback);
                     }
-
                     if (rooms[pairID]) {
                         winston.verbose(`adding message ${currentMid} to existing roomID ${roomId}`);
                         addMessageToUids(rooms[pairID], (err) => {
