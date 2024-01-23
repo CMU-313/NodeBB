@@ -10,18 +10,23 @@ interface UserType {
 
     exists: (theiruid: string) => Promise<boolean>;
     isFollowing: (uid: string, theiruid: string) => Promise<boolean>;
+    setUserField: (uid: string, fieldName:string, followingCount: number) => void;
+    getUsers: (uids: string[], uid: string) => UserType[];
+    getFollowing: (uid: string, start: number, stop: number) => Promise<UserType[]>;
+    getFollowers: (uid: string, start: number, stop: number) => Promise<UserType[]>
+
 }
 
 module.exports = function (User: UserType) {
-    User.follow = async function (uid: string, followuid: string) {
+    User.follow = async function (uid: string, followuid: string): Promise<void> {
         await toggleFollow('follow', uid, followuid);
     };
 
-    User.unfollow = async function (uid: string, unfollowuid: string) {
+    User.unfollow = async function (uid: string, unfollowuid: string): Promise<void> {
         await toggleFollow('unfollow', uid, unfollowuid);
     };
 
-    async function toggleFollow(type, uid: string, theiruid: string) {
+    async function toggleFollow(type: string, uid: string, theiruid: string): Promise<void> {
         if (parseInt(uid, 10) <= 0 || parseInt(theiruid, 10) <= 0) {
             throw new Error('[[error:invalid-uid]]');
         }
@@ -38,7 +43,7 @@ module.exports = function (User: UserType) {
             if (isFollowing) {
                 throw new Error('[[error:already-following]]');
             }
-            const now = Date.now();
+            const now: number = Date.now();
             await Promise.all([
                 db.sortedSetAddBulk([
                     [`following:${uid}`, now, theiruid],
@@ -67,19 +72,19 @@ module.exports = function (User: UserType) {
         ]);
     }
 
-    User.getFollowing = async function (uid: string, start, stop) {
+    User.getFollowing = async function (uid: string, start: number, stop: number): Promise<UserType[]> {
         return await getFollow(uid, 'following', start, stop);
     };
 
-    User.getFollowers = async function (uid: string, start, stop) {
+    User.getFollowers = async function (uid: string, start: number, stop: number): Promise<UserType[]> {
         return await getFollow(uid, 'followers', start, stop);
     };
 
-    async function getFollow(uid: string, type: string, start: number, stop: number) {
+    async function getFollow(uid: string, type: string, start: number, stop: number): Promise<UserType[]> {
         if (parseInt(uid, 10) <= 0) {
             return [];
         }
-        const uids = await db.getSortedSetRevRange(`${type}:${uid}`, start, stop);
+        const uids: string[] = await db.getSortedSetRevRange(`${type}:${uid}`, start, stop);
         const data = await plugins.hooks.fire(`filter:user.${type}`, {
             uids: uids,
             uid: uid,
@@ -89,7 +94,7 @@ module.exports = function (User: UserType) {
         return await User.getUsers(data.uids, uid);
     }
 
-    User.isFollowing = async function (uid: string, theirid: string) {
+    User.isFollowing = async function (uid: string, theirid: string): Promise<boolean> {
         if (parseInt(uid, 10) <= 0 || parseInt(theirid, 10) <= 0) {
             return false;
         }
