@@ -4,16 +4,24 @@
 const plugins = require('../plugins');
 const db = require('../database');
 
-module.exports = function (User) {
-    User.follow = async function (uid, followuid) {
+interface UserType {
+    follow?: (uid: string, followid: string) => Promise<void>;
+    unfollow?: (uid: string, followid: string) => Promise<void>;
+
+    exists: (theiruid: string) => Promise<boolean>;
+    isFollowing(uid: string, theiruid: string) => Promise<boolean>;
+}
+
+module.exports = function (User: UserType) {
+    User.follow = async function (uid: string, followuid: string) {
         await toggleFollow('follow', uid, followuid);
     };
 
-    User.unfollow = async function (uid, unfollowuid) {
+    User.unfollow = async function (uid: string, unfollowuid: string) {
         await toggleFollow('unfollow', uid, unfollowuid);
     };
 
-    async function toggleFollow(type, uid, theiruid) {
+    async function toggleFollow(type, uid: string, theiruid: string) {
         if (parseInt(uid, 10) <= 0 || parseInt(theiruid, 10) <= 0) {
             throw new Error('[[error:invalid-uid]]');
         }
@@ -21,11 +29,11 @@ module.exports = function (User) {
         if (parseInt(uid, 10) === parseInt(theiruid, 10)) {
             throw new Error('[[error:you-cant-follow-yourself]]');
         }
-        const exists = await User.exists(theiruid);
+        const exists: boolean = await User.exists(theiruid);
         if (!exists) {
             throw new Error('[[error:no-user]]');
         }
-        const isFollowing = await User.isFollowing(uid, theiruid);
+        const isFollowing: boolean = await User.isFollowing(uid, theiruid);
         if (type === 'follow') {
             if (isFollowing) {
                 throw new Error('[[error:already-following]]');
@@ -59,15 +67,15 @@ module.exports = function (User) {
         ]);
     }
 
-    User.getFollowing = async function (uid, start, stop) {
+    User.getFollowing = async function (uid: string, start, stop) {
         return await getFollow(uid, 'following', start, stop);
     };
 
-    User.getFollowers = async function (uid, start, stop) {
+    User.getFollowers = async function (uid: string, start, stop) {
         return await getFollow(uid, 'followers', start, stop);
     };
 
-    async function getFollow(uid, type, start, stop) {
+    async function getFollow(uid: string, type, start, stop) {
         if (parseInt(uid, 10) <= 0) {
             return [];
         }
@@ -81,7 +89,7 @@ module.exports = function (User) {
         return await User.getUsers(data.uids, uid);
     }
 
-    User.isFollowing = async function (uid, theirid) {
+    User.isFollowing = async function (uid: string, theirid: string) {
         if (parseInt(uid, 10) <= 0 || parseInt(theirid, 10) <= 0) {
             return false;
         }
