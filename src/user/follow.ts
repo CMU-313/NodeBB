@@ -8,7 +8,7 @@ interface UserType {
     exists: (theiruid: string) => Promise<boolean>;
     isFollowing: (uid: string, theiruid: string) => Promise<boolean>;
     setUserField: (uid: string, fieldName:string, followingCount: number) => void;
-    getUsers: (uids: string[], uid: string) => UserType[];
+    getUsers: (uids: string[], uid: string) => Promise<UserType[]>;
     getFollowing: (uid: string, start: number, stop: number) => Promise<UserType[]>;
     getFollowers: (uid: string, start: number, stop: number) => Promise<UserType[]>
 
@@ -19,7 +19,7 @@ module.exports = function (User: UserType) {
         if (parseInt(uid, 10) <= 0) {
             return [];
         }
-        
+
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const uids: string[] = await db.getSortedSetRevRange(`${type}:${uid}`, start, stop) as string[];
@@ -35,7 +35,7 @@ module.exports = function (User: UserType) {
 
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        return await User.getUsers(data.uids, uid) as UserType[];
+        return await User.getUsers(data.uids as string[], uid);
     }
 
     async function toggleFollow(type: string, uid: string, theiruid: string): Promise<void> {
@@ -57,6 +57,8 @@ module.exports = function (User: UserType) {
             }
             const now: number = Date.now();
             await Promise.all([
+                // The next line calls a function in a module that has not been updated to TS yet
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
                 db.sortedSetAddBulk([
                     [`following:${uid}`, now, theiruid],
                     [`followers:${theiruid}`, now, uid],
@@ -67,6 +69,8 @@ module.exports = function (User: UserType) {
                 throw new Error('[[error:not-following]]');
             }
             await Promise.all([
+                // The next line calls a function in a module that has not been updated to TS yet
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
                 db.sortedSetRemoveBulk([
                     [`following:${uid}`, theiruid],
                     [`followers:${theiruid}`, uid],
@@ -74,10 +78,14 @@ module.exports = function (User: UserType) {
             ]);
         }
 
-        const [followingCount, followerCount] = await Promise.all([
+        const [followingCount, followerCount] : [number, number] = await Promise.all([
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
             db.sortedSetCard(`following:${uid}`),
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
             db.sortedSetCard(`followers:${theiruid}`),
-        ]);
+        ]) as [number, number];
         await Promise.all([
             User.setUserField(uid, 'followingCount', followingCount),
             User.setUserField(theiruid, 'followerCount', followerCount),
@@ -100,12 +108,12 @@ module.exports = function (User: UserType) {
         return await getFollow(uid, 'followers', start, stop);
     };
 
-    
-
     User.isFollowing = async function (uid: string, theirid: string): Promise<boolean> {
         if (parseInt(uid, 10) <= 0 || parseInt(theirid, 10) <= 0) {
             return false;
         }
-        return await db.isSortedSetMember(`following:${uid}`, theirid);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
+        return await db.isSortedSetMember(`following:${uid}`, theirid) as boolean;
     };
 };

@@ -15,9 +15,11 @@ module.exports = function (User) {
             if (parseInt(uid, 10) <= 0) {
                 return [];
             }
-            // db is any
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
             const uids = yield db.getSortedSetRevRange(`${type}:${uid}`, start, stop);
-            // fire is any (need to find type and use annotation)
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
             const data = yield plugins.hooks.fire(`filter:user.${type}`, {
                 uids: uids,
                 uid: uid,
@@ -48,6 +50,8 @@ module.exports = function (User) {
                 }
                 const now = Date.now();
                 yield Promise.all([
+                    // The next line calls a function in a module that has not been updated to TS yet
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
                     db.sortedSetAddBulk([
                         [`following:${uid}`, now, theiruid],
                         [`followers:${theiruid}`, now, uid],
@@ -59,6 +63,8 @@ module.exports = function (User) {
                     throw new Error('[[error:not-following]]');
                 }
                 yield Promise.all([
+                    // The next line calls a function in a module that has not been updated to TS yet
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
                     db.sortedSetRemoveBulk([
                         [`following:${uid}`, theiruid],
                         [`followers:${theiruid}`, uid],
@@ -66,7 +72,11 @@ module.exports = function (User) {
                 ]);
             }
             const [followingCount, followerCount] = yield Promise.all([
+                // The next line calls a function in a module that has not been updated to TS yet
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
                 db.sortedSetCard(`following:${uid}`),
+                // The next line calls a function in a module that has not been updated to TS yet
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
                 db.sortedSetCard(`followers:${theiruid}`),
             ]);
             yield Promise.all([
@@ -100,6 +110,8 @@ module.exports = function (User) {
             if (parseInt(uid, 10) <= 0 || parseInt(theirid, 10) <= 0) {
                 return false;
             }
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
             return yield db.isSortedSetMember(`following:${uid}`, theirid);
         });
     };
