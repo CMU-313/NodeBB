@@ -9,7 +9,7 @@ interface UserType {
     unfollow?: (uid: string, followid: string) => Promise<void>;
 
     exists: (theiruid: string) => Promise<boolean>;
-    isFollowing(uid: string, theiruid: string) => Promise<boolean>;
+    isFollowing: (uid: string, theiruid: string) => Promise<boolean>;
 }
 
 module.exports = function (User: UserType) {
@@ -75,7 +75,7 @@ module.exports = function (User: UserType) {
         return await getFollow(uid, 'followers', start, stop);
     };
 
-    async function getFollow(uid: string, type, start, stop) {
+    async function getFollow(uid: string, type: string, start: number, stop: number) {
         if (parseInt(uid, 10) <= 0) {
             return [];
         }
