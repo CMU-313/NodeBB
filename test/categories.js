@@ -236,6 +236,21 @@ describe('Categories', () => {
             });
         });
 
+        it('should search for categories', (done) => {
+            socketCategories.categorySearch({ uid: posterUid }, {
+                cid: categoryObj.cid,
+                after: 0,
+                query: {
+                    author: 'poster',
+                    tag: 'nodebb',
+                },
+            }, (err, data) => {
+                assert.ifError(err);
+                assert(Array.isArray(data));
+                done();
+            });
+        });
+
         it('should get watched categories', (done) => {
             socketCategories.getWatchedCategories({ uid: posterUid }, {}, (err, data) => {
                 assert.ifError(err);
