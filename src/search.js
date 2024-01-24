@@ -312,5 +312,16 @@ async function getSearchUids(data) {
     }
     return await user.getUidsByUsernames(Array.isArray(data.postedBy) ? data.postedBy : [data.postedBy]);
 }
-
+/**
+ * The below code segment was developed with the assistance of OpenAI's ChatGPT
+ * ChatGPT provided guidance on how to export functions from the src/search.js file for use in testing
+ */
+// add exports to use in testing
+module.exports.filterByPostcount = filterByPostcount;
+module.exports.getSearchCids = getSearchCids;
+module.exports.filterByTags = filterByTags;
+module.exports.getSearchUids = getSearchUids;
+/**
+ * Ends ChatGPT input
+ */
 require('./promisify')(search);

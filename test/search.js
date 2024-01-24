@@ -290,4 +290,44 @@ describe('Search', () => {
             });
         });
     });
+    /**
+     * The below code was developed with the assistance of OpenAI's ChatGPT
+     * ChatGPT provided guidance and suggestions on writing tests for additional code coverage
+     */
+    const { filterByPostcount } = require('../src/search');
+    it('should filter posts with at least a certain post count', () => {
+        const posts = [
+            { topic: { postcount: 5 } },
+            { topic: { postcount: 10 } },
+            { topic: { postcount: 15 } },
+        ];
+        const filteredPosts = filterByPostcount(posts, 10, 'atleast');
+        assert.strictEqual(filteredPosts.length, 2);
+        assert(filteredPosts.every(post => post.topic.postcount >= 10));
+    });
+
+    const { getSearchCids } = require('../src/search');
+    it('should return correct category IDs based on user privileges', async () => {
+        const cids = await getSearchCids({ categories: ['all'], uid: phoebeUid });
+        assert(cids.includes(cid1));
+        assert(cids.includes(cid2));
+    });
+
+    const { filterByTags } = require('../src/search');
+    it('should filter posts by specific tags', () => {
+        const posts = [
+            { topic: { tags: ['node', 'javascript'] } },
+            { topic: { tags: ['node', 'react'] } },
+            { topic: { tags: ['python', 'flask'] } },
+        ];
+        const filteredPosts = filterByTags(posts, ['node']);
+        assert.strictEqual(filteredPosts.length, 2);
+    });
+
+    const { getSearchUids } = require('../src/search');
+    it('should return an empty array if postedBy is not provided', async () => {
+        const data = {};
+        const uids = await getSearchUids(data);
+        assert.deepStrictEqual(uids, []);
+    });
 });
