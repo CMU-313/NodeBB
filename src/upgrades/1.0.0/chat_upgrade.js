@@ -1,7 +1,7 @@
 'use strict';
-var async = require("async");
-var winston = require("winston");
-var db = require("../../database");
+var async = require('async');
+var winston = require('winston');
+var db = require('../../database');
 module.exports = {
     name: 'Upgrading chats',
     timestamp: Date.UTC(2015, 11, 15),

@@ -1,9 +1,9 @@
 
 'use strict';
 
-import async = require('async');
-import winston = require('winston');
-import db = require('../../database');
+const async = require('async');
+const winston = require('winston');
+const db = require('../../database');
 
 
 interface Message {
