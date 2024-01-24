@@ -7,6 +7,34 @@ const db = require('./mocks/databasemock');
 const pubsub = require('../src/pubsub');
 
 describe('pubsub', () => {
+    it('pubsub should be singleHost', (done) => {
+        const oldValue = nconf.get('singleHostCluster');
+        nconf.set('isCluster', true);
+        nconf.set('singleHostCluster', true);
+        pubsub.reset();
+        pubsub.on('testEvent', (message) => {
+            assert.equal(message.foo, 5);
+            nconf.set('singleHostCluster', oldValue);
+            pubsub.removeAllListeners('testEvent');
+            done();
+        });
+        pubsub.publish('testEvent', { foo: 5 });
+    });
+
+    it('pubsub should be singleHost', (done) => {
+        const oldValue = nconf.get('singleHostCluster');
+        nconf.set('isCluster', true);
+        nconf.set('singleHostCluster', true);
+        pubsub.reset();
+
+        pubsub.on('dummyEvent', (message) => {
+            assert.equal(message.foo, 6);
+            pubsub.removeAllListeners('dummyEvent');
+            pubsub.reset();
+            done();
+        });
+        pubsub.publish('dummyEvent', { foo: 6 });
+    });
     it('should use the plain event emitter', (done) => {
         nconf.set('isCluster', false);
         pubsub.reset();
