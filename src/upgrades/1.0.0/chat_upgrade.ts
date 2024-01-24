@@ -1,7 +1,8 @@
 
 'use strict';
+
 import * as async from 'async';
-import * as  winston from 'winston';
+import * as winston from 'winston';
 import db from '../../database';
 
 interface Message {
@@ -30,6 +31,7 @@ export = {
             const rooms: Rooms = {};
             let roomId = globalData.nextChatRoomId || 1;
             let currentMid = 1;
+
             async.whilst((next) => {
                 next(null, currentMid <= globalData.nextMid);
             }, (next) => {
@@ -41,16 +43,18 @@ export = {
                     }
                     const pairID = [parseInt(message.fromuid, 10), parseInt(message.touid, 10)].sort().join(':');
                     const msgTime = parseInt(message.timestamp, 10);
+
                     function addMessageToUids(roomId: number, callback: (err?: Error | null) => void) {
                         async.parallel([
-                            function (next) {
+                            (next) => {
                                 db.sortedSetAdd(`uid:${message.fromuid}:chat:room:${roomId}:mids`, msgTime, currentMid, next);
                             },
-                            function (next) {
+                            (next) => {
                                 db.sortedSetAdd(`uid:${message.touid}:chat:room:${roomId}:mids`, msgTime, currentMid, next);
                             },
                         ], callback);
                     }
+
                     if (rooms[pairID]) {
                         winston.verbose(`adding message ${currentMid} to existing roomID ${roomId}`);
                         addMessageToUids(rooms[pairID], (err) => {
@@ -63,16 +67,16 @@ export = {
                     } else {
                         winston.verbose(`adding message ${currentMid} to new roomID ${roomId}`);
                         async.parallel([
-                            function (next) {
+                            (next) => {
                                 db.sortedSetAdd(`uid:${message.fromuid}:chat:rooms`, msgTime, roomId, next);
                             },
-                            function (next) {
+                            (next) => {
                                 db.sortedSetAdd(`uid:${message.touid}:chat:rooms`, msgTime, roomId, next);
                             },
-                            function (next) {
+                            (next) => {
                                 db.sortedSetAdd(`chat:room:${roomId}:uids`, [msgTime, msgTime + 1], [message.fromuid, message.touid], next);
                             },
-                            function (next) {
+                            (next) => {
                                 addMessageToUids(roomId, next);
                             },
                         ], (err) => {
