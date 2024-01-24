@@ -1,5 +1,6 @@
-import * as async from 'async';
-import * as winston from 'winston';
+import async from 'async';
+import winston from 'winston';
+
 import db from '../../database';
 
 interface Message {
