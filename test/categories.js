@@ -648,6 +648,13 @@ describe('Categories', () => {
             });
         });
 
+        it('should error if data is invalid (removing tag)', (done) => {
+            socketTopics.canRemoveTag({ uid: posterUid }, null, (err) => {
+                assert.equal(err.message, '[[error:invalid-data]]');
+                done();
+            });
+        });
+
         it('should add tags to category whitelist', (done) => {
             const data = {};
             data[cid] = {
@@ -660,6 +667,14 @@ describe('Categories', () => {
                     assert.deepEqual(['nodebb', 'jquery', 'javascript'], tagWhitelist);
                     done();
                 });
+            });
+        });
+
+        it('should return true if tag can be removed', (done) => {
+            socketTopics.canRemoveTag({ uid: posterUid }, { tag: 'nodebb', cid: cid }, (err, allowed) => {
+                assert.ifError(err);
+                assert(allowed);
+                done();
             });
         });
 
