@@ -1,67 +1,108 @@
-'use strict';
+import { Request, Response, NextFunction } from 'express';
+import utils from '../../utils';
+import plugins from '../../plugins';
 
-const cacheController = module.exports;
+import postCache from '../../posts/cache';
+import groupCache from '../../groups';
+import { objectCache } from '../../database';
+import localCache from '../../cache';
 
-const utils = require('../../utils');
-const plugins = require('../../plugins');
+interface Cache {
+    length: number;
+    max: number;
+    maxSize: number;
+    itemCount: number;
+    name?: string;
+    hits: number;
+    misses: number;
+    enabled: boolean;
+    ttl: number;
+    dump: () => unknown;
+}
 
-cacheController.get = async function (req, res) {
-    const postCache = require('../../posts/cache');
-    const groupCache = require('../../groups').cache;
-    const { objectCache } = require('../../database');
-    const localCache = require('../../cache');
+interface CacheInfo {
+    length: number;
+    max: number;
+    maxSize: number;
+    itemCount: number;
+    percentFull: string;
+    hits: string;
+    misses: string;
+    hitRatio: string;
+    enabled: boolean;
+    ttl: number;
+}
 
-    function getInfo(cache) {
-        return {
-            length: cache.length,
-            max: cache.max,
-            maxSize: cache.maxSize,
-            itemCount: cache.itemCount,
-            percentFull: cache.name === 'post' ?
-                ((cache.length / cache.maxSize) * 100).toFixed(2) :
-                ((cache.itemCount / cache.max) * 100).toFixed(2),
-            hits: utils.addCommas(String(cache.hits)),
-            misses: utils.addCommas(String(cache.misses)),
-            hitRatio: ((cache.hits / (cache.hits + cache.misses) || 0)).toFixed(4),
-            enabled: cache.enabled,
-            ttl: cache.ttl,
-        };
-    }
-    let caches = {
-        post: postCache,
-        group: groupCache,
-        local: localCache,
-    };
-    if (objectCache) {
-        caches.object = objectCache;
-    }
-    caches = await plugins.hooks.fire('filter:admin.cache.get', caches);
-    for (const [key, value] of Object.entries(caches)) {
-        caches[key] = getInfo(value);
-    }
+interface CacheDisplay {
+    [key: string]: CacheInfo;
+}
 
-    res.render('admin/advanced/cache', { caches });
-};
-
-cacheController.dump = async function (req, res, next) {
-    let caches = {
-        post: require('../../posts/cache'),
-        object: require('../../database').objectCache,
-        group: require('../../groups').cache,
-        local: require('../../cache'),
-    };
-    caches = await plugins.hooks.fire('filter:admin.cache.get', caches);
-    if (!caches[req.query.name]) {
-        return next();
-    }
-
-    const data = JSON.stringify(caches[req.query.name].dump(), null, 4);
-    res.setHeader('Content-disposition', `attachment; filename= ${req.query.name}-cache.json`);
-    res.setHeader('Content-type', 'application/json');
-    res.write(data, (err) => {
-        if (err) {
-            return next(err);
+const cacheController = {
+    get: async function (req: Request, res: Response): Promise<void> {
+        function getInfo(cache: Cache): CacheInfo {
+            return {
+                length: cache.length,
+                max: cache.max,
+                maxSize: cache.maxSize,
+                itemCount: cache.itemCount,
+                percentFull: cache.name === 'post' ?
+                    ((cache.length / cache.maxSize) * 100).toFixed(2) :
+                    ((cache.itemCount / cache.max) * 100).toFixed(2),
+                hits: utils.addCommas(String(cache.hits)),
+                misses: utils.addCommas(String(cache.misses)),
+                hitRatio: ((cache.hits / (cache.hits + cache.misses) || 0) * 100).toFixed(2),
+                enabled: cache.enabled,
+                ttl: cache.ttl,
+            };
         }
-        res.end();
-    });
+
+        let caches: { [key: string]: Cache } = {
+            post: postCache,
+            group: groupCache,
+            local: localCache,
+        };
+
+        if (objectCache) {
+            caches.object = objectCache as Cache;
+        }
+
+        const cacheDisplay: CacheDisplay = {};
+
+        for (const [key, value] of Object.entries(caches)) {
+            cacheDisplay[key] = getInfo(value);
+        }
+
+        caches = await plugins.hooks.fire('filter:admin.cache.get', caches) as typeof caches;
+
+        res.render('admin/advanced/cache', { caches: cacheDisplay });
+    },
+
+    dump: async function (req: Request, res: Response, next: NextFunction): Promise<void> {
+        let caches: { [key: string]: Cache } = {
+            post: postCache,
+            object: objectCache as Cache,
+            group: groupCache,
+            local: localCache,
+        };
+
+        caches = await plugins.hooks.fire('filter:admin.cache.get', caches) as typeof caches;
+
+        const cache = caches[req.query.name as string];
+        if (!cache) {
+            return next();
+        }
+
+        const cacheName = typeof req.query.name === 'string' ? req.query.name : 'default';
+        const data = JSON.stringify(cache.dump(), null, 4);
+        res.setHeader('Content-disposition', `attachment; filename=${cacheName}-cache.json`);
+        res.setHeader('Content-type', 'application/json');
+        res.write(data, (err) => {
+            if (err) {
+                return next(err);
+            }
+            res.end();
+        });
+    },
 };
+
+export default cacheController;
