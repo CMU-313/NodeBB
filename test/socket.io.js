@@ -25,6 +25,11 @@ const events = require('../src/events');
 
 const socketAdmin = require('../src/socket.io/admin');
 
+const posts = require('../src/posts');
+const topics = require('../src/topics');
+const privileges = require('../src/privileges');
+const SocketPosts = require('../src/socket.io/posts');
+
 describe('socket.io', () => {
     let io;
     let cid;
@@ -167,6 +172,57 @@ describe('socket.io', () => {
             });
         });
     });
+
+    describe('SocketPosts', () => {
+        let adminUid;
+        let regularUid;
+        let tid;
+        let socketMock;
+
+        before(async () => {
+            // Set up test users and topics
+            adminUid = await user.create({ username: 'admin', password: 'adminpwd' });
+            regularUid = await user.create({ username: 'regular', password: 'regularpwd' });
+            const category = await categories.create({ name: 'Test Category', description: 'A test' });
+            tid = await topics.create({ uid: adminUid, cid: category.cid, title: 'Test Topic', content: 'Test content' });
+            socketMock = { uid: regularUid }; // Replace with appropriate mock
+        });
+
+        describe('SocketPosts.getPostSummaryByIndex', () => {
+            it('should handle negative index value', async () => {
+                const result = await SocketPosts.getPostSummaryByIndex(socketMock, { index: -1, tid: tid });
+                assert.strictEqual(result, 0);
+            });
+
+            it('should return 0 for non-existent post', async () => {
+                const result = await SocketPosts.getPostSummaryByIndex(socketMock, { index: 999, tid: tid });
+                assert.strictEqual(result, 0);
+            });
+        });
+
+        describe('getPostSummaryByPid', () => {
+            it('should throw error for invalid data', async () => {
+                let error = null;
+                try {
+                    await SocketPosts.getPostSummaryByPid(socketMock, {});
+                } catch (e) {
+                    error = e;
+                }
+                assert.strictEqual(error.message, '[[error:invalid-data]]');
+            });
+
+            it('should throw error for no read privileges', async () => {
+                let error = null;
+                try {
+                    await SocketPosts.getPostSummaryByPid(socketMock, { pid: 'nonExistentPid' });
+                } catch (e) {
+                    error = e;
+                }
+                assert.strictEqual(error.message, '[[error:no-privileges]]');
+            });
+        });
+    });
+
 
     describe('user create/delete', () => {
         let uid;
