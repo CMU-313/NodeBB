@@ -1,5 +1,5 @@
-const plugins = require('../plugins');
-const db = require('../database');
+import plugins = require('../plugins');
+import db = require('../database');
 
 interface UserType {
     follow?: (uid: string, followid: string) => Promise<void>;
@@ -24,18 +24,19 @@ module.exports = function (User: UserType) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const uids: string[] = await db.getSortedSetRevRange(`${type}:${uid}`, start, stop) as string[];
 
+        type UserType = {uids: string[], uid: string, start: number, stop: number};
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const data = await plugins.hooks.fire(`filter:user.${type}`, {
+        const data : UserType = await plugins.hooks.fire(`filter:user.${type}`, {
             uids: uids,
             uid: uid,
             start: start,
             stop: stop,
-        });
+        }) as UserType;
 
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        return await User.getUsers(data.uids as string[], uid);
+        return await User.getUsers(data.uids, uid);
     }
 
     async function toggleFollow(type: string, uid: string, theiruid: string): Promise<void> {
