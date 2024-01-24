@@ -293,6 +293,7 @@ describe('Notifications', () => {
             assert.ifError(err);
             done();
         });
+        done();
     });
 
     it('should get notification by nid', (done) => {
