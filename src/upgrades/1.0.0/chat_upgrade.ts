@@ -7,18 +7,18 @@ const db = require('../../database');
 
 
 
-interface Message {
+type Message = {
     fromuid: string;
     touid: string;
     timestamp: string;
 }
 
-interface GlobalData {
+type GlobalData = {
     nextMid?: number;
     nextChatRoomId?: number;
 }
 
-interface Rooms {
+type Rooms = {
     [pairID: string]: number;
 }
 
