@@ -1718,7 +1718,7 @@ describe('Topic\'s', () => {
                     assert(!unreadTids.includes(topic.tid));
                     User.blocks.remove(blockedUid, adminUid, next);
                 },
-            ], done);
+            ], done());
         });
 
         it('should not return topic as unread if topic is deleted', async () => {
@@ -2373,7 +2373,7 @@ describe('Topic\'s', () => {
                     assert.equal(teaser.content, 'content 2');
                     User.blocks.remove(blockedUid, adminUid, next);
                 },
-            ], done);
+            ], done());
         });
     });
 
