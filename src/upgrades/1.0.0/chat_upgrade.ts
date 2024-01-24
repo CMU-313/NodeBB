@@ -5,6 +5,7 @@ import * as async from 'async';
 import * as winston from 'winston';
 import db from '../../database';
 
+
 interface Message {
     fromuid: string;
     touid: string;
