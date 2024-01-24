@@ -21,7 +21,7 @@ interface Rooms {
     [pairID: string]: number;
 }
 
-export = {
+module.exports = {
     name: 'Upgrading chats',
     timestamp: Date.UTC(2015, 11, 15),
     method: function (callback: (err?: Error | null) => void) {
