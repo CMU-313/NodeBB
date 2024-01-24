@@ -1,5 +1,7 @@
-import async from 'async';
-import winston from 'winston';
+import * as async from 'async';
+
+import * as winston from 'winston';
+
 
 import db from '../../database';
 
