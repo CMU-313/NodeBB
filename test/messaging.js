@@ -81,13 +81,14 @@ describe('Messaging Library', () => {
     });
 
     describe('.canMessage()', () => {
+        
         it('should allow messages to be sent to an unrestricted user', (done) => {
             Messaging.canMessageUser(mocks.users.baz.uid, mocks.users.herp.uid, (err) => {
                 assert.ifError(err);
                 done();
             });
         });
-
+        
         it('should NOT allow messages to be sent to a restricted user', async () => {
             await User.setSetting(mocks.users.baz.uid, 'restrictChat', '1');
             try {

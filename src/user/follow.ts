@@ -4,14 +4,13 @@ import db = require('../database');
 interface UserType {
     follow?: (uid: string, followid: string) => Promise<void>;
     unfollow?: (uid: string, followid: string) => Promise<void>;
+    isFollowing?: (uid: string, theiruid: string) => Promise<boolean>;
+    getFollowing?: (uid: string, start: number, stop: number) => Promise<UserType[]>;
+    getFollowers?: (uid: string, start: number, stop: number) => Promise<UserType[]>
 
     exists: (theiruid: string) => Promise<boolean>;
-    isFollowing: (uid: string, theiruid: string) => Promise<boolean>;
     setUserField: (uid: string, fieldName:string, followingCount: number) => Promise<void>;
     getUsers: (uids: string[], uid: string) => Promise<UserType[]>;
-    getFollowing: (uid: string, start: number, stop: number) => Promise<UserType[]>;
-    getFollowers: (uid: string, start: number, stop: number) => Promise<UserType[]>
-
 }
 
 module.exports = function (User: UserType) {
