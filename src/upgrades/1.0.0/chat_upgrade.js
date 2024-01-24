@@ -1,12 +1,12 @@
 'use strict';
-var async = require('async');
-var winston = require('winston');
-var db = require('../../database');
+var async = require("async");
+var winston = require("winston");
+var database_1 = require("../../database");
 module.exports = {
     name: 'Upgrading chats',
     timestamp: Date.UTC(2015, 11, 15),
     method: function (callback) {
-        db.getObjectFields('global', ['nextMid', 'nextChatRoomId'], function (err, globalData) {
+        database_1["default"].getObjectFields('global', ['nextMid', 'nextChatRoomId'], function (err, globalData) {
             if (err) {
                 return callback(err);
             }
@@ -16,7 +16,7 @@ module.exports = {
             async.whilst(function (next) {
                 next(null, currentMid <= globalData.nextMid);
             }, function (next) {
-                db.getObject("message:".concat(currentMid), function (err, message) {
+                database_1["default"].getObject("message:".concat(currentMid), function (err, message) {
                     if (err || !message) {
                         winston.verbose('skipping chat message ', currentMid);
                         currentMid += 1;
@@ -27,10 +27,10 @@ module.exports = {
                     function addMessageToUids(roomId, callback) {
                         async.parallel([
                             function (next) {
-                                db.sortedSetAdd("uid:".concat(message.fromuid, ":chat:room:").concat(roomId, ":mids"), msgTime, currentMid, next);
+                                database_1["default"].sortedSetAdd("uid:".concat(message.fromuid, ":chat:room:").concat(roomId, ":mids"), msgTime, currentMid, next);
                             },
                             function (next) {
-                                db.sortedSetAdd("uid:".concat(message.touid, ":chat:room:").concat(roomId, ":mids"), msgTime, currentMid, next);
+                                database_1["default"].sortedSetAdd("uid:".concat(message.touid, ":chat:room:").concat(roomId, ":mids"), msgTime, currentMid, next);
                             },
                         ], callback);
                     }
@@ -48,13 +48,13 @@ module.exports = {
                         winston.verbose("adding message ".concat(currentMid, " to new roomID ").concat(roomId));
                         async.parallel([
                             function (next) {
-                                db.sortedSetAdd("uid:".concat(message.fromuid, ":chat:rooms"), msgTime, roomId, next);
+                                database_1["default"].sortedSetAdd("uid:".concat(message.fromuid, ":chat:rooms"), msgTime, roomId, next);
                             },
                             function (next) {
-                                db.sortedSetAdd("uid:".concat(message.touid, ":chat:rooms"), msgTime, roomId, next);
+                                database_1["default"].sortedSetAdd("uid:".concat(message.touid, ":chat:rooms"), msgTime, roomId, next);
                             },
                             function (next) {
-                                db.sortedSetAdd("chat:room:".concat(roomId, ":uids"), [msgTime, msgTime + 1], [message.fromuid, message.touid], next);
+                                database_1["default"].sortedSetAdd("chat:room:".concat(roomId, ":uids"), [msgTime, msgTime + 1], [message.fromuid, message.touid], next);
                             },
                             function (next) {
                                 addMessageToUids(roomId, next);
@@ -66,7 +66,7 @@ module.exports = {
                             rooms[pairID] = roomId;
                             roomId += 1;
                             currentMid += 1;
-                            db.setObjectField('global', 'nextChatRoomId', roomId, next);
+                            database_1["default"].setObjectField('global', 'nextChatRoomId', roomId, next);
                         });
                     }
                 });

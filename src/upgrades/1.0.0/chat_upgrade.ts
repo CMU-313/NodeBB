@@ -6,9 +6,6 @@ import * as winston from 'winston';
 import db from '../../database';
 
 
-import validator = require('validator');
-import nconf = require('nconf')
-
 interface Message {
     fromuid: string;
     touid: string;
