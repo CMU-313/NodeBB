@@ -1121,6 +1121,63 @@ describe('User', () => {
             assert.equal(picture, `${nconf.get('relative_path')}/test`);
         });
 
+        it('should return error if profile image file uploaded is disabled', (done) => {
+            meta.config.allowProfileImageUploads = 0;
+            const picture = {
+                path: path.join(nconf.get('base_dir'), 'test/files/test_copy.png'),
+                size: 7189,
+                name: 'test.png',
+                type: 'image/png',
+            };
+            User.uploadCroppedPictureFile({
+                callerUid: uid,
+                uid: uid,
+                file: picture,
+            }, (err) => {
+                assert.equal(err.message, '[[error:profile-image-uploads-disabled]]');
+                meta.config.allowProfileImageUploads = 1;
+                done();
+            });
+        });
+
+        it('should error if profile image file size is too large', (done) => {
+            const temp = meta.config.maximumProfileImageSize;
+            meta.config.maximumProfileImageSize = 1;
+            const picture = {
+                path: path.join(nconf.get('base_dir'), 'test/files/test_copy.png'),
+                size: 7189,
+                name: 'test.png',
+                type: 'image/png',
+            };
+
+            User.uploadCroppedPictureFile({
+                callerUid: uid,
+                uid: uid,
+                file: picture,
+            }, (err) => {
+                assert.equal('[[error:file-too-big, 1]]', err.message);
+                meta.config.maximumProfileImageSize = temp;
+                done();
+            });
+        });
+
+        it('should return error if profile image file is invalid', (done) => {
+            const picture = {
+                path: path.join(nconf.get('base_dir'), 'test/files/test_copy.png'),
+                size: 7189,
+                name: 'test.png',
+                type: 'invalid/type', // Replace with an invalid image type
+            };
+            User.uploadCroppedPictureFile({
+                callerUid: uid,
+                uid: uid,
+                file: picture,
+            }, (err) => {
+                assert.equal(err.message, '[[error:invalid-image]]');
+                done();
+            });
+        });
+
         it('should return error if profile image uploads disabled', (done) => {
             meta.config.allowProfileImageUploads = 0;
             const picture = {
@@ -1187,7 +1244,6 @@ describe('User', () => {
                 assert.strictEqual(result.url, data.uploadedpicture);
                 assert.strictEqual(result.url, data.picture);
             });
-
             it('should error if both file and imageData are missing', (done) => {
                 User.uploadCroppedPicture({}, (err) => {
                     assert.equal('[[error:invalid-data]]', err.message);
