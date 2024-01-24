@@ -1,9 +1,9 @@
 
 'use strict';
 
-import * as async from 'async';
-import * as winston from 'winston';
-import db from '../../database';
+import async = require('async');
+import winston = require('winston');
+import db = require('../../database');
 
 
 interface Message {
@@ -21,7 +21,7 @@ interface Rooms {
     [pairID: string]: number;
 }
 
-module.exports = {
+export = {
     name: 'Upgrading chats',
     timestamp: Date.UTC(2015, 11, 15),
     method: function (callback: (err?: Error | null) => void) {
