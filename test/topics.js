@@ -690,6 +690,19 @@ describe('Topic\'s', () => {
             assert.strictEqual(pinned, 0);
         });
 
+        it('should set pin expiry correctly', async () => {
+            const result = await topics.post({
+                uid: fooUid,
+                title: 'topic for pin expiry test',
+                content: 'topic content',
+                cid: categoryObj.cid,
+            });
+            const d = 170606510272900;
+            await topics.tools.setPinExpiry(newTopic.tid, d, adminUid);
+            const r = await topics.tools.checkPinExpiry([newTopic.tid]);
+            assert(r > 0);
+        });
+
         it('should move all topics', (done) => {
             socketTopics.moveAll({ uid: adminUid }, { cid: moveCid, currentCid: categoryObj.cid }, (err) => {
                 assert.ifError(err);
@@ -2081,7 +2094,6 @@ describe('Topic\'s', () => {
 
             // after moving values should update properly
             await topics.tools.move(postResult.topicData.tid, { cid: cid2, uid: adminUid });
-
             result1 = await topics.getCategoryTagsData(cid1, 0, -1);
             result2 = await topics.getCategoryTagsData(cid2, 0, -1);
             assert.deepStrictEqual(result1, [
