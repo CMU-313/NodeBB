@@ -1,9 +1,9 @@
 
 'use strict';
 
-import * as async from 'async';
-import * as winston from 'winston';
-import * as db from '../../database';
+const async = require('async');
+const winston = require('winston');
+const db = require('../../database');
 
 
 
