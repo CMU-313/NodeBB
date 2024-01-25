@@ -12,7 +12,6 @@ const Topics = require('../src/topics');
 const User = require('../src/user');
 const groups = require('../src/groups');
 const privileges = require('../src/privileges');
-const winston = require('winston');
 
 describe('Categories', () => {
     let categoryObj;
@@ -491,7 +490,7 @@ describe('Categories', () => {
         it('should give privilege with cid 0', async () => {
             const globalPrivList = await privileges.admin.getPrivilegeList();
             const globalPriv = globalPrivList[0];
-            await apiCategories.setPrivilege({ uid: adminUid }, { cid: "0", privilege: globalPrivList, set: true, member: 'registered-users' });
+            await apiCategories.setPrivilege({ uid: adminUid }, { cid: '0', privilege: globalPrivList, set: true, member: 'registered-users' });
             const hasGlobalPriv = await privileges.global.can(globalPriv, posterUid);
             assert(hasGlobalPriv);
         });
