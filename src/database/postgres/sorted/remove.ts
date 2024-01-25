@@ -9,7 +9,7 @@ interface DBModule {
     sortedSetRemoveBulk: (data: [string, string][]) => Promise<void>;
 }
 
-const module: DBModule = {
+const dbmodule: DBModule = {
     pool: new Pool(), // Adjust this to your actual Pool configuration
 
     sortedSetRemove: async function (key, value) {
@@ -103,4 +103,4 @@ DELETE FROM "legacy_zset"
     },
 };
 
-export = module;
+export = dbmodule;
