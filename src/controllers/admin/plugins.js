@@ -1,69 +1,103 @@
-'use strict';
-
-const nconf = require('nconf');
-const winston = require('winston');
-const plugins = require('../../plugins');
-const meta = require('../../meta');
-
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const nconf = __importStar(require("nconf"));
+const winston = __importStar(require("winston"));
+const plugins = __importStar(require("../../plugins"));
+const meta = __importStar(require("../../meta"));
 const pluginsController = module.exports;
-
-pluginsController.get = async function (req, res) {
-    const [compatible, all, trending] = await Promise.all([
-        getCompatiblePlugins(),
-        getAllPlugins(),
-        plugins.listTrending(),
-    ]);
-
-    const compatiblePkgNames = compatible.map(pkgData => pkgData.name);
-    const installedPlugins = compatible.filter(plugin => plugin && plugin.installed);
-    const activePlugins = all.filter(plugin => plugin && plugin.installed && plugin.active);
-
-    const trendingScores = trending.reduce((memo, cur) => {
-        memo[cur.label] = cur.value;
-        return memo;
-    }, {});
-    const trendingPlugins = all
-        .filter(plugin => plugin && Object.keys(trendingScores).includes(plugin.id))
-        .sort((a, b) => trendingScores[b.id] - trendingScores[a.id])
-        .map((plugin) => {
+pluginsController.get = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const [compatible, all, trending] = yield Promise.all([
+            getCompatiblePlugins(),
+            getAllPlugins(),
+            plugins.listTrending(),
+        ]);
+        const compatiblePkgNames = compatible.map((pkgData) => pkgData.name);
+        const installedPlugins = compatible.filter((plugin) => plugin && plugin.installed);
+        const activePlugins = all.filter((plugin) => plugin && plugin.installed && plugin.active);
+        const trendingScores = trending.reduce((memo, cur) => {
+            memo[cur.label] = cur.value;
+            return memo;
+        }, {});
+        const trendingPlugins = all
+            .filter((plugin) => plugin && Object.keys(trendingScores).includes(plugin.id))
+            .sort((a, b) => trendingScores[b.id] - trendingScores[a.id])
+            .map((plugin) => {
             plugin.downloads = trendingScores[plugin.id];
             return plugin;
         });
-
-    res.render('admin/extend/plugins', {
-        installed: installedPlugins,
-        installedCount: installedPlugins.length,
-        activeCount: activePlugins.length,
-        inactiveCount: Math.max(0, installedPlugins.length - activePlugins.length),
-        canChangeState: !nconf.get('plugins:active'),
-        upgradeCount: compatible.reduce((count, current) => {
-            if (current.installed && current.outdated) {
-                count += 1;
-            }
-            return count;
-        }, 0),
-        download: compatible.filter(plugin => !plugin.installed),
-        incompatible: all.filter(plugin => !compatiblePkgNames.includes(plugin.name)),
-        trending: trendingPlugins,
-        submitPluginUsage: meta.config.submitPluginUsage,
-        version: nconf.get('version'),
+        res.render('admin/extend/plugins', {
+            installed: installedPlugins,
+            installedCount: installedPlugins.length,
+            activeCount: activePlugins.length,
+            inactiveCount: Math.max(0, installedPlugins.length - activePlugins.length),
+            canChangeState: !nconf.get('plugins:active'),
+            upgradeCount: compatible.reduce((count, current) => {
+                if (current.installed && current.outdated) {
+                    count += 1;
+                }
+                return count;
+            }, 0),
+            download: compatible.filter((plugin) => !plugin.installed),
+            incompatible: all.filter((plugin) => !compatiblePkgNames.includes(plugin.name)),
+            trending: trendingPlugins,
+            submitPluginUsage: meta.config.submitPluginUsage,
+            version: nconf.get('version'),
+        });
     });
 };
-
-async function getCompatiblePlugins() {
-    return await getPlugins(true);
+function getCompatiblePlugins() {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield getPlugins(true);
+    });
 }
-
-async function getAllPlugins() {
-    return await getPlugins(false);
+function getAllPlugins() {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield getPlugins(false);
+    });
 }
-
-async function getPlugins(matching) {
-    try {
-        const pluginsData = await plugins.list(matching);
-        return pluginsData || [];
-    } catch (err) {
-        winston.error(err.stack);
-        return [];
-    }
+function getPlugins(matching) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const pluginsData = yield plugins.list(matching);
+            return pluginsData || [];
+        }
+        catch (err) {
+            winston.error(err.stack);
+            return [];
+        }
+    });
 }
+;
