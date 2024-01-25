@@ -488,23 +488,11 @@ describe('Categories', () => {
             assert(canDeleteTopics);
         });
 
-
-        //logger code created by chatGPT
-        const logger = winston.createLogger({
-            level: 'info', // Log only if info level or less
-            format: winston.format.simple(), // Use simple text formatting
-            transports: [
-              new winston.transports.Console(), // Output to console
-            ],
-          });
-          
-        logger.info('About to run test');
-
         it('should give privilege with cid 0', async () => {
-            const adminPrivList = await privileges.admin.getPrivilegeList();
-            const adminPriv = adminPrivList[0];
-            await apiCategories.setPrivilege({ uid: adminUid }, { cid: "0", privilege: adminPrivList, set: true, member: 'registered-users' });
-            const canDeleteTopics = await privileges.categories.can(adminPriv, posterUid);
+            const globalPrivList = await privileges.admin.getPrivilegeList();
+            const globalPriv = globalPrivList[0];
+            await apiCategories.setPrivilege({ uid: adminUid }, { cid: "0", privilege: globalPrivList, set: true, member: 'registered-users' });
+            const canDeleteTopics = await privileges.global.can(globalPriv, posterUid);
             assert(canDeleteTopics);
         });
 
