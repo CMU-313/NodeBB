@@ -1,7 +1,7 @@
-import * as nconf from 'nconf';
-import * as winston from 'winston';
-import * as plugins from '../../plugins';
-import * as meta from '../../meta';
+const nconf = require('nconf') as typeof import('nconf');
+const winston = require('winston') as typeof import('winston');
+const plugins = require('../../plugins') as import('../../plugins');
+const meta = require('../../meta') as import('../../meta');
 
 const pluginsController: any = module.exports;
 
