@@ -486,10 +486,24 @@ describe('Categories', () => {
             const canDeleteTopics = await privileges.categories.can('topics:delete', categoryObj.cid, posterUid);
             assert(canDeleteTopics);
         });
+        
+        let categoryZero;
+        Categories.create({
+            name: 'Test Category & NodeBB',
+            description: 'Test category created by testing script',
+            icon: 'fa-check',
+            blockclass: 'category-blue',
+            order: '5',
+        }, (err, category) => {
+            assert.ifError(err);
 
-        it('should give privilege', async () => {
-            await apiCategories.setPrivilege({ uid: adminUid }, { cid: categoryObj.cid, privilege: ['groups:topics:delete'], set: true, member: 'registered-users' });
-            const canDeleteTopics = await privileges.categories.can('topics:delete', categoryObj.cid, posterUid);
+            categoryZero = category;
+            done();
+        });
+
+        it('should give privilege with cid 0', async () => {
+            await apiCategories.setPrivilege({ uid: adminUid }, { cid: "0", privilege: ['groups:topics:delete'], set: true, member: 'registered-users' });
+            const canDeleteTopics = await privileges.categories.can('topics:delete', "0", posterUid);
             assert(canDeleteTopics);
         });
 
