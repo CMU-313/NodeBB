@@ -157,6 +157,7 @@
         "@types/validator": "^13.7.0",
         "@typescript-eslint/eslint-plugin": "^5.48.0",
         "@typescript-eslint/parser": "^5.48.0",
+        "@types/express-session": "latest", 
         "coveralls": "3.1.1",
         "eslint": "^8.31.0",
         "eslint-config-nodebb": "0.2.1",
