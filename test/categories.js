@@ -487,6 +487,12 @@ describe('Categories', () => {
             assert(canDeleteTopics);
         });
 
+        it('should give privilege', async () => {
+            await apiCategories.setPrivilege({ uid: adminUid }, { cid: categoryObj.cid, privilege: ['groups:topics:delete'], set: true, member: 'registered-users' });
+            const canDeleteTopics = await privileges.categories.can('topics:delete', categoryObj.cid, posterUid);
+            assert(canDeleteTopics);
+        });
+
         it('should remove privilege', async () => {
             await apiCategories.setPrivilege({ uid: adminUid }, { cid: categoryObj.cid, privilege: 'groups:topics:delete', set: false, member: 'registered-users' });
             const canDeleteTopics = await privileges.categories.can('topics:delete', categoryObj.cid, posterUid);
