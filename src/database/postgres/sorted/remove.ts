@@ -1,7 +1,7 @@
 import { Pool, QueryResult } from 'pg';
 import { valueToString } from '../helpers';
 
-interface Module {
+interface DBModule {
     pool: Pool;
     sortedSetRemove: (key: string | string[], value: string | string[]) => Promise<void>;
     sortedSetsRemove: (keys: string[], value: string) => Promise<void>;
@@ -9,7 +9,7 @@ interface Module {
     sortedSetRemoveBulk: (data: [string, string][]) => Promise<void>;
 }
 
-const module: Module = {
+const module: DBModule = {
     pool: new Pool(), // Adjust this to your actual Pool configuration
 
     sortedSetRemove: async function (key, value) {
