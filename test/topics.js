@@ -2627,6 +2627,49 @@ describe('Topic\'s', () => {
         });
     });
 
+    describe('additional sorted tests by David Wang', () => {
+        let category;
+        before(async () => {
+            category = await categories.create({ name: 'sorted' });
+            const topic1Result = await topics.post({ uid: topic.userId, cid: category.cid, title: 'old replied', content: 'topic 1 OP' });
+            const topic2Result = await topics.post({ uid: topic.userId, cid: category.cid, title: 'most recent replied', content: 'topic 2 OP' });
+            await topics.reply({ uid: topic.userId, content: 'topic 1 reply', tid: topic1Result.topicData.tid });
+            await topics.reply({ uid: topic.userId, content: 'topic 2 reply', tid: topic2Result.topicData.tid });
+        });
+
+        it('should convert cids to an array and take in tags', (done) => {
+            const filters = ['', 'watched', 'unreplied', 'new'];
+            async.map(filters, (filter, next) => {
+                topics.getSortedTopics({
+                    cids: category.cid,
+                    uid: topic.userId,
+                    tags: 'popular',
+                    start: 0,
+                    stop: -1,
+                    filter: filter,
+                    sort: 'votes',
+                }, next);
+            }, (err, data) => {
+                assert.ifError(err);
+                assert(data);
+                data.forEach((filterTopics) => {
+                    assert(Array.isArray(filterTopics.topics));
+                });
+                done();
+            });
+        });
+        it('should be able to sort topics without categories passed in', async () => {
+            const data = await topics.getSortedTopics({
+                uid: topic.userId,
+                start: 0,
+                stop: -1,
+                sort: 'recent',
+            });
+            assert.strictEqual(data.topics[0].title, 'most recent replied');
+            assert.strictEqual(data.topics[1].title, 'old replied');
+        });
+    });
+
     describe('scheduled topics', () => {
         let categoryObj;
         let topicData;
