@@ -492,8 +492,8 @@ describe('Categories', () => {
             const globalPrivList = await privileges.admin.getPrivilegeList();
             const globalPriv = globalPrivList[0];
             await apiCategories.setPrivilege({ uid: adminUid }, { cid: "0", privilege: globalPrivList, set: true, member: 'registered-users' });
-            const canDeleteTopics = await privileges.global.can(globalPriv, posterUid);
-            assert(canDeleteTopics);
+            const hasGlobalPriv = await privileges.global.can(globalPriv, posterUid);
+            assert(hasGlobalPriv);
         });
 
         it('should remove privilege', async () => {
