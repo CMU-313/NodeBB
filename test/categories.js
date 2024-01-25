@@ -12,6 +12,7 @@ const Topics = require('../src/topics');
 const User = require('../src/user');
 const groups = require('../src/groups');
 const privileges = require('../src/privileges');
+const winston = require('winston');
 
 describe('Categories', () => {
     let categoryObj;
@@ -487,9 +488,23 @@ describe('Categories', () => {
             assert(canDeleteTopics);
         });
 
+
+        //logger code created by chatGPT
+        const logger = winston.createLogger({
+            level: 'info', // Log only if info level or less
+            format: winston.format.simple(), // Use simple text formatting
+            transports: [
+              new winston.transports.Console(), // Output to console
+            ],
+          });
+          
+        logger.info('About to run test');
+
         it('should give privilege with cid 0', async () => {
-            await apiCategories.setPrivilege({ uid: adminUid }, { cid: "0", privilege: ['groups:topics:delete'], set: true, member: 'registered-users' });
-            const canDeleteTopics = await privileges.admin.can('topics:delete', "0");
+            const adminPrivList = await privileges.admin.getPrivilegeList();
+            const adminPriv = adminPrivList[0];
+            await apiCategories.setPrivilege({ uid: adminUid }, { cid: "0", privilege: adminPrivList, set: true, member: 'registered-users' });
+            const canDeleteTopics = await privileges.categories.can(adminPriv, posterUid);
             assert(canDeleteTopics);
         });
 
