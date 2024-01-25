@@ -1,9 +1,18 @@
-'use strict';
+import { Pool, QueryResult } from 'pg';
+import { valueToString } from '../helpers';
 
-module.exports = function (module) {
-    const helpers = require('../helpers');
+interface DBModule {
+    pool: Pool;
+    sortedSetRemove: (key: string | string[], value: string | string[]) => Promise<void>;
+    sortedSetsRemove: (keys: string[], value: string) => Promise<void>;
+    sortedSetsRemoveRangeByScore: (keys: string[], min: number | null, max: number | null) => Promise<void>;
+    sortedSetRemoveBulk: (data: [string, string][]) => Promise<void>;
+}
 
-    module.sortedSetRemove = async function (key, value) {
+const dbmodule: DBModule = {
+    pool: new Pool(), // Adjust this to your actual Pool configuration
+
+    sortedSetRemove: async function (key, value) {
         if (!key) {
             return;
         }
@@ -17,10 +26,13 @@ module.exports = function (module) {
         }
 
         if (!isValueArray) {
-            value = [value];
+            value = [value as string];
+        } else {
+            value = value as string[];
         }
-        value = value.map(helpers.valueToString);
-        await module.pool.query({
+        
+        value = value.map(valueToString);
+        await this.pool.query({
             name: 'sortedSetRemove',
             text: `
 DELETE FROM "legacy_zset"
@@ -28,16 +40,16 @@ DELETE FROM "legacy_zset"
    AND "value" = ANY($2::TEXT[])`,
             values: [key, value],
         });
-    };
+    },
 
-    module.sortedSetsRemove = async function (keys, value) {
+    sortedSetsRemove: async function (keys, value) {
         if (!Array.isArray(keys) || !keys.length) {
             return;
         }
 
-        value = helpers.valueToString(value);
+        value = valueToString(value);
 
-        await module.pool.query({
+        await this.pool.query({
             name: 'sortedSetsRemove',
             text: `
 DELETE FROM "legacy_zset"
@@ -45,21 +57,22 @@ DELETE FROM "legacy_zset"
    AND "value" = $2::TEXT`,
             values: [keys, value],
         });
-    };
+    },
 
-    module.sortedSetsRemoveRangeByScore = async function (keys, min, max) {
+    sortedSetsRemoveRangeByScore: async function (keys, min, max) {
         if (!Array.isArray(keys) || !keys.length) {
             return;
         }
 
-        if (min === '-inf') {
+        if (min === -Infinity) {
             min = null;
         }
-        if (max === '+inf') {
+        if (max === Infinity) {
             max = null;
         }
+        
 
-        await module.pool.query({
+        await this.pool.query({
             name: 'sortedSetsRemoveRangeByScore',
             text: `
 DELETE FROM "legacy_zset"
@@ -68,16 +81,16 @@ DELETE FROM "legacy_zset"
    AND ("score" <= $3::NUMERIC OR $3::NUMERIC IS NULL)`,
             values: [keys, min, max],
         });
-    };
+    },
 
-    module.sortedSetRemoveBulk = async function (data) {
+    sortedSetRemoveBulk: async function (data) {
         if (!Array.isArray(data) || !data.length) {
             return;
         }
         const keys = data.map(d => d[0]);
         const values = data.map(d => d[1]);
 
-        await module.pool.query({
+        await this.pool.query({
             name: 'sortedSetRemoveBulk',
             text: `
     DELETE FROM "legacy_zset"
@@ -87,5 +100,7 @@ DELETE FROM "legacy_zset"
         )`,
             values: [keys, values],
         });
-    };
+    },
 };
+
+export = dbmodule;
