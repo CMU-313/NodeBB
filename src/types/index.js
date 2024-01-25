@@ -28,3 +28,4 @@ __exportStar(require("./status"), exports);
 __exportStar(require("./tag"), exports);
 __exportStar(require("./topic"), exports);
 __exportStar(require("./user"), exports);
+__exportStar(require("./chat"), exports);

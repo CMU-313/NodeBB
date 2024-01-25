@@ -12,3 +12,4 @@ export * from './status';
 export * from './tag';
 export * from './topic';
 export * from './user';
+export * from './chat';
