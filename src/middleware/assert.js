@@ -17,7 +17,7 @@ const messaging = require('../messaging');
 const flags = require('../flags');
 const slugify = require('../slugify');
 
-const helpers = require('./helpers');
+const helpers = require('./helpers').default;
 const controllerHelpers = require('../controllers/helpers');
 
 const Assert = module.exports;

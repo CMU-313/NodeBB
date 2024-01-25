@@ -12,7 +12,7 @@ const privileges = require('../privileges');
 const categories = require('../categories');
 const plugins = require('../plugins');
 const meta = require('../meta');
-const middlewareHelpers = require('../middleware/helpers');
+const middlewareHelpers = require('../middleware/helpers').default;
 const utils = require('../utils');
 
 const helpers = module.exports;

@@ -9,7 +9,7 @@ const util = require('util');
 const user = require('../user');
 const privileges = require('../privileges');
 const plugins = require('../plugins');
-const helpers = require('./helpers');
+const helpers = require('./helpers').default;
 const auth = require('../routes/authentication');
 const writeRouter = require('../routes/write');
 

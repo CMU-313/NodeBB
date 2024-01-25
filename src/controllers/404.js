@@ -7,7 +7,7 @@ const validator = require('validator');
 const meta = require('../meta');
 const plugins = require('../plugins');
 const middleware = require('../middleware');
-const helpers = require('../middleware/helpers');
+const helpers = require('../middleware/helpers').default;
 
 exports.handle404 = function handle404(req, res) {
     const relativePath = nconf.get('relative_path');

@@ -5,7 +5,7 @@ const nconf = require('nconf');
 const meta = require('../meta');
 const user = require('../user');
 const groups = require('../groups');
-const helpers = require('./helpers');
+const helpers = require('./helpers').default;
 
 module.exports = function (middleware) {
     middleware.maintenanceMode = helpers.try(async (req, res, next) => {

@@ -8,7 +8,7 @@ const meta = require('../meta');
 const translator = require('../translator');
 const widgets = require('../widgets');
 const utils = require('../utils');
-const helpers = require('./helpers');
+const helpers = require('./helpers').default;
 
 const relative_path = nconf.get('relative_path');
 

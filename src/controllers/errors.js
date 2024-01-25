@@ -6,7 +6,7 @@ const validator = require('validator');
 const translator = require('../translator');
 const plugins = require('../plugins');
 const middleware = require('../middleware');
-const middlewareHelpers = require('../middleware/helpers');
+const middlewareHelpers = require('../middleware/helpers').default;
 const helpers = require('./helpers');
 
 exports.handleURIErrors = async function handleURIErrors(err, req, res, next) {

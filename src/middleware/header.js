@@ -17,7 +17,7 @@ const translator = require('../translator');
 const privileges = require('../privileges');
 const languages = require('../languages');
 const utils = require('../utils');
-const helpers = require('./helpers');
+const helpers = require('./helpers').default;
 
 const controllers = {
     api: require('../controllers/api'),

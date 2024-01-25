@@ -2,7 +2,7 @@
 
 const cacheCreate = require('../cache/ttl');
 const meta = require('../meta');
-const helpers = require('./helpers');
+const helpers = require('./helpers').default;
 const user = require('../user');
 
 const cache = cacheCreate({
