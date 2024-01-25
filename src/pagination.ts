@@ -1,34 +1,63 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const qs = __importStar(require("querystring"));
-const _ = __importStar(require("lodash"));
-const pagination = exports;
+import * as qs from 'querystring';
+import * as _ from 'lodash';
+
+export interface PaginationObject {
+    pagination: Pagination;
+}
+
+export interface Pagination {
+    prev: ActivePage;
+    next: ActivePage;
+    first: ActivePage;
+    last: ActivePage;
+    rel: Relation[];
+    pages: Page[];
+    currentPage: number;
+    pageCount: number;
+}
+
+export interface ActivePage {
+    page: number;
+    active: boolean;
+}
+
+export interface Relation {
+    rel: string;
+    href: string;
+}
+
+export interface Page {
+    page: number;
+    active: boolean;
+    qs: string;
+}
+
+interface Separator {
+    separator: true;
+}
+
+export interface PaginationData {
+    prev: ActivePage;
+    next: ActivePage;
+    first: ActivePage;
+    last: ActivePage;
+    rel: Relation[];
+    pages: (Page | Separator)[];
+    currentPage: number;
+    pageCount: number;
+}
+
+type t = (currentPage: number, pageCount: number, queryObj: Record<string, string | number>) => PaginationData;
+
+const pagination: {
+    create: t;
+} = exports as {create : t};
+
+
 // const pagination: {
 //     create: (currentPage: number, pageCount: number, queryObj: Record<string, string | number>) => PaginationData;
 // } = exports;
+
 pagination.create = function (currentPage, pageCount, queryObj) {
     if (pageCount <= 1) {
         return {
@@ -42,39 +71,47 @@ pagination.create = function (currentPage, pageCount, queryObj) {
             pageCount: 1,
         };
     }
+
     pageCount = parseInt(String(pageCount), 10);
-    let pagesToShow = [1, 2, pageCount - 1, pageCount];
+    let pagesToShow: number[] = [1, 2, pageCount - 1, pageCount];
+
     currentPage = parseInt(String(currentPage), 10) || 1;
     const previous = Math.max(1, currentPage - 1);
     const next = Math.min(pageCount, currentPage + 1);
+
     let startPage = Math.max(1, currentPage - 2);
     if (startPage > pageCount - 5) {
         startPage -= 2 - (pageCount - currentPage);
     }
-    let i;
+
+    let i: number;
     for (i = 0; i < 5; i += 1) {
         pagesToShow.push(startPage + i);
     }
+
     pagesToShow = _.uniq(pagesToShow).filter(page => page > 0 && page <= pageCount).sort((a, b) => a - b);
-    queryObj = Object.assign({}, (queryObj || {}));
+
+    queryObj = { ...(queryObj || {}) };
     delete queryObj._;
-    const pages = pagesToShow.map((page) => {
+
+    const pages: (Page | Separator)[] = pagesToShow.map((page) => {
         queryObj.page = page;
-        return { page, active: page === currentPage, qs: qs.stringify(queryObj) };
+        return { page, active: page === currentPage, qs: qs.stringify(queryObj) } as Page;
     });
+
     for (i = pages.length - 1; i > 0; i -= 1) {
-        if (pages[i].page - 2 === pages[i - 1].page) {
+        if ((pages[i] as Page).page - 2 === (pages[i - 1] as Page).page) {
             pages.splice(i, 0, {
-                page: pages[i].page - 1,
+                page: (pages[i] as Page).page - 1,
                 active: false,
                 qs: qs.stringify(queryObj),
-            });
-        }
-        else if (pages[i].page - 1 !== pages[i - 1].page) {
-            pages.splice(i, 0, { separator: true });
+            } as Page);
+        } else if ((pages[i] as Page).page - 1 !== (pages[i - 1] as Page).page) {
+            pages.splice(i, 0, { separator: true } as Separator);
         }
     }
-    const data = {
+
+    const data: PaginationData = {
         rel: [],
         pages,
         currentPage,
@@ -100,21 +137,25 @@ pagination.create = function (currentPage, pageCount, queryObj) {
     data.prev = { page: previous, active: currentPage > 1 };
     queryObj.page = next;
     data.next = { page: next, active: currentPage < pageCount };
+
     queryObj.page = 1;
     data.first = { page: 1, active: currentPage === 1 };
     queryObj.page = pageCount;
     data.last = { page: pageCount, active: currentPage === pageCount };
+
     if (currentPage < pageCount) {
         data.rel.push({
             rel: 'next',
-            href: `?${qs.stringify(Object.assign(Object.assign({}, queryObj), { page: next }))}`,
+            href: `?${qs.stringify({ ...queryObj, page: next })}`,
         });
     }
+
     if (currentPage > 1) {
         data.rel.push({
             rel: 'prev',
-            href: `?${qs.stringify(Object.assign(Object.assign({}, queryObj), { page: previous }))}`,
+            href: `?${qs.stringify({ ...queryObj, page: previous })}`,
         });
     }
+
     return data;
 };
