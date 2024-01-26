@@ -25,6 +25,9 @@ const events = require('../src/events');
 
 const socketAdmin = require('../src/socket.io/admin');
 
+const apiChats = require('../src/api/chats');
+const SocketModules = require('../src/socket.io/modules');
+
 describe('socket.io', () => {
     let io;
     let cid;
@@ -771,6 +774,38 @@ describe('socket.io', () => {
                 assert.strictEqual(err.message, '[[error:invalid-data]]');
                 done();
             });
+        });
+    });
+
+
+    describe('addUserToRoom', () => { // Some assistance provided by OpenAI's ChatGPT.
+        it('should throw an error if data is invalid', async () => {
+            const socket = { uid: adminUid };
+            const data = { roomId: null, username: null };
+
+            await assert.rejects(
+                async () => {
+                    await SocketModules.chats.addUserToRoom(socket, data);
+                },
+                { message: '[[error:invalid-data]]' }
+            );
+        });
+
+        it('should add user to room', async () => {
+            const socket = { uid: adminUid };
+            const testUsername = 'testuser';
+            const testUserId = await user.create({ username: testUsername, password: 'password123' });
+            const testRoomId = 'testRoomId';
+            const data = { roomId: testRoomId, username: testUsername };
+
+            user.getUidByUsername = async () => testUserId;
+
+            apiChats.invite = async (socket, data) => {
+                assert.strictEqual(data.uids[0], testUserId);
+                assert.strictEqual(data.roomId, testRoomId);
+            };
+
+            await SocketModules.chats.addUserToRoom(socket, data);
         });
     });
 
