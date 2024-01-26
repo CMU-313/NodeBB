@@ -608,7 +608,7 @@ describe('Messaging Library', () => {
             await callv3API('delete', `/chats/${roomId}/users/${mocks.users.baz.uid}`, {}, 'baz');
         });
 
-        //New Tests
+        //New Tests (43 lines covered previously)
         it('should NOT allow message IDs that are not valid to be edited/deleted', async () => {
             try {
                 await Messaging.canEdit(null, mocks.users.herp.uid);
@@ -633,18 +633,21 @@ describe('Messaging Library', () => {
         //     }
         // });
 
-        // it('should NOT allow for message edit/deletion if chat is disabled',  async () => {
-        //     try {
-        //         await Messaging.canEdit(mid2, mocks.users.herp.uid);
-        //     } catch (err) {
-        //         assert.strictEqual(err.message, '[[error:chat-disabled]]');
-        //     }
-        // });
+        it('should NOT allow for message edit/deletion if chat is disabled',  async () => {
+            meta.config.disableChat = 1;
+            try {
+                await Messaging.canEdit(mid, mocks.users.baz.uid);
+            } catch (err) {
+                assert.strictEqual(err.message, '[[error:chat-disabled]]');
+            }
+            meta.config.disableChat = 0;
+        });
 
         it('should NOT allow for message edit/deletion if message is beyond configured duration',  async () => {
             meta.config.chatEditDuration = 1;
             meta.config.chatDeleteDuration = 1;
             await sleep(1000);
+
             await User.setSetting(mocks.users.baz.uid, 'restrictChat', '0');
 
             try {
