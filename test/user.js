@@ -1385,6 +1385,18 @@ describe('User', () => {
             });
         });
 
+        it('should get ban reason from a user', (done) => {
+            const banReason = 'test_reason';
+            User.bans.ban(testUserUid, 0, banReason, (err) => {
+                assert.ifError(err);
+                User.bans.getReason(testUserUid, (err, reason) => {
+                    assert.ifError(err);
+                    assert.equal(reason, banReason);
+                    User.bans.unban(testUserUid, done);
+                });
+            });
+        });
+
         it('should ban user permanently', (done) => {
             User.bans.ban(testUserUid, (err) => {
                 assert.ifError(err);
