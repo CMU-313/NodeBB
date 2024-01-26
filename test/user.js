@@ -25,6 +25,7 @@ const socketUser = require('../src/socket.io/user');
 const apiUser = require('../src/api/users');
 const utils = require('../src/utils');
 const privileges = require('../src/privileges');
+const jobs = require('../src/user/jobs');
 
 describe('User', () => {
     let userData;
@@ -3083,5 +3084,17 @@ describe('User', () => {
                 require(filePath);
             });
         });
+    });
+
+    it('Getting room messages from id', async () => {
+        const uid1 = User.create({ username: 'chatuserdelete1' });
+        const uid2 = User.create({ username: 'chatuserdelete2' });
+        const roomId = messaging.newRoom(uid1, [uid2]);
+        messaging.addMessage({
+            uid: uid1,
+            content: 'hello',
+            roomId
+        });
+        const data = User.getRoomMessages(uid1, roomId);
     });
 });
