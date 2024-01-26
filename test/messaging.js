@@ -113,7 +113,6 @@ describe('Messaging Library', () => {
             });
         });
     });
-
     describe('rooms', () => {
         it('should fail to create a new chat room with invalid data', async () => {
             const { body } = await callv3API('post', '/chats', {}, 'foo');
@@ -609,6 +608,66 @@ describe('Messaging Library', () => {
             await callv3API('delete', `/chats/${roomId}/users/${mocks.users.baz.uid}`, {}, 'baz');
         });
 
+        // New Tests (43 lines covered previously)
+        it('should NOT allow message IDs that are not valid to be edited/deleted', async () => {
+            try {
+                await Messaging.canEdit(null, mocks.users.herp.uid);
+            } catch (err) {
+                assert.strictEqual(err.message, '[[error:invalid-mid]]');
+            }
+        });
+
+        it('should NOT allow banned users to edit/delete messages', async () => {
+            await User.setSetting(mocks.users.baz.uid, 'restrictChat', '1');
+            try {
+                await Messaging.canEdit(mid2, mocks.users.baz.uid);
+            } catch (err) {
+                assert.strictEqual(err.message, '[[error:user-banned]]');
+            }
+        });
+
+        it('should allow an edit that does not make changes', async () => {
+            await Messaging.editMessage(mocks.users.baz.uid, mid2, roomId, 'second chat message');
+            const messageContents = await Messaging.getMessageField(mid2, 'content');
+            assert.strictEqual(messageContents, 'second chat message');
+        });
+
+
+        it('should NOT allow for message edit/deletion if chat is disabled', async () => {
+            meta.config.disableChat = 1;
+            try {
+                await Messaging.canEdit(mid, mocks.users.baz.uid);
+            } catch (err) {
+                assert.strictEqual(err.message, '[[error:chat-disabled]]');
+            }
+            meta.config.disableChat = 0;
+        });
+
+        it('should NOT allow for message edit/deletion if message is beyond configured duration', async () => {
+            meta.config.chatEditDuration = 1;
+            meta.config.chatDeleteDuration = 1;
+            await sleep(1000);
+
+            await User.setSetting(mocks.users.baz.uid, 'restrictChat', '0');
+
+            try {
+                await Messaging.canEdit(mid, mocks.users.baz.uid);
+            } catch (err) {
+                assert.strictEqual(err.message, '[[error:chat-edit-duration-expired, 1]]');
+            }
+
+            try {
+                await Messaging.canDelete(mid, mocks.users.baz.uid);
+            } catch (err) {
+                assert.strictEqual(err.message, '[[error:chat-delete-duration-expired, 1]]');
+            }
+
+            meta.config.chatEditDuration = 5;
+            meta.config.chatDeleteDuration = 5;
+        });
+
+        // End of new tests
+
         it('should fail to edit message with invalid data', async () => {
             let { statusCode, body } = await callv3API('put', `/chats/1/messages/10000`, { message: 'foo' }, 'foo');
             assert.strictEqual(statusCode, 400);
@@ -745,7 +804,6 @@ describe('Messaging Library', () => {
             after(async () => {
                 meta.config.disableChatMessageEditing = false;
             });
-
             it('should error out for regular users', async () => {
                 try {
                     await socketModules.chats.delete({ uid: mocks.users.baz.uid }, { messageId: mid2, roomId: roomId });
