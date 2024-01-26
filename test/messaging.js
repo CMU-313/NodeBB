@@ -618,6 +618,7 @@ describe('Messaging Library', () => {
         });
 
         it('should NOT allow banned users to edit/delete messages',  async () => {
+            await User.setSetting(mocks.users.baz.uid, 'restrictChat', '1');
             try {
                 await Messaging.canEdit(mid2, mocks.users.baz.uid);
             } catch (err) {
@@ -625,13 +626,11 @@ describe('Messaging Library', () => {
             }
         });
 
-        // it('should NOT allow users with inadequate permissions to edit/delete',  async () => {
-        //     try {
-        //         await Messaging.canEdit(mid2, mocks.users.herp.uid);
-        //     } catch (err) {
-        //         assert.strictEqual(err.message, '[[error:no-privileges]]');
-        //     }
-        // });
+        it('should allow an edit that does not make changes',  async () => {
+            await Messaging.editMessage(mocks.users.baz.uid, mid2, roomId, 'second chat message');
+            // assert.strictEqual(mid2.content, "second chat message");
+        });
+
 
         it('should NOT allow for message edit/deletion if chat is disabled',  async () => {
             meta.config.disableChat = 1;
