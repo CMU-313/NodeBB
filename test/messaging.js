@@ -628,7 +628,7 @@ describe('Messaging Library', () => {
 
         it('should allow an edit that does not make changes', async () => {
             await Messaging.editMessage(mocks.users.baz.uid, mid2, roomId, 'second chat message');
-            let messageContents = await Messaging.getMessageField(mid2, 'content')
+            const messageContents = await Messaging.getMessageField(mid2, 'content');
             assert.strictEqual(messageContents, 'second chat message');
         });
 
