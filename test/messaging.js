@@ -616,6 +616,27 @@ describe('Messaging Library', () => {
             }
         });
 
+        // it('should NOT allow banned users to edit/delete messages',  async () => {
+
+        // });
+
+        // it('should NOT allow users with inadequate permissions to edit/delete',  async () => {
+        //     try {
+        //         await Messaging.canEdit(mid2, mocks.users.herp.uid);
+        //     } catch (err) {
+        //         assert.strictEqual(err.message, '[[error:invalid-mid]]');
+        //     }
+        // });
+
+        // it('should NOT allow for message edit/deletion if chat is disabled',  async () => {
+
+        // });
+
+        // it('should NOT allow for message edit/deletion if message is beyond configured duration',  async () => {
+
+        // });
+
+
         it('should fail to edit message with invalid data', async () => {
             let { statusCode, body } = await callv3API('put', `/chats/1/messages/10000`, { message: 'foo' }, 'foo');
             assert.strictEqual(statusCode, 400);
