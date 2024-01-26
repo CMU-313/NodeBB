@@ -641,12 +641,30 @@ describe('Messaging Library', () => {
         //     }
         // });
 
-        // it('should NOT allow for message edit/deletion if message is beyond configured duration',  async () => {
+        it('should NOT allow for message edit/deletion if message is beyond configured duration',  async () => {
+            meta.config.chatEditDuration = 1;
+            meta.config.chatDeleteDuration = 1;
+            await sleep(1000);
+            await User.setSetting(mocks.users.baz.uid, 'restrictChat', '0');
 
-        // });
+            try {
+                await Messaging.canEdit(mid, mocks.users.baz.uid);
+            } catch (err) {
+                assert.strictEqual(err.message, '[[error:chat-edit-duration-expired, 1]]');
+            }
 
+            try {
+                await Messaging.canDelete(mid, mocks.users.baz.uid);
+            } catch (err) {
+                assert.strictEqual(err.message, '[[error:chat-delete-duration-expired, 1]]');
+            }
 
-        //End new tests
+            meta.config.chatEditDuration = 5;
+            meta.config.chatDeleteDuration = 5;
+        });
+
+        //End of new tests
+
         it('should fail to edit message with invalid data', async () => {
             let { statusCode, body } = await callv3API('put', `/chats/1/messages/10000`, { message: 'foo' }, 'foo');
             assert.strictEqual(statusCode, 400);
