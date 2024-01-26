@@ -113,7 +113,6 @@ describe('Messaging Library', () => {
             });
         });
     });
-
     describe('rooms', () => {
         it('should fail to create a new chat room with invalid data', async () => {
             const { body } = await callv3API('post', '/chats', {}, 'foo');
@@ -609,6 +608,14 @@ describe('Messaging Library', () => {
             await callv3API('delete', `/chats/${roomId}/users/${mocks.users.baz.uid}`, {}, 'baz');
         });
 
+        it('should NOT allow message IDs that are not valid to be edited/deleted', async () => {
+            try {
+                await Messaging.canEdit(null, mocks.users.herp.uid);
+            } catch (err) {
+                assert.strictEqual(err.message, '[[error:invalid-mid]]');
+            }
+        });
+
         it('should fail to edit message with invalid data', async () => {
             let { statusCode, body } = await callv3API('put', `/chats/1/messages/10000`, { message: 'foo' }, 'foo');
             assert.strictEqual(statusCode, 400);
@@ -745,7 +752,6 @@ describe('Messaging Library', () => {
             after(async () => {
                 meta.config.disableChatMessageEditing = false;
             });
-
             it('should error out for regular users', async () => {
                 try {
                     await socketModules.chats.delete({ uid: mocks.users.baz.uid }, { messageId: mid2, roomId: roomId });
