@@ -149,7 +149,9 @@ Flags.getFlagIdsWithFilters = async function ({ filters, uid, query }) {
 			winston.warn(`[flags/list] No flag filter type found: ${type}`);
 		}
 	}
-	sets = (sets.length || orSets.length) ? sets : ['flags:datetime']; // No filter default
+
+	sets = ['flags:datetime']; 
+	if (sets.length || orSets.length) sets = sets;
 
 	let flagIds = [];
 	if (sets.length === 1) {
