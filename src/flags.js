@@ -150,8 +150,7 @@ Flags.getFlagIdsWithFilters = async function ({ filters, uid, query }) {
 		}
 	}
 
-	sets = ['flags:datetime']; 
-	if (sets.length || orSets.length) sets = sets;
+	if (!(sets.length || orSets.length)) sets = ['flags:datetime'];
 
 	let flagIds = [];
 	if (sets.length === 1) {
