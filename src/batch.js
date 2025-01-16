@@ -10,6 +10,48 @@ const DEFAULT_BATCH_SIZE = 100;
 
 const sleep = util.promisify(setTimeout);
 
+async function getIds(setKey, start, stop, options) {
+	// Set max and min
+	let min = options.min;
+	let max = options.max;
+	if (options.reverse) {
+		min = max;
+		max = options.min;
+	}
+
+	// set score
+	let score = stop;
+	if (isByScore) {
+		score = stop - start + 1;
+	}
+
+	return await getFn(setKey, start, score, min, max);
+}
+
+function runProcess(options, db) {
+	const method = options.reverse ? 'getSortedSetRevRange' : 'getSortedSetRange';
+	const isByScore = (options.min && options.min !== '-inf') || (options.max && options.max !== '+inf');
+	const byScore = isByScore ? 'ByScore' : '';
+	const withScores = options.withScores ? 'WithScores' : '';
+	let iteration = 1;
+	const getFn = db[`${method}${byScore}${withScores}`];
+	while (true) {
+		/* eslint-disable no-await-in-loop */
+		const ids = await getIds(start, stop, options);
+
+		if (!ids.length || options.doneIf(start, stop, ids)) {
+			return;
+		}
+		if (iteration > 1 && options.interval) {
+			await sleep(options.interval);
+		}
+		await process(ids);
+		iteration += 1;
+		start += utils.isNumber(options.alwaysStartAt) ? options.alwaysStartAt : options.batch;
+		stop = start + options.batch - 1;
+	}
+}
+
 exports.processSortedSet = async function (setKey, process, options) {
 	options = options || {};
 
@@ -31,7 +73,7 @@ exports.processSortedSet = async function (setKey, process, options) {
 	}
 
 	// custom done condition
-	options.doneIf = typeof options.doneIf === 'function' ? options.doneIf : function () {};
+	options.doneIf = typeof options.doneIf === 'function' ? options.doneIf : function () { };
 
 	let start = 0;
 	let stop = options.batch - 1;
@@ -40,33 +82,7 @@ exports.processSortedSet = async function (setKey, process, options) {
 		process = util.promisify(process);
 	}
 
-	const method = options.reverse ? 'getSortedSetRevRange' : 'getSortedSetRange';
-	const isByScore = (options.min && options.min !== '-inf') || (options.max && options.max !== '+inf');
-	const byScore = isByScore ? 'ByScore' : '';
-	const withScores = options.withScores ? 'WithScores' : '';
-	let iteration = 1;
-	const getFn = db[`${method}${byScore}${withScores}`];
-	while (true) {
-		/* eslint-disable no-await-in-loop */
-		const ids = await getFn(
-			setKey,
-			start,
-			isByScore ? stop - start + 1 : stop,
-			options.reverse ? options.max : options.min,
-			options.reverse ? options.min : options.max,
-		);
-
-		if (!ids.length || options.doneIf(start, stop, ids)) {
-			return;
-		}
-		if (iteration > 1 && options.interval) {
-			await sleep(options.interval);
-		}
-		await process(ids);
-		iteration += 1;
-		start += utils.isNumber(options.alwaysStartAt) ? options.alwaysStartAt : options.batch;
-		stop = start + options.batch - 1;
-	}
+	runProcess(options, db);
 };
 
 exports.processArray = async function (array, process, options) {
