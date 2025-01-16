@@ -20,7 +20,7 @@ function createGetFn(db, reverse, isByScore, isWithScores) {
 async function getIds(getFn, start, stop, min, max, reverse, isByScore, setKey) {
 	// Set max and min
 	if (reverse) {
-		let temp = min;
+		const temp = min;
 		min = max;
 		max = temp;
 	}
