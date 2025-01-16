@@ -17,7 +17,7 @@ function createGetFn(db, reverse, isByScore, isWithScores) {
 	return db[`${method}${byScore}${withScores}`];
 }
 
-async function getIds(start, stop, min, max, reverse, isByScore) {
+async function getIds(getFn, start, stop, min, max, reverse, isByScore, setKey) {
 	// Set max and min
 	if (reverse) {
 		let temp = min;
@@ -33,7 +33,7 @@ async function getIds(start, stop, min, max, reverse, isByScore) {
 	return await getFn(setKey, start, stop, min, max);
 }
 
-async function runProcess(options, db, process) {
+async function runProcess(options, db, process, setKey) {
 	const isByScore = (options.min && options.min !== '-inf') || (options.max && options.max !== '+inf');
 	const getFn = createGetFn(db, options.reverse, isByScore, options.withScores);
 
@@ -42,7 +42,7 @@ async function runProcess(options, db, process) {
 	let iteration = 1;
 	while (true) {
 		/* eslint-disable no-await-in-loop */
-		const ids = await getIds(start, stop, options.min, options.max, options.reverse, isByScore);
+		const ids = await getIds(getFn, start, stop, options.min, options.max, options.reverse, isByScore, setKey);
 
 		if (!ids.length || options.doneIf(start, stop, ids)) {
 			return;
@@ -86,7 +86,7 @@ exports.processSortedSet = async function (setKey, process, options) {
 		process = util.promisify(process);
 	}
 
-	await runProcess(options, db, process);
+	await runProcess(options, db, process, setKey);
 };
 
 exports.processArray = async function (array, process, options) {
