@@ -10,41 +10,48 @@ const DEFAULT_BATCH_SIZE = 100;
 
 const sleep = util.promisify(setTimeout);
 
-async function getIds(setKey, start, stop, options) {
+function createGetFn(db, reverse, isByScore, isWithScores) {
+	const method = reverse ? 'getSortedSetRevRange' : 'getSortedSetRange';
+	const byScore = isByScore ? 'ByScore' : '';
+	const withScores = isWithScores ? 'WithScores' : '';
+	return db[`${method}${byScore}${withScores}`];
+}
+
+async function getIds(start, stop, min, max, reverse, isByScore) {
 	// Set max and min
-	let min = options.min;
-	let max = options.max;
-	if (options.reverse) {
+	if (reverse) {
+		let temp = min;
 		min = max;
-		max = options.min;
+		max = temp;
 	}
 
 	// set score
-	let score = stop;
 	if (isByScore) {
-		score = stop - start + 1;
+		stop = stop - start + 1;
 	}
 
-	return await getFn(setKey, start, score, min, max);
+	return await getFn(setKey, start, stop, min, max);
 }
 
-function runProcess(options, db) {
-	const method = options.reverse ? 'getSortedSetRevRange' : 'getSortedSetRange';
+async function runProcess(options, db, process) {
 	const isByScore = (options.min && options.min !== '-inf') || (options.max && options.max !== '+inf');
-	const byScore = isByScore ? 'ByScore' : '';
-	const withScores = options.withScores ? 'WithScores' : '';
+	const getFn = createGetFn(db, options.reverse, isByScore, options.withScores);
+
+	let start = 0;
+	let stop = options.batch - 1;
 	let iteration = 1;
-	const getFn = db[`${method}${byScore}${withScores}`];
 	while (true) {
 		/* eslint-disable no-await-in-loop */
-		const ids = await getIds(start, stop, options);
+		const ids = await getIds(start, stop, options.min, options.max, options.reverse, isByScore);
 
 		if (!ids.length || options.doneIf(start, stop, ids)) {
 			return;
 		}
+
 		if (iteration > 1 && options.interval) {
 			await sleep(options.interval);
 		}
+
 		await process(ids);
 		iteration += 1;
 		start += utils.isNumber(options.alwaysStartAt) ? options.alwaysStartAt : options.batch;
@@ -75,14 +82,11 @@ exports.processSortedSet = async function (setKey, process, options) {
 	// custom done condition
 	options.doneIf = typeof options.doneIf === 'function' ? options.doneIf : function () { };
 
-	let start = 0;
-	let stop = options.batch - 1;
-
 	if (process && process.constructor && process.constructor.name !== 'AsyncFunction') {
 		process = util.promisify(process);
 	}
 
-	runProcess(options, db);
+	await runProcess(options, db, process);
 };
 
 exports.processArray = async function (array, process, options) {
