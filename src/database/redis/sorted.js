@@ -143,32 +143,40 @@ module.exports = function (module) {
 
 	module.sortedSetsRanks = async function (keys, values) {
 		const batch = module.client.batch();
-		for (let i = 0; i < values.length; i += 1) {
-			batch.zrank(keys[i], String(values[i]));
+
+		let idx = 0;
+		for (const value of values) {
+			batch.zrank(keys[idx], String(value));
+			idx += 1;
 		}
 		return await helpers.execBatch(batch);
 	};
 
 	module.sortedSetsRevRanks = async function (keys, values) {
 		const batch = module.client.batch();
-		for (let i = 0; i < values.length; i += 1) {
-			batch.zrevrank(keys[i], String(values[i]));
+
+		let idx = 0;
+		for (const value of values) {
+			batch.zrevrank(keys[idx], String(value));
+			idx += 1;
 		}
 		return await helpers.execBatch(batch);
 	};
 
 	module.sortedSetRanks = async function (key, values) {
 		const batch = module.client.batch();
-		for (let i = 0; i < values.length; i += 1) {
-			batch.zrank(key, String(values[i]));
+
+		for (const value of values) {
+			batch.zrank(key, String(value));
 		}
 		return await helpers.execBatch(batch);
 	};
 
 	module.sortedSetRevRanks = async function (key, values) {
 		const batch = module.client.batch();
-		for (let i = 0; i < values.length; i += 1) {
-			batch.zrevrank(key, String(values[i]));
+
+		for (const value of values) {
+			batch.zrevrank(key, String(value));
 		}
 		return await helpers.execBatch(batch);
 	};
@@ -275,7 +283,9 @@ module.exports = function (module) {
 	};
 
 	module.getSortedSetRevRangeByLex = async function (key, max, min, start, count) {
-		return await sortedSetLex('zrevrangebylex', true, key, max, min, start, count);
+		const revMin = max;
+		const revMax = min;
+		return await sortedSetLex('zrevrangebylex', true, key, revMin, revMax, start, count);
 	};
 
 	module.sortedSetRemoveRangeByLex = async function (key, min, max) {
@@ -325,22 +335,32 @@ module.exports = function (module) {
 
 			for (let i = 0; i < data.length; i += 2) {
 				const value = data[i];
+
 				if (!seen[value]) {
 					seen[value] = 1;
-
-					if (params.withScores) {
-						returnData.push({ value: value, score: parseFloat(data[i + 1]) });
-					} else {
-						returnData.push(value);
-					}
-					if (params.limit && returnData.length >= params.limit) {
-						done = true;
-						break;
-					}
+					done = updateReturnData(value, params, returnData, data[i + 1]);
 				}
+				if (done) break;
 			}
 		} while (!done);
 
 		return returnData;
 	};
 };
+
+function updateReturnData(
+	value,
+	params,
+	returnData,
+	dataNext
+) {
+	if (params.withScores) {
+		returnData.push({ value: value, score: parseFloat(dataNext) });
+	} else {
+		returnData.push(value);
+	}
+	if (params.limit && returnData.length >= params.limit) {
+		return true;
+	}
+	return false; /* output corresponds to done or not */
+}
