@@ -122,6 +122,22 @@ function checkSetupFlagEnv() {
 	}
 }
 
+function checkHasOwnProperty(ciVals) {
+	return ciVals.hasOwnProperty('host') && ciVals.hasOwnProperty('port') && ciVals.hasOwnProperty('database');
+}
+
+function throwErrorIfNotProperties(ciVals) {
+	if (!ciVals.hasOwnProperty('host')) {
+		winston.error('  host');
+	}
+	if (!ciVals.hasOwnProperty('port')) {
+		winston.error('  port');
+	}
+	if (!ciVals.hasOwnProperty('database')) {
+		winston.error('  database');
+	}
+}
+
 function checkCIFlag() {
 	let ciVals;
 	try {
@@ -131,19 +147,11 @@ function checkCIFlag() {
 	}
 
 	if (ciVals && ciVals instanceof Object) {
-		if (ciVals.hasOwnProperty('host') && ciVals.hasOwnProperty('port') && ciVals.hasOwnProperty('database')) {
+		if (checkHasOwnProperty(ciVals)) {
 			install.ciVals = ciVals;
 		} else {
 			winston.error('[install/checkCIFlag] required values are missing for automated CI integration:');
-			if (!ciVals.hasOwnProperty('host')) {
-				winston.error('  host');
-			}
-			if (!ciVals.hasOwnProperty('port')) {
-				winston.error('  port');
-			}
-			if (!ciVals.hasOwnProperty('database')) {
-				winston.error('  database');
-			}
+			throwErrorIfNotProperties(ciVals);
 
 			process.exit();
 		}
