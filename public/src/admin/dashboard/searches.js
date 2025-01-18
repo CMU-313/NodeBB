@@ -1,5 +1,12 @@
 'use strict';
 
+const handleError = (err) => {
+	if (err) {
+		return alert.error(err);
+	}
+	ajaxify.refresh();
+};
+
 define('admin/dashboard/searches', ['alerts', 'bootbox'], (alerts, bootbox) => {
 	const ACP = {};
 
@@ -7,12 +14,7 @@ define('admin/dashboard/searches', ['alerts', 'bootbox'], (alerts, bootbox) => {
 		$('#clear-search-history').on('click', () => {
 			bootbox.confirm('[[admin/dashboard:clear-search-history-confirm]]', function (ok) {
 				if (ok) {
-					socket.emit('admin.clearSearchHistory', function (err) {
-						if (err) {
-							return alerts.error(err);
-						}
-						ajaxify.refresh();
-					});
+					socket.emit('admin.clearSearchHistory', handleError);
 				}
 			});
 		});
