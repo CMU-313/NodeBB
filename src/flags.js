@@ -20,6 +20,8 @@ const batch = require('./batch');
 
 const Flags = module.exports;
 
+console.log('Testing refactored code - jjo2');
+
 Flags._states = new Map([
 	['open', {
 		label: '[[flags:state-open]]',
@@ -149,7 +151,8 @@ Flags.getFlagIdsWithFilters = async function ({ filters, uid, query }) {
 			winston.warn(`[flags/list] No flag filter type found: ${type}`);
 		}
 	}
-	sets = (sets.length || orSets.length) ? sets : ['flags:datetime']; // No filter default
+
+	if (!(sets.length || orSets.length)) sets = ['flags:datetime'];
 
 	let flagIds = [];
 	if (sets.length === 1) {
@@ -273,21 +276,28 @@ Flags.sort = async function (flagIds, sort) {
 	return flagIds;
 };
 
+Flags.targetError = function (target, reporter) {
+	if (!target) {
+		throw new Error('[[error:invalid-data]]');
+	}
+	if (target.deleted) {
+		throw new Error('[[error:post-deleted]]');
+	}
+	if (!reporter || !reporter.userslug) {
+		throw new Error('[[error:no-user]]');
+	}
+	if (reporter.banned) {
+		throw new Error('[[error:user-banned]]');
+	}
+};
+
 Flags.validate = async function (payload) {
 	const [target, reporter] = await Promise.all([
 		Flags.getTarget(payload.type, payload.id, payload.uid),
 		user.getUserData(payload.uid),
 	]);
 
-	if (!target) {
-		throw new Error('[[error:invalid-data]]');
-	} else if (target.deleted) {
-		throw new Error('[[error:post-deleted]]');
-	} else if (!reporter || !reporter.userslug) {
-		throw new Error('[[error:no-user]]');
-	} else if (reporter.banned) {
-		throw new Error('[[error:user-banned]]');
-	}
+	Flags.targetError(target, reporter);
 
 	// Disallow flagging of profiles/content of privileged users
 	const [targetPrivileged, reporterPrivileged] = await Promise.all([
@@ -390,6 +400,7 @@ Flags.deleteNote = async function (flagId, datetime) {
 };
 
 Flags.create = async function (type, id, uid, reason, timestamp, forceFlag = false) {
+	console.log('jjo2 - Flag creation initiated:', { type, id, uid, reason });
 	let doHistoryAppend = false;
 	if (!timestamp) {
 		timestamp = Date.now();
@@ -706,82 +717,158 @@ Flags.getTargetCid = async function (type, id) {
 
 Flags.update = async function (flagId, uid, changeset) {
 	const current = await db.getObjectFields(`flag:${flagId}`, ['uid', 'state', 'assignee', 'type', 'targetId']);
+	// If there's no 'type', the flag doesn't exist or is invalid
 	if (!current.type) {
 		return;
 	}
+
 	const now = changeset.datetime || Date.now();
-	const notifyAssignee = async function (assigneeId) {
-		if (assigneeId === '' || parseInt(uid, 10) === parseInt(assigneeId, 10)) {
-			return;
-		}
-		const notifObj = await notifications.create({
-			type: 'my-flags',
-			bodyShort: `[[notifications:flag-assigned-to-you, ${flagId}]]`,
-			bodyLong: '',
-			path: `/flags/${flagId}`,
-			nid: `flags:assign:${flagId}:uid:${assigneeId}`,
-			from: uid,
-		});
-		await notifications.push(notifObj, [assigneeId]);
-	};
-	const isAssignable = async function (assigneeId) {
-		let allowed = false;
-		allowed = await user.isAdminOrGlobalMod(assigneeId);
 
-		// Mods are also allowed to be assigned, if flag target is post in uid's moderated cid
-		if (!allowed && current.type === 'post') {
-			const cid = await posts.getCidByPid(current.targetId);
-			allowed = await user.isModerator(assigneeId, cid);
-		}
-
-		return allowed;
-	};
-
-	async function rescindNotifications(match) {
-		const nids = await db.getSortedSetScan({ key: 'notifications', match: `${match}*` });
-		return notifications.rescind(nids);
-	}
-
-	// Retrieve existing flag data to compare for history-saving/reference purposes
-	const tasks = [];
-	for (const prop of Object.keys(changeset)) {
-		if (current[prop] === changeset[prop]) {
-			delete changeset[prop];
-		} else if (prop === 'state') {
-			if (!Flags._states.has(changeset[prop])) {
-				delete changeset[prop];
-			} else {
-				tasks.push(db.sortedSetAdd(`flags:byState:${changeset[prop]}`, now, flagId));
-				tasks.push(db.sortedSetRemove(`flags:byState:${current[prop]}`, flagId));
-				if (changeset[prop] === 'resolved' && meta.config['flags:actionOnResolve'] === 'rescind') {
-					tasks.push(rescindNotifications(`flag:${current.type}:${current.targetId}`));
-				}
-				if (changeset[prop] === 'rejected' && meta.config['flags:actionOnReject'] === 'rescind') {
-					tasks.push(rescindNotifications(`flag:${current.type}:${current.targetId}`));
-				}
-			}
-		} else if (prop === 'assignee') {
-			if (changeset[prop] === '') {
-				tasks.push(db.sortedSetRemove(`flags:byAssignee:${changeset[prop]}`, flagId));
-			/* eslint-disable-next-line */
-			} else if (!await isAssignable(parseInt(changeset[prop], 10))) {
-				delete changeset[prop];
-			} else {
-				tasks.push(db.sortedSetAdd(`flags:byAssignee:${changeset[prop]}`, now, flagId));
-				tasks.push(notifyAssignee(changeset[prop]));
-			}
-		}
-	}
-
-	if (!Object.keys(changeset).length) {
+	// 1) Validate & filter out changes (e.g., ignore bogus states)
+	const changes = await Flags._validateChangeset(changeset, current);
+	// If no properties remain after validation, do nothing
+	if (Object.keys(changes).length === 0) {
 		return;
 	}
 
-	tasks.push(db.setObject(`flag:${flagId}`, changeset));
-	tasks.push(Flags.appendHistory(flagId, uid, changeset));
+	// 2) Generate DB/notification tasks from valid changes
+	const tasks = await Flags._generateUpdateTasks(changes, current, flagId, now, uid);
+	// 3) Apply them all
 	await Promise.all(tasks);
 
-	plugins.hooks.fire('action:flags.update', { flagId: flagId, changeset: changeset, uid: uid });
+	// 4) Fire plugin hook
+	plugins.hooks.fire('action:flags.update', { flagId, changeset: changes, uid });
+};
+
+Flags._validateChangeset = async function (changeset, current) {
+	const validChanges = {};
+	// We'll collect async calls for 'assignee' checks
+	const asyncChecks = [];
+
+	for (const [prop, value] of Object.entries(changeset)) {
+		// Only proceed if the proposed value differs from current
+		if (current[prop] !== value) {
+			if (prop === 'state' && Flags._states.has(value)) {
+				// Only allow recognized states
+				validChanges[prop] = value;
+			} else if (prop === 'assignee') {
+				// Handle assignee asynchronously
+				const checkPromise = Flags._isAssignableUser(value, current).then((isAssignable) => {
+					if (isAssignable) {
+						validChanges[prop] = value;
+					}
+				});
+				asyncChecks.push(checkPromise);
+			} else if (prop !== 'state' && prop !== 'assignee') {
+				// For other properties, just accept them
+				validChanges[prop] = value;
+			}
+			// If it's a bogus state (not in Flags._states),
+			// we do nothing and don't include it in validChanges.
+		}
+	}
+
+	// Wait for all async assignee checks
+	await Promise.all(asyncChecks);
+
+	return validChanges;
+};
+
+Flags._isAssignableUser = async function (assigneeId, current) {
+	// Empty string means "unassign," which is allowed
+	if (assigneeId === '') {
+		return true;
+	}
+
+	// Admin or global mod?
+	if (await user.isAdminOrGlobalMod(assigneeId)) {
+		return true;
+	}
+
+	// If it's a post flag, allow moderators of the post's category
+	if (current.type === 'post') {
+		const cid = await posts.getCidByPid(current.targetId);
+		return user.isModerator(assigneeId, cid);
+	}
+
+	return false;
+};
+
+Flags._generateUpdateTasks = async function (changes, current, flagId, now, uid) {
+	const tasks = [];
+
+	// If there's a new state
+	if (changes.state) {
+		tasks.push(
+			db.sortedSetAdd(`flags:byState:${changes.state}`, now, flagId),
+			db.sortedSetRemove(`flags:byState:${current.state}`, flagId)
+		);
+
+		if (Flags._shouldRescindNotifications(changes.state)) {
+			// Rescind notifications, if config says so
+			tasks.push(Flags._rescindTypeNotifications(current.type, current.targetId));
+		}
+	}
+
+	// If there's a new assignee
+	if (Object.prototype.hasOwnProperty.call(changes, 'assignee')) {
+		// (could be blank to unassign)
+		const assigneeTasks = await Flags._handleAssigneeChange(changes.assignee, flagId, now, uid);
+		tasks.push(...assigneeTasks);
+	}
+
+	// Always set the updated object & append history
+	tasks.push(
+		db.setObject(`flag:${flagId}`, changes),
+		Flags.appendHistory(flagId, uid, changes)
+	);
+
+	return tasks;
+};
+
+Flags._shouldRescindNotifications = function (newState) {
+	return (
+		(newState === 'resolved' && meta.config['flags:actionOnResolve'] === 'rescind') ||
+		(newState === 'rejected' && meta.config['flags:actionOnReject'] === 'rescind')
+	);
+};
+
+Flags._rescindTypeNotifications = async function (type, targetId) {
+	const match = `flag:${type}:${targetId}`;
+	const nids = await db.getSortedSetScan({ key: 'notifications', match: `${match}*` });
+	return notifications.rescind(nids);
+};
+
+Flags._handleAssigneeChange = async function (newAssignee, flagId, now, uid) {
+	const tasks = [];
+
+	if (newAssignee === '') {
+		// Unassign
+		tasks.push(db.sortedSetRemove(`flags:byAssignee:${newAssignee}`, flagId));
+	} else {
+		// Assign
+		tasks.push(db.sortedSetAdd(`flags:byAssignee:${newAssignee}`, now, flagId));
+		tasks.push(Flags._notifyNewAssignee(newAssignee, flagId, uid));
+	}
+
+	return tasks;
+};
+
+Flags._notifyNewAssignee = async function (assigneeId, flagId, uid) {
+	if (assigneeId === '' || parseInt(uid, 10) === parseInt(assigneeId, 10)) {
+		return Promise.resolve();
+	}
+
+	const notifObj = await notifications.create({
+		type: 'my-flags',
+		bodyShort: `[[notifications:flag-assigned-to-you, ${flagId}]]`,
+		bodyLong: '',
+		path: `/flags/${flagId}`,
+		nid: `flags:assign:${flagId}:uid:${assigneeId}`,
+		from: uid,
+	});
+
+	return notifications.push(notifObj, [assigneeId]);
 };
 
 Flags.resolveFlag = async function (type, id, uid) {
