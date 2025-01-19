@@ -276,21 +276,28 @@ Flags.sort = async function (flagIds, sort) {
 	return flagIds;
 };
 
+Flags.targetError = function (target, reporter) {
+	if (!target) {
+		throw new Error('[[error:invalid-data]]');
+	}
+	if (target.deleted) {
+		throw new Error('[[error:post-deleted]]');
+	}
+	if (!reporter || !reporter.userslug) {
+		throw new Error('[[error:no-user]]');
+	}
+	if (reporter.banned) {
+		throw new Error('[[error:user-banned]]');
+	}
+};
+
 Flags.validate = async function (payload) {
 	const [target, reporter] = await Promise.all([
 		Flags.getTarget(payload.type, payload.id, payload.uid),
 		user.getUserData(payload.uid),
 	]);
 
-	if (!target) {
-		throw new Error('[[error:invalid-data]]');
-	} else if (target.deleted) {
-		throw new Error('[[error:post-deleted]]');
-	} else if (!reporter || !reporter.userslug) {
-		throw new Error('[[error:no-user]]');
-	} else if (reporter.banned) {
-		throw new Error('[[error:user-banned]]');
-	}
+	Flags.targetError(target, reporter);
 
 	// Disallow flagging of profiles/content of privileged users
 	const [targetPrivileged, reporterPrivileged] = await Promise.all([
