@@ -20,7 +20,7 @@ const batch = require('./batch');
 
 const Flags = module.exports;
 
-console.log("Testing refactored code - jjo2")
+console.log('Testing refactored code - jjo2');
 
 Flags._states = new Map([
 	['open', {
@@ -393,7 +393,7 @@ Flags.deleteNote = async function (flagId, datetime) {
 };
 
 Flags.create = async function (type, id, uid, reason, timestamp, forceFlag = false) {
-	console.log("jjo2 - Flag creation initiated:", { type, id, uid, reason });
+	console.log('jjo2 - Flag creation initiated:', { type, id, uid, reason });
 	let doHistoryAppend = false;
 	if (!timestamp) {
 		timestamp = Date.now();
