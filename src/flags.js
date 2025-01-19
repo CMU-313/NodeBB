@@ -20,7 +20,7 @@ const batch = require('./batch');
 
 const Flags = module.exports;
 
-console.log('Testing refactored code - jjo2')
+console.log('Testing refactored code - jjo2');
 
 Flags._states = new Map([
 	['open', {
@@ -709,119 +709,159 @@ Flags.getTargetCid = async function (type, id) {
 };
 
 Flags.update = async function (flagId, uid, changeset) {
-    const current = await db.getObjectFields(`flag:${flagId}`, ['uid', 'state', 'assignee', 'type', 'targetId']);
-    if (!current.type) return;
+	const current = await db.getObjectFields(`flag:${flagId}`, ['uid', 'state', 'assignee', 'type', 'targetId']);
+	// If there's no 'type', the flag doesn't exist or is invalid
+	if (!current.type) {
+		return;
+	}
 
-    const now = changeset.datetime || Date.now();
-    const changes = await Flags._validateChangeset(changeset, current);
-    if (Object.keys(changes).length === 0) return; 
+	const now = changeset.datetime || Date.now();
 
-    const tasks = await Flags._generateUpdateTasks(changes, current, flagId, now, uid);
-    await Promise.all(tasks);
+	// 1) Validate & filter out changes (e.g., ignore bogus states)
+	const changes = await Flags._validateChangeset(changeset, current);
+	// If no properties remain after validation, do nothing
+	if (Object.keys(changes).length === 0) {
+		return;
+	}
 
-    plugins.hooks.fire('action:flags.update', { flagId, changeset: changes, uid });
+	// 2) Generate DB/notification tasks from valid changes
+	const tasks = await Flags._generateUpdateTasks(changes, current, flagId, now, uid);
+	// 3) Apply them all
+	await Promise.all(tasks);
+
+	// 4) Fire plugin hook
+	plugins.hooks.fire('action:flags.update', { flagId, changeset: changes, uid });
 };
 
 Flags._validateChangeset = async function (changeset, current) {
-    const validChanges = {};
+	const validChanges = {};
+	// We'll collect async calls for 'assignee' checks
+	const asyncChecks = [];
 
-    for (const [prop, value] of Object.entries(changeset)) {
-        if (current[prop] === value) continue;
-        
-        if (prop === 'state' && Flags._states.has(value)) {
-            validChanges[prop] = value;
-        } else if (prop === 'assignee') {
-            const isAssignable = await Flags._isAssignableUser(value, current);
-            if (isAssignable) {
-                validChanges[prop] = value;
-            }
-        } else if (prop !== 'state' && prop !== 'assignee') {
-            validChanges[prop] = value;
-        }
-    }
+	for (const [prop, value] of Object.entries(changeset)) {
+		// Only proceed if the proposed value differs from current
+		if (current[prop] !== value) {
+			if (prop === 'state' && Flags._states.has(value)) {
+				// Only allow recognized states
+				validChanges[prop] = value;
+			} else if (prop === 'assignee') {
+				// Handle assignee asynchronously
+				const checkPromise = Flags._isAssignableUser(value, current).then((isAssignable) => {
+					if (isAssignable) {
+						validChanges[prop] = value;
+					}
+				});
+				asyncChecks.push(checkPromise);
+			} else if (prop !== 'state' && prop !== 'assignee') {
+				// For other properties, just accept them
+				validChanges[prop] = value;
+			}
+			// If it's a bogus state (not in Flags._states),
+			// we do nothing and don't include it in validChanges.
+		}
+	}
 
-    return validChanges;
+	// Wait for all async assignee checks
+	await Promise.all(asyncChecks);
+
+	return validChanges;
 };
 
 Flags._isAssignableUser = async function (assigneeId, current) {
-    if (assigneeId === '') return true;
-    
-    const isAdmin = await user.isAdminOrGlobalMod(assigneeId);
-    if (isAdmin) return true;
+	// Empty string means "unassign," which is allowed
+	if (assigneeId === '') {
+		return true;
+	}
 
-    if (current.type === 'post') {
-        const cid = await posts.getCidByPid(current.targetId);
-        return await user.isModerator(assigneeId, cid);
-    }
-    return false;
+	// Admin or global mod?
+	if (await user.isAdminOrGlobalMod(assigneeId)) {
+		return true;
+	}
+
+	// If it's a post flag, allow moderators of the post's category
+	if (current.type === 'post') {
+		const cid = await posts.getCidByPid(current.targetId);
+		return user.isModerator(assigneeId, cid);
+	}
+
+	return false;
 };
 
 Flags._generateUpdateTasks = async function (changes, current, flagId, now, uid) {
-    const tasks = [];
-    
-    if (changes.state) {
-        tasks.push(
-            db.sortedSetAdd(`flags:byState:${changes.state}`, now, flagId),
-            db.sortedSetRemove(`flags:byState:${current.state}`, flagId)
-        );
-        
-        if (Flags._shouldRescindNotifications(changes.state)) {
-            tasks.push(Flags._rescindTypeNotifications(current.type, current.targetId));
-        }
-    }
+	const tasks = [];
 
-    if (changes.assignee !== undefined) {
-        const assigneeTasks = await Flags._handleAssigneeChange(changes.assignee, flagId, now, uid);
-        tasks.push(...assigneeTasks);
-    }
+	// If there's a new state
+	if (changes.state) {
+		tasks.push(
+			db.sortedSetAdd(`flags:byState:${changes.state}`, now, flagId),
+			db.sortedSetRemove(`flags:byState:${current.state}`, flagId)
+		);
 
-    tasks.push(
-        db.setObject(`flag:${flagId}`, changes),
-        Flags.appendHistory(flagId, uid, changes)
-    );
+		if (Flags._shouldRescindNotifications(changes.state)) {
+			// Rescind notifications, if config says so
+			tasks.push(Flags._rescindTypeNotifications(current.type, current.targetId));
+		}
+	}
 
-    return tasks;
+	// If there's a new assignee
+	if (Object.prototype.hasOwnProperty.call(changes, 'assignee')) {
+		// (could be blank to unassign)
+		const assigneeTasks = await Flags._handleAssigneeChange(changes.assignee, flagId, now, uid);
+		tasks.push(...assigneeTasks);
+	}
+
+	// Always set the updated object & append history
+	tasks.push(
+		db.setObject(`flag:${flagId}`, changes),
+		Flags.appendHistory(flagId, uid, changes)
+	);
+
+	return tasks;
 };
 
 Flags._shouldRescindNotifications = function (newState) {
-    return (newState === 'resolved' && meta.config['flags:actionOnResolve'] === 'rescind') ||
-           (newState === 'rejected' && meta.config['flags:actionOnReject'] === 'rescind');
+	return (
+		(newState === 'resolved' && meta.config['flags:actionOnResolve'] === 'rescind') ||
+		(newState === 'rejected' && meta.config['flags:actionOnReject'] === 'rescind')
+	);
 };
 
 Flags._rescindTypeNotifications = async function (type, targetId) {
-    const match = `flag:${type}:${targetId}`;
-    const nids = await db.getSortedSetScan({ key: 'notifications', match: `${match}*` });
-    return notifications.rescind(nids);
+	const match = `flag:${type}:${targetId}`;
+	const nids = await db.getSortedSetScan({ key: 'notifications', match: `${match}*` });
+	return notifications.rescind(nids);
 };
 
 Flags._handleAssigneeChange = async function (newAssignee, flagId, now, uid) {
-    const tasks = [];
-    
-    if (newAssignee === '') {
-        tasks.push(db.sortedSetRemove(`flags:byAssignee:${newAssignee}`, flagId));
-    } else {
-        tasks.push(db.sortedSetAdd(`flags:byAssignee:${newAssignee}`, now, flagId));
-        tasks.push(Flags._notifyNewAssignee(newAssignee, flagId, uid));
-    }
-    
-    return tasks;
+	const tasks = [];
+
+	if (newAssignee === '') {
+		// Unassign
+		tasks.push(db.sortedSetRemove(`flags:byAssignee:${newAssignee}`, flagId));
+	} else {
+		// Assign
+		tasks.push(db.sortedSetAdd(`flags:byAssignee:${newAssignee}`, now, flagId));
+		tasks.push(Flags._notifyNewAssignee(newAssignee, flagId, uid));
+	}
+
+	return tasks;
 };
 
 Flags._notifyNewAssignee = async function (assigneeId, flagId, uid) {
-    if (assigneeId === '' || parseInt(uid, 10) === parseInt(assigneeId, 10)) {
-        return Promise.resolve();
-    }
+	if (assigneeId === '' || parseInt(uid, 10) === parseInt(assigneeId, 10)) {
+		return Promise.resolve();
+	}
 
-    const notifObj = await notifications.create({
-        type: 'my-flags',
-        bodyShort: `[[notifications:flag-assigned-to-you, ${flagId}]]`,
-        bodyLong: '',
-        path: `/flags/${flagId}`,
-        nid: `flags:assign:${flagId}:uid:${assigneeId}`,
-        from: uid,
-    });
+	const notifObj = await notifications.create({
+		type: 'my-flags',
+		bodyShort: `[[notifications:flag-assigned-to-you, ${flagId}]]`,
+		bodyLong: '',
+		path: `/flags/${flagId}`,
+		nid: `flags:assign:${flagId}:uid:${assigneeId}`,
+		from: uid,
+	});
 
-    return notifications.push(notifObj, [assigneeId]);
+	return notifications.push(notifObj, [assigneeId]);
 };
 
 Flags.resolveFlag = async function (type, id, uid) {
