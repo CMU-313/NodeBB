@@ -84,33 +84,55 @@ Notifications.getMultiple = async function (nids) {
 	const userKeys = notifications.map(n => n && n.from);
 	const usersData = await User.getUsersFields(userKeys, ['username', 'userslug', 'picture']);
 
+	console.log('Yuki-Fetching Notifications');
 	notifications.forEach((notification, index) => {
-		if (notification) {
-			intFields.forEach((field) => {
-				if (notification.hasOwnProperty(field)) {
-					notification[field] = parseInt(notification[field], 10) || 0;
-				}
-			});
-			if (notification.path && !notification.path.startsWith('http')) {
-				notification.path = nconf.get('relative_path') + notification.path;
-			}
-			notification.datetimeISO = utils.toISOString(notification.datetime);
-
-			if (notification.bodyLong) {
-				notification.bodyLong = utils.stripHTMLTags(notification.bodyLong, ['img', 'p', 'a']);
-			}
-
-			notification.user = usersData[index];
-			if (notification.user && notification.from) {
-				notification.image = notification.user.picture || null;
-				if (notification.user.username === '[[global:guest]]') {
-					notification.bodyShort = notification.bodyShort.replace(/([\s\S]*?),[\s\S]*?,([\s\S]*?)/, '$1, [[global:guest]], $2');
-				}
-			} else if (notification.image === 'brand:logo' || !notification.image) {
-				notification.image = meta.config['brand:logo'] || `${nconf.get('relative_path')}/logo.png`;
-			}
+		if (!notification) {
+			return;
+		}
+		processIntFields(notification);
+		updateNotificationPath(notification);
+		notification.datetimeISO = utils.toISOString(notification.datetime);
+		sanitizeNotificationBody(notification);
+		notification.user = usersData[index];
+		if (notification.user && notification.from) {
+			handleUserNotification(notification);
+		} else {
+			setDefaultNotificationImage(notification);
 		}
 	});
+	async function processIntFields(notification) {
+		intFields.forEach((field) => {
+			if (notification.hasOwnProperty(field)) {
+				notification[field] = parseInt(notification[field], 10) || 0;
+			}
+		});
+	}
+	async function updateNotificationPath(notification) {
+		if (notification.path && !notification.path.startsWith('http')) {
+			notification.path = nconf.get('relative_path') + notification.path;
+		}
+	}
+	async function sanitizeNotificationBody(notification) {
+		if (notification.bodyLong) {
+			notification.bodyLong = utils.stripHTMLTags(notification.bodyLong, ['img', 'p', 'a']);
+		}
+	}
+	console.log('Yuki-Successfully sanitized notification body');
+	async function handleUserNotification(notification) {
+		notification.image = notification.user.picture || null;
+		if (notification.user.username === '[[global:guest]]') {
+			notification.bodyShort = notification.bodyShort.replace(
+				/([\s\S]*?),[\s\S]*?,([\s\S]*?)/,
+				'$1, [[global:guest]], $2'
+			);
+		}
+	}
+	async function setDefaultNotificationImage(notification) {
+		if (notification.image === 'brand:logo' || !notification.image) {
+			notification.image = meta.config['brand:logo'] || `${nconf.get('relative_path')}/logo.png`;
+		}
+	}
+	console.log('Yuki-end of notification parsing');
 	return notifications;
 };
 
