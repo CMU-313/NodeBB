@@ -12,6 +12,27 @@ app.onDomReady();
 (function () {
 	let logoutTimer = 0;
 	let logoutMessage;
+
+	function initlogout_message() {
+		require(['translator'], function (translator) {
+			translator.translate('[[login:logged-out-due-to-inactivity]]', function (translated) {
+				logoutMessage = translated;
+			});
+		});
+	}
+
+	function showlogout_alert() {
+		require(['bootbox'], function (bootbox) {
+			bootbox.alert({
+				closeButton: false,
+				message: logoutMessage,
+				callback: function () {
+					window.location.reload();
+				},
+			});
+		});
+	}
+
 	function startLogoutTimer() {
 		if (app.config.adminReloginDuration <= 0) {
 			return;
@@ -21,32 +42,19 @@ app.onDomReady();
 		}
 		// pre-translate language string gh#9046
 		if (!logoutMessage) {
-			require(['translator'], function (translator) {
-				translator.translate('[[login:logged-out-due-to-inactivity]]', function (translated) {
-					logoutMessage = translated;
-				});
-			});
+			initlogout_message(); // calling this function reduces nesting
 		}
-
-		logoutTimer = setTimeout(function () {
-			require(['bootbox'], function (bootbox) {
-				bootbox.alert({
-					closeButton: false,
-					message: logoutMessage,
-					callback: function () {
-						window.location.reload();
-					},
-				});
-			});
-		}, 3600000);
+		logoutTimer = setTimeout(showlogout_alert, 3600000);
 	}
 
-	require(['hooks', 'admin/settings'], (hooks, Settings) => {
+	function config_AjaxifyHooks(hooks, Settings) {
 		hooks.on('action:ajaxify.end', (data) => {
 			updatePageTitle(data.url);
 			setupRestartLinks();
 			showCorrectNavTab();
 			startLogoutTimer();
+			setupToolTips();
+			initializeSettings(Settings);
 
 			$('[data-bs-toggle="tooltip"]').tooltip({
 				animation: false,
@@ -61,14 +69,18 @@ app.onDomReady();
 			}
 		});
 		hooks.on('action:ajaxify.start', function () {
-			require(['bootstrap'], function (boostrap) {
-				const offcanvas = boostrap.Offcanvas.getInstance('#offcanvas');
-				if (offcanvas) {
-					offcanvas.hide();
-				}
-			});
+			hide_OffCanvas();
 		});
-	});
+	}
+
+	function hide_OffCanvas() {
+		require(['bootstrap'], function (boostrap) {
+			const offcanvas = boostrap.Offcanvas.getInstance('#offcanvas');
+			if (offcanvas) {
+				offcanvas.hide();
+			}
+		});
+	}
 
 	function showCorrectNavTab() {
 		const accordionEl = $('[component="acp/accordion"]');
@@ -85,21 +97,14 @@ app.onDomReady();
 		}
 	}
 
-	$(document).ready(function () {
-		require(['admin/modules/search'], function (search) {
-			search.init();
-		});
-
+	function setupLogoutHandler() {
 		$('[component="logout"]').on('click', function () {
 			require(['logout'], function (logout) {
 				logout();
 			});
 			return false;
 		});
-
-		setupNProgress();
-		fixAccordionIds();
-	});
+	}
 
 	function fixAccordionIds() {
 		// fix mobile accordion, so it doesn't have same ids as desktop
@@ -201,4 +206,27 @@ app.onDomReady();
 			});
 		});
 	}
+
+	function setupToolTips() {
+		$('[data-bs-toggle="tooltip"]').tooltip({
+			animation: false,
+			container: '#content',
+		});
+	}
+
+	function initializeSettings(Settings) {
+		if ($('.settings').length) {
+			Settings.prepare();
+		}
+		if ($('[component="settings/toc"]').length) {
+			Settings.populateTOC();
+		}
+	}
+
+	$(document).ready(function () {
+		setupLogoutHandler();
+		setupNProgress();
+		fixAccordionIds();
+		require(['hooks', 'admin/settings'], config_AjaxifyHooks);
+	});
 }());
