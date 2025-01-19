@@ -787,6 +787,7 @@ Flags.update = async function (flagId, uid, changeset) {
 
 	plugins.hooks.fire('action:flags.update', { flagId: flagId, changeset: changeset, uid: uid });
 };
+// end of function
 
 Flags.resolveFlag = async function (type, id, uid) {
 	const flagId = await Flags.getFlagIdByTarget(type, id);
