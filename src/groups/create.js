@@ -9,11 +9,11 @@ module.exports = function (Groups) {
 	Groups.create = async function (data) {
 		const isSystem = isSystemGroup(data);
 		const timestamp = data.timestamp || Date.now();
-		let disableJoinRequests = parseInt(data.disableJoinRequests, 10) === 1 ? 1 : 0;
+		let disableJoinRequests = Number(Boolean(parseInt(data.disableJoinRequests, 10) === 1));
 		if (data.name === 'administrators') {
 			disableJoinRequests = 1;
 		}
-		const disableLeave = parseInt(data.disableLeave, 10) === 1 ? 1 : 0;
+		const disableLeave = Number(Boolean(parseInt(data.disableLeave, 10) === 1));
 		const isHidden = parseInt(data.hidden, 10) === 1;
 
 		Groups.validateGroupName(data.name);
@@ -33,12 +33,12 @@ module.exports = function (Groups) {
 			slug: slugify(data.name),
 			createtime: timestamp,
 			userTitle: data.userTitle || data.name,
-			userTitleEnabled: parseInt(data.userTitleEnabled, 10) === 1 ? 1 : 0,
+			userTitleEnabled: Number(Boolean(parseInt(data.userTitleEnabled, 10))),
 			description: data.description || '',
 			memberCount: memberCount,
-			hidden: isHidden ? 1 : 0,
-			system: isSystem ? 1 : 0,
-			private: isPrivate ? 1 : 0,
+			hidden: Number(Boolean(isHidden)),
+			system: Number(Boolean(isSystem)),
+			private: Number(Boolean(isPrivate)),
 			disableJoinRequests: disableJoinRequests,
 			disableLeave: disableLeave,
 		};
