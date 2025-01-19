@@ -20,7 +20,7 @@ const batch = require('./batch');
 
 const Flags = module.exports;
 
-console.log('Testing refactored code - jjo2');
+console.log('Testing refactored code - jjo2')
 
 Flags._states = new Map([
 	['open', {
@@ -709,85 +709,120 @@ Flags.getTargetCid = async function (type, id) {
 };
 
 Flags.update = async function (flagId, uid, changeset) {
-	const current = await db.getObjectFields(`flag:${flagId}`, ['uid', 'state', 'assignee', 'type', 'targetId']);
-	if (!current.type) {
-		return;
-	}
-	const now = changeset.datetime || Date.now();
-	const notifyAssignee = async function (assigneeId) {
-		if (assigneeId === '' || parseInt(uid, 10) === parseInt(assigneeId, 10)) {
-			return;
-		}
-		const notifObj = await notifications.create({
-			type: 'my-flags',
-			bodyShort: `[[notifications:flag-assigned-to-you, ${flagId}]]`,
-			bodyLong: '',
-			path: `/flags/${flagId}`,
-			nid: `flags:assign:${flagId}:uid:${assigneeId}`,
-			from: uid,
-		});
-		await notifications.push(notifObj, [assigneeId]);
-	};
-	const isAssignable = async function (assigneeId) {
-		let allowed = false;
-		allowed = await user.isAdminOrGlobalMod(assigneeId);
+    const current = await db.getObjectFields(`flag:${flagId}`, ['uid', 'state', 'assignee', 'type', 'targetId']);
+    if (!current.type) return;
 
-		// Mods are also allowed to be assigned, if flag target is post in uid's moderated cid
-		if (!allowed && current.type === 'post') {
-			const cid = await posts.getCidByPid(current.targetId);
-			allowed = await user.isModerator(assigneeId, cid);
-		}
+    const now = changeset.datetime || Date.now();
+    const changes = await Flags._validateChangeset(changeset, current);
+    if (Object.keys(changes).length === 0) return; 
 
-		return allowed;
-	};
+    const tasks = await Flags._generateUpdateTasks(changes, current, flagId, now, uid);
+    await Promise.all(tasks);
 
-	async function rescindNotifications(match) {
-		const nids = await db.getSortedSetScan({ key: 'notifications', match: `${match}*` });
-		return notifications.rescind(nids);
-	}
-
-	// Retrieve existing flag data to compare for history-saving/reference purposes
-	const tasks = [];
-	for (const prop of Object.keys(changeset)) {
-		if (current[prop] === changeset[prop]) {
-			delete changeset[prop];
-		} else if (prop === 'state') {
-			if (!Flags._states.has(changeset[prop])) {
-				delete changeset[prop];
-			} else {
-				tasks.push(db.sortedSetAdd(`flags:byState:${changeset[prop]}`, now, flagId));
-				tasks.push(db.sortedSetRemove(`flags:byState:${current[prop]}`, flagId));
-				if (changeset[prop] === 'resolved' && meta.config['flags:actionOnResolve'] === 'rescind') {
-					tasks.push(rescindNotifications(`flag:${current.type}:${current.targetId}`));
-				}
-				if (changeset[prop] === 'rejected' && meta.config['flags:actionOnReject'] === 'rescind') {
-					tasks.push(rescindNotifications(`flag:${current.type}:${current.targetId}`));
-				}
-			}
-		} else if (prop === 'assignee') {
-			if (changeset[prop] === '') {
-				tasks.push(db.sortedSetRemove(`flags:byAssignee:${changeset[prop]}`, flagId));
-			/* eslint-disable-next-line */
-			} else if (!await isAssignable(parseInt(changeset[prop], 10))) {
-				delete changeset[prop];
-			} else {
-				tasks.push(db.sortedSetAdd(`flags:byAssignee:${changeset[prop]}`, now, flagId));
-				tasks.push(notifyAssignee(changeset[prop]));
-			}
-		}
-	}
-
-	if (!Object.keys(changeset).length) {
-		return;
-	}
-
-	tasks.push(db.setObject(`flag:${flagId}`, changeset));
-	tasks.push(Flags.appendHistory(flagId, uid, changeset));
-	await Promise.all(tasks);
-
-	plugins.hooks.fire('action:flags.update', { flagId: flagId, changeset: changeset, uid: uid });
+    plugins.hooks.fire('action:flags.update', { flagId, changeset: changes, uid });
 };
-// end of function
+
+Flags._validateChangeset = async function (changeset, current) {
+    const validChanges = {};
+
+    for (const [prop, value] of Object.entries(changeset)) {
+        if (current[prop] === value) continue;
+        
+        if (prop === 'state' && Flags._states.has(value)) {
+            validChanges[prop] = value;
+        } else if (prop === 'assignee') {
+            const isAssignable = await Flags._isAssignableUser(value, current);
+            if (isAssignable) {
+                validChanges[prop] = value;
+            }
+        } else if (prop !== 'state' && prop !== 'assignee') {
+            validChanges[prop] = value;
+        }
+    }
+
+    return validChanges;
+};
+
+Flags._isAssignableUser = async function (assigneeId, current) {
+    if (assigneeId === '') return true;
+    
+    const isAdmin = await user.isAdminOrGlobalMod(assigneeId);
+    if (isAdmin) return true;
+
+    if (current.type === 'post') {
+        const cid = await posts.getCidByPid(current.targetId);
+        return await user.isModerator(assigneeId, cid);
+    }
+    return false;
+};
+
+Flags._generateUpdateTasks = async function (changes, current, flagId, now, uid) {
+    const tasks = [];
+    
+    if (changes.state) {
+        tasks.push(
+            db.sortedSetAdd(`flags:byState:${changes.state}`, now, flagId),
+            db.sortedSetRemove(`flags:byState:${current.state}`, flagId)
+        );
+        
+        if (Flags._shouldRescindNotifications(changes.state)) {
+            tasks.push(Flags._rescindTypeNotifications(current.type, current.targetId));
+        }
+    }
+
+    if (changes.assignee !== undefined) {
+        const assigneeTasks = await Flags._handleAssigneeChange(changes.assignee, flagId, now, uid);
+        tasks.push(...assigneeTasks);
+    }
+
+    tasks.push(
+        db.setObject(`flag:${flagId}`, changes),
+        Flags.appendHistory(flagId, uid, changes)
+    );
+
+    return tasks;
+};
+
+Flags._shouldRescindNotifications = function (newState) {
+    return (newState === 'resolved' && meta.config['flags:actionOnResolve'] === 'rescind') ||
+           (newState === 'rejected' && meta.config['flags:actionOnReject'] === 'rescind');
+};
+
+Flags._rescindTypeNotifications = async function (type, targetId) {
+    const match = `flag:${type}:${targetId}`;
+    const nids = await db.getSortedSetScan({ key: 'notifications', match: `${match}*` });
+    return notifications.rescind(nids);
+};
+
+Flags._handleAssigneeChange = async function (newAssignee, flagId, now, uid) {
+    const tasks = [];
+    
+    if (newAssignee === '') {
+        tasks.push(db.sortedSetRemove(`flags:byAssignee:${newAssignee}`, flagId));
+    } else {
+        tasks.push(db.sortedSetAdd(`flags:byAssignee:${newAssignee}`, now, flagId));
+        tasks.push(Flags._notifyNewAssignee(newAssignee, flagId, uid));
+    }
+    
+    return tasks;
+};
+
+Flags._notifyNewAssignee = async function (assigneeId, flagId, uid) {
+    if (assigneeId === '' || parseInt(uid, 10) === parseInt(assigneeId, 10)) {
+        return Promise.resolve();
+    }
+
+    const notifObj = await notifications.create({
+        type: 'my-flags',
+        bodyShort: `[[notifications:flag-assigned-to-you, ${flagId}]]`,
+        bodyLong: '',
+        path: `/flags/${flagId}`,
+        nid: `flags:assign:${flagId}:uid:${assigneeId}`,
+        from: uid,
+    });
+
+    return notifications.push(notifObj, [assigneeId]);
+};
 
 Flags.resolveFlag = async function (type, id, uid) {
 	const flagId = await Flags.getFlagIdByTarget(type, id);
