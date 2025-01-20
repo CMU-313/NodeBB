@@ -13,42 +13,7 @@ const cache = require('../cache');
 module.exports = function (Categories) {
 	Categories.create = async function (data) {
 		const parentCid = data.parentCid ? data.parentCid : 0;
-		const [cid, firstChild] = await Promise.all([
-			db.incrObjectField('global', 'nextCid'),
-			db.getSortedSetRangeWithScores(`cid:${parentCid}:children`, 0, 0),
-		]);
-
-		data.name = String(data.name || `Category ${cid}`);
-		const slug = `${cid}/${slugify(data.name)}`;
-		const smallestOrder = firstChild.length ? firstChild[0].score - 1 : 1;
-		const order = data.order || smallestOrder; // If no order provided, place it at the top
-		const colours = Categories.assignColours();
-
-		let category = {
-			cid: cid,
-			name: data.name,
-			description: data.description ? data.description : '',
-			descriptionParsed: data.descriptionParsed ? data.descriptionParsed : '',
-			icon: data.icon ? data.icon : '',
-			bgColor: data.bgColor || colours[0],
-			color: data.color || colours[1],
-			slug: slug,
-			parentCid: parentCid,
-			topic_count: 0,
-			post_count: 0,
-			disabled: data.disabled ? 1 : 0,
-			order: order,
-			link: data.link || '',
-			numRecentReplies: 1,
-			class: (data.class ? data.class : 'col-md-3 col-6'),
-			imageClass: 'cover',
-			isSection: 0,
-			subCategoriesPerPage: 10,
-		};
-
-		if (data.backgroundImage) {
-			category.backgroundImage = data.backgroundImage;
-		}
+		let category = await initializeCategory(data, parentCid);
 
 		const defaultPrivileges = [
 			'groups:find',
@@ -109,6 +74,47 @@ module.exports = function (Categories) {
 		plugins.hooks.fire('action:category.create', { category: category });
 		return category;
 	};
+
+	async function initializeCategory(data, parentCid) {
+		const [cid, firstChild] = await Promise.all([
+			db.incrObjectField('global', 'nextCid'),
+			db.getSortedSetRangeWithScores(`cid:${parentCid}:children`, 0, 0),
+		]);
+
+		data.name = String(data.name || `Category ${cid}`);
+		const slug = `${cid}/${slugify(data.name)}`;
+		const smallestOrder = firstChild.length ? firstChild[0].score - 1 : 1;
+		const order = data.order || smallestOrder; // If no order provided, place it at the top
+		const colours = Categories.assignColours();
+
+		const category = {
+			cid: cid,
+			name: data.name,
+			description: data.description ? data.description : '',
+			descriptionParsed: data.descriptionParsed ? data.descriptionParsed : '',
+			icon: data.icon ? data.icon : '',
+			bgColor: data.bgColor || colours[0],
+			color: data.color || colours[1],
+			slug: slug,
+			parentCid: parentCid,
+			topic_count: 0,
+			post_count: 0,
+			disabled: data.disabled ? 1 : 0,
+			order: order,
+			link: data.link || '',
+			numRecentReplies: 1,
+			class: (data.class ? data.class : 'col-md-3 col-6'),
+			imageClass: 'cover',
+			isSection: 0,
+			subCategoriesPerPage: 10,
+		};
+
+		if (data.backgroundImage) {
+			category.backgroundImage = data.backgroundImage;
+		}
+
+		return category;
+	}
 
 	async function clearParentCategoryCache(parentCid) {
 		while (parseInt(parentCid, 10) >= 0) {
