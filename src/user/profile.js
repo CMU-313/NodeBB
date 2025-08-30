@@ -306,15 +306,15 @@ module.exports = function (User) {
 		const newUserslug = slugify(newUsername);
 		const now = Date.now();
 		await Promise.all([
-			updateUidMapping('username', uid, newUsername, userData.username),
-			updateUidMapping('userslug', uid, newUserslug, userData.userslug),
+			updateUidMapping({field: 'username', uid: uid, value: newUsername, oldValue: userData.username}),
+			updateUidMapping({field: 'userslug', uid: uid, value: newUserslug, oldValue: userData.userslug}),
 			db.sortedSetAdd(`user:${uid}:usernames`, now, `${newUsername}:${now}:${callerUid}`),
 		]);
 		await db.sortedSetRemove('username:sorted', `${userData.username.toLowerCase()}:${uid}`);
 		await db.sortedSetAdd('username:sorted', 0, `${newUsername.toLowerCase()}:${uid}`);
 	}
 
-	async function updateUidMapping(field, uid, value, oldValue) {
+	async function updateUidMapping({ field, uid, value, oldValue }) {
 		if (value === oldValue) {
 			return;
 		}
@@ -327,7 +327,7 @@ module.exports = function (User) {
 
 	async function updateFullname(uid, newFullname) {
 		const fullname = await db.getObjectField(`user:${uid}`, 'fullname');
-		await updateUidMapping('fullname', uid, newFullname, fullname);
+		await updateUidMapping({field: 'fullname', uid: uid, value: newFullname, oldValue: fullname});
 		if (newFullname !== fullname) {
 			if (fullname) {
 				await db.sortedSetRemove('fullname:sorted', `${fullname.toLowerCase()}:${uid}`);
