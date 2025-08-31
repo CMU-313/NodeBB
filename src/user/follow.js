@@ -79,7 +79,6 @@ module.exports = function (User) {
 		if (parseInt(uid, 10) <= 0) {
 			return [];
 		}
-		console.log("Nick Jitjang");
 		const start = opts?.start ?? 0;
 		const stop = opts?.stop ?? -1;
 		let uids = await db.getSortedSetRevRange([
