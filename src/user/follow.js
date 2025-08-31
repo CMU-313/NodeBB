@@ -67,18 +67,20 @@ module.exports = function (User) {
 		]);
 	}
 
-	User.getFollowing = async function (uid, start, stop) {
-		return await getFollow(uid, 'following', start, stop);
+	User.getFollowing = async function (uid, opts) {
+		return await getFollow(uid, 'following', opts);
 	};
 
-	User.getFollowers = async function (uid, start, stop) {
-		return await getFollow(uid, 'followers', start, stop);
+	User.getFollowers = async function (uid, opts) {
+		return await getFollow(uid, 'followers', opts);
 	};
 
-	async function getFollow(uid, type, start, stop) {
+	async function getFollow(uid, type, opts) {
 		if (parseInt(uid, 10) <= 0) {
 			return [];
 		}
+		const start = opts?.start ?? 0;
+		const stop = opts?.stop ?? -1;
 		let uids = await db.getSortedSetRevRange([
 			`${type}:${uid}`,
 			`${type}Remote:${uid}`,
