@@ -80,7 +80,6 @@ define('forum/account/header', [
 	}
 
 	function setupCoverPhoto() {
-		console.log('setting up cover photo');
 		coverPhoto.init(
 			components.get('account/cover'),
 			[function (imageData, position, callback) {
