@@ -170,36 +170,53 @@ module.exports = function (User) {
 			}
 		}
 
-		if (data.username.length < meta.config.minimumUsernameLength) {
-			throw new Error('[[error:username-too-short]]');
-		}
-
-		if (data.username.length > meta.config.maximumUsernameLength) {
-			throw new Error('[[error:username-too-long]]');
-		}
-
-		const userslug = slugify(data.username);
-		if (!utils.isUserNameValid(data.username) || !userslug) {
-			throw new Error('[[error:invalid-username]]');
-		}
+		validateLength(data.username);
+		const userslug = validateFormat(data.username);
 
 		if (uid && userslug === userData.userslug) {
 			return;
 		}
+
+		await validateAvailability(userslug);
+		await validatePlugins(data.username);
+
+	}
+	User.checkUsername = async username => isUsernameAvailable({ username });
+
+	function validateLength(username) {
+		if (username.length < meta.config.minimumUsernameLength) {
+			throw new Error('[[error:username-too-short]]');
+		}
+		if (username.length > meta.config.maximumUsernameLength) {
+			throw new Error('[[error:username-too-long]]');
+		}
+	}
+
+	function validateFormat(username) {
+		const userslug = slugify(username);
+		if (!utils.isUserNameValid(username) || !userslug) {
+			throw new Error('[[error:invalid-username]]');
+		}
+		return userslug;
+	}
+
+	async function validateAvailability(userslug) {
 		const exists = await User.existsBySlug(userslug);
 		if (exists) {
 			throw new Error('[[error:username-taken]]');
 		}
+	}
 
+	async function validatePlugins(username) {
 		const { error } = await plugins.hooks.fire('filter:username.check', {
-			username: data.username,
+			username: username,
 			error: undefined,
 		});
 		if (error) {
 			throw error;
 		}
 	}
-	User.checkUsername = async username => isUsernameAvailable({ username });
+
 
 	async function isAboutMeValid(callerUid, data) {
 		if (!data.aboutme) {
