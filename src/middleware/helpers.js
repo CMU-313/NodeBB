@@ -93,13 +93,16 @@ helpers.buildBodyClass = function (req, res, templateData = {}) {
 	}
 	
 
-	if (Array.isArray(templateData.breadcrumbs)) {
-		templateData.breadcrumbs.forEach((crumb) => {
-			if (crumb && crumb.hasOwnProperty('cid')) {
-				parts.push(`parent-category-${crumb.cid}`);
-			}
-		});
+	function addTemplateBreadcrumbs() {
+		if (Array.isArray(templateData.breadcrumbs)) {
+			templateData.breadcrumbs.forEach((crumb) => {
+				if (crumb && crumb.hasOwnProperty('cid')) {
+					parts.push(`parent-category-${crumb.cid}`);
+				}
+			});
+		}
 	}
+	
 
 	if (templateData && templateData.bodyClasses) {
 		parts.push(...templateData.bodyClasses);
