@@ -28,8 +28,8 @@ helpers.try = function (middleware) {
 };
 
 helpers.buildBodyClass = function (req, res, templateData = {}) {
-	function (normalizePath){
-		return req.path.replace(/^\/api/, '').replace(/^\/|\/$/g, '');
+	function normalizePath(path) {
+		return path.replace(/^\/api/, '').replace(/^\/|\/$/g, '');
 	}
 	// const clean = req.path.replace(/^\/api/, '').replace(/^\/|\/$/g, '');
 
@@ -45,7 +45,7 @@ helpers.buildBodyClass = function (req, res, templateData = {}) {
 		return validator.escape(String(p));
 	}
 
-	function buildSegments(clean){
+	function buildSegments(clean) {
 		const parts = clean.split('/').slice(0, 3);
 		return parts.map((p, index, arr) => {
 			const safe = safeSlug(p);
@@ -53,9 +53,13 @@ helpers.buildBodyClass = function (req, res, templateData = {}) {
 		});
 	}
 
+	const clean = normalizePath(req.path);
+	const parts = buildSegments(clean);
+	const { template } = templateData;
 
-	// const parts = clean.split('/').slice(0, 3);
-	parts.forEach((p, index) => {
+
+	
+	/* parts.forEach((p, index) => {
 		try {
 			p = slugify(decodeURIComponent(p));
 		} catch (err) {
@@ -66,9 +70,13 @@ helpers.buildBodyClass = function (req, res, templateData = {}) {
 		p = validator.escape(String(p));
 		parts[index] = index ? `${parts[0]}-${p}` : `page-${p || 'home'}`;
 	});
-	const { template } = templateData;
-	if (template) {
-		parts.push(`template-${template.name.split('/').join('-')}`);
+	*/
+	// const { template } = templateData;
+
+	function addTemplateName() {
+		if (template) {
+			parts.push(`template-${template.name.split('/').join('-')}`);
+		}
 	}
 
 	if (template && template.topic) {
