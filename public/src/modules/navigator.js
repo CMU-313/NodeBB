@@ -33,8 +33,8 @@ define('navigator', [
 		index = 0;
 		navigator.selector = selector;
 		navigator.callback = callback;
-		navigator.toTop = toTop || function () {};
-		navigator.toBottom = toBottom || function () {};
+		navigator.toTop = toTop || function () { };
+		navigator.toBottom = toBottom || function () { };
 
 		paginationBlockEl = $('.pagination-block');
 		paginationTextEl = paginationBlockEl.find('.pagination-text');
@@ -355,7 +355,19 @@ define('navigator', [
 		});
 	}
 
+	// new refactored version
+
+	function toggleAnchor(text, anchorEl) {
+		anchorEl.innerText = text;
+		anchorEl.setAttribute('aria-disabled', text ? 'false' : 'true');
+		if (text) {
+			anchorEl.removeAttribute('tabindex');
+		} else {
+			anchorEl.setAttribute('tabindex', -1);
+		}
+	}
 	async function updateUnreadIndicator(index) {
+		console.log('Jessica');
 		const { bookmarkThreshold } = ajaxify.data;
 		if (!paginationBlockUnreadEl.length || ajaxify.data.postcount <= bookmarkThreshold || !bookmarkThreshold) {
 			return;
@@ -375,25 +387,16 @@ define('navigator', [
 		const anchorEl = unreadEl.querySelector('.meta a');
 		remaining = Math.min(remaining, ajaxify.data.postcount - index);
 
-		function toggleAnchor(text) {
-			anchorEl.innerText = text;
-			anchorEl.setAttribute('aria-disabled', text ? 'false' : 'true');
-			if (text) {
-				anchorEl.removeAttribute('tabindex');
-			} else {
-				anchorEl.setAttribute('tabindex', -1);
-			}
-		}
-
 		if (remaining > 0 && (trackHeight - thumbBottom) >= thumbHeight) {
 			const text = await translator.translate(`[[topic:navigator.unread, ${remaining}]]`);
 			anchorEl.href = `${config.relative_path}/topic/${ajaxify.data.slug}/${Math.min(index + 1, ajaxify.data.postcount)}`;
-			toggleAnchor(text);
+			toggleAnchor(text, anchorEl);
 		} else {
 			anchorEl.href = ajaxify.data.url;
-			toggleAnchor('');
+			toggleAnchor('', anchorEl);
 		}
 	}
+	// new refactored version END
 
 	function clearRenderInterval() {
 		if (renderPostIntervalId) {
