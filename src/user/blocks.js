@@ -79,7 +79,6 @@ module.exports = function (User) {
 	};
 
 	User.blocks.applyChecks = async function (type, targetUid, uid) {
-		// await User.blocks.can(uid, uid, targetUid);
 		await User.blocks.can({
 			callerUid: uid,
 			blockerUid: uid,
