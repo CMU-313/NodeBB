@@ -104,18 +104,30 @@ helpers.buildBodyClass = function (req, res, templateData = {}) {
 	}
 	
 
-	if (templateData && templateData.bodyClasses) {
-		parts.push(...templateData.bodyClasses);
+	function addTemplateBodyClasses() {
+		if (templateData && templateData.bodyClasses) {
+			parts.push(...templateData.bodyClasses);
+		}
 	}
+	
+	function addStatusAuth() {
+		parts.push(`page-status-${res.statusCode}`);
 
-	parts.push(`page-status-${res.statusCode}`);
+		parts.push(`theme-${(meta.config['theme:id'] || '').split('-')[2]}`);
 
-	parts.push(`theme-${(meta.config['theme:id'] || '').split('-')[2]}`);
-
-	if (req.loggedIn) {
-		parts.push('user-loggedin');
-	} else {
-		parts.push('user-guest');
+		if (req.loggedIn) {
+			parts.push('user-loggedin');
+		} else {
+			parts.push('user-guest');
+		}
 	}
+	
+	addTemplateName();
+	addTemplateTopic();
+	addTemplateChats();
+	addTemplateBreadcrumbs();
+	addTemplateBodyClasses();
+	addStatusAuth();
+	
 	return parts.join(' ');
 };
