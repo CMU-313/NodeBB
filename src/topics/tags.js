@@ -470,6 +470,7 @@ module.exports = function (Topics) {
 		return tags;
 	}
 
+	// get all viable tags
 	async function getTagMatches(data) {
 		let tagWhitelist = [];
 		if (parseInt(data.cid, 10)) {
@@ -492,6 +493,7 @@ module.exports = function (Topics) {
 		return tags;
 	}
 
+	// get unsorted tags that start with user's input
 	function getMatches(tags, query) {
 		const matches = [];
 		for (let i = 0; i < tags.length; i += 1) {
