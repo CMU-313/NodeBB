@@ -134,11 +134,10 @@ module.exports = function (Posts) {
 		const tagsupdated = Array.isArray(data.tags) &&
 			!_.isEqual(data.tags, topicData.tags.map(tag => tag.value));
 
-		if (tagsupdated) {
-			const canTag = await privileges.categories.can('topics:tag', topicData.cid, data.uid);
-			if (!canTag) {
-				throw new Error('[[error:no-privileges]]');
-			}
+		const canTag = await privileges.categories.can('topics:tag', topicData.cid, data.uid);
+		if (tagsupdated && !canTag) {
+			throw new Error('[[error:no-privileges]]');
+		} else if (tagsupdated) {
 			await topics.validateTags(data.tags, topicData.cid, data.uid, tid);
 		}
 
