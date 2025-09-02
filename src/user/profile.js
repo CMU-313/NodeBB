@@ -107,7 +107,7 @@ module.exports = function (User) {
 		});
 	}
 
-	async function validateReputation(field, reputation) {
+	function validateReputation(field, reputation) {
 		const minRep = field['min:rep'] || 0;
 		if (reputation < minRep && !meta.config['reputation:disabled']) {
 			throw new Error(tx.compile(
@@ -116,7 +116,7 @@ module.exports = function (User) {
 		}
 	}
 
-	async function validateFieldLength(field, value) {
+	function validateFieldLength(field, value) {
 		if (typeof value === 'string' && value.length > 255) {
 			throw new Error(tx.compile(
 				'error:custom-user-field-value-too-long', field.name
@@ -124,7 +124,7 @@ module.exports = function (User) {
 		}
 	}
 
-	async function validateNumberType(field, type, value) {
+	function validateNumberType(field, type, value) {
 		if (type === 'input-number' && !utils.isNumber(value)) {
 			throw new Error(tx.compile(
 				'error:custom-user-field-invalid-number', field.name
@@ -132,7 +132,7 @@ module.exports = function (User) {
 		}
 	}
 
-	async function validateTextType(field, type, value) {
+	function validateTextType(field, type, value) {
 		if (value && type === 'input-text' && validator.isURL(value)) {
 			throw new Error(tx.compile(
 				'error:custom-user-field-invalid-text', field.name
@@ -140,7 +140,7 @@ module.exports = function (User) {
 		}
 	}
 
-	async function validateDateType(field, type, value) {
+	function validateDateType(field, type, value) {
 		if (value && type === 'input-date' && !validator.isDate(value)) {
 			throw new Error(tx.compile(
 				'error:custom-user-field-invalid-date', field.name
@@ -148,7 +148,7 @@ module.exports = function (User) {
 		}
 	}
 
-	async function validateUrlType(field, value) {
+	function validateUrlType(field, value) {
 		if (value && field.type === 'input-link' && !validator.isURL(String(value))) {
 			throw new Error(tx.compile(
 				'error:custom-user-field-invalid-link', field.name
@@ -156,7 +156,7 @@ module.exports = function (User) {
 		}
 	}
 
-	async function validateSelectedFields(field, value) {
+	function validateSelectedFields(field, value) {
 		if (field.type === 'select') {
 			const opts = field['select-options'].split('\n').filter(Boolean);
 			if (!opts.includes(value) && value !== '') {
