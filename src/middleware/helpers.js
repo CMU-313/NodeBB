@@ -28,8 +28,33 @@ helpers.try = function (middleware) {
 };
 
 helpers.buildBodyClass = function (req, res, templateData = {}) {
-	const clean = req.path.replace(/^\/api/, '').replace(/^\/|\/$/g, '');
-	const parts = clean.split('/').slice(0, 3);
+	function (normalizePath){
+		return req.path.replace(/^\/api/, '').replace(/^\/|\/$/g, '');
+	}
+	// const clean = req.path.replace(/^\/api/, '').replace(/^\/|\/$/g, '');
+
+	function safeSlug(p) {
+		try {
+			p = slugify(decodeURIComponent(p));
+		} catch (err) {
+			winston.error(`Error decoding URI: ${p}`);
+			winston.error(err.stack);
+			p = '';
+		}
+		// p = validator.escape(String(p));
+		return validator.escape(String(p));
+	}
+
+	function buildSegments(clean){
+		const parts = clean.split('/').slice(0, 3);
+		return parts.map((p, index, arr) => {
+			const safe = safeSlug(p);
+			return index ? `${safeSlug(arr[0])}-${safe}` : `page-${safe || 'home'}`;
+		});
+	}
+
+
+	// const parts = clean.split('/').slice(0, 3);
 	parts.forEach((p, index) => {
 		try {
 			p = slugify(decodeURIComponent(p));
