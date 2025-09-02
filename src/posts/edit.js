@@ -113,6 +113,8 @@ module.exports = function (Posts) {
 		} else if (tagsupdated) {
 			await topics.validateTags(data.tags, topicData.cid, data.uid, tid);
 		}
+
+		return tagsupdated;
 	}
 
 	async function editMainPost(data, postData, topicData) {
