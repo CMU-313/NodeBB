@@ -409,8 +409,9 @@ module.exports = function (User) {
 	async function incrDecrUserFieldBy(uid, field, value) {
 		const prefix = `user${activitypub.helpers.isUri(uid) ? 'Remote' : ''}`;
 		const newValue = await db.incrObjectFieldBy(`${prefix}:${uid}`, field, value);
+		const type = value > 0 ? 'increment' : 'decrement';
 		plugins.hooks.fire('action:user.set', 
-			{ uid: uid, field: field, value: newValue });
+			{ uid: uid, field: field, value: newValue, type: type});
 		return newValue;
 	}
 };
