@@ -103,6 +103,18 @@ module.exports = function (Posts) {
 		};
 	};
 
+	async function updatedTags(data, topicData, tid) {
+		const tagsupdated = Array.isArray(data.tags) &&
+			!_.isEqual(data.tags, topicData.tags.map(tag => tag.value));
+		
+		const canTag = await privileges.categories.can('topics:tag', topicData.cid, data.uid);
+		if (tagsupdated && !canTag) {
+			throw new Error('[[error:no-privileges]]');
+		} else if (tagsupdated) {
+			await topics.validateTags(data.tags, topicData.cid, data.uid, tid);
+		}
+	}
+
 	async function editMainPost(data, postData, topicData) {
 		const { tid } = postData;
 		const title = data.title ? data.title.trim() : '';
@@ -131,15 +143,7 @@ module.exports = function (Posts) {
 			newTopicData.slug = `${tid}/${slugify(title) || 'topic'}`;
 		}
 
-		const tagsupdated = Array.isArray(data.tags) &&
-			!_.isEqual(data.tags, topicData.tags.map(tag => tag.value));
-
-		const canTag = await privileges.categories.can('topics:tag', topicData.cid, data.uid);
-		if (tagsupdated && !canTag) {
-			throw new Error('[[error:no-privileges]]');
-		} else if (tagsupdated) {
-			await topics.validateTags(data.tags, topicData.cid, data.uid, tid);
-		}
+		const tagsupdated = await updatedTags(data, topicData, tid);
 
 		const results = await plugins.hooks.fire('filter:topic.edit', {
 			req: data.req,
