@@ -198,7 +198,6 @@ module.exports = function (Topics) {
 	};
 
 	Topics.getTagTidsByCids = async function ({tag, cids, start, stop}) {
-		console.log('Woody');
 		const keys = cids.map(cid => `cid:${cid}:tag:${tag}:topics`);
 		const tids = await db.getSortedSetRevRange(keys, start, stop);
 		const payload = await plugins.hooks.fire('filter:topics.getTagTidsByCids', { tag, cids, start, stop, tids });
