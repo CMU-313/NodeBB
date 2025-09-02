@@ -79,14 +79,19 @@ helpers.buildBodyClass = function (req, res, templateData = {}) {
 		}
 	}
 
-	if (template && template.topic) {
-		parts.push(`page-topic-category-${templateData.category.cid}`);
-		parts.push(`page-topic-category-${slugify(templateData.category.name)}`);
+	function addTemplateTopic() {
+		if (template && template.topic) {
+			parts.push(`page-topic-category-${templateData.category.cid}`);
+			parts.push(`page-topic-category-${slugify(templateData.category.name)}`);
+		}
 	}
-
-	if (template && template.chats && templateData.roomId) {
-		parts.push(`page-user-chats-${templateData.roomId}`);
+	
+	function addTemplateChats() {
+		if (template && template.chats && templateData.roomId) {
+			parts.push(`page-user-chats-${templateData.roomId}`);
+		}
 	}
+	
 
 	if (Array.isArray(templateData.breadcrumbs)) {
 		templateData.breadcrumbs.forEach((crumb) => {
