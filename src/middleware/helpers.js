@@ -104,7 +104,7 @@ helpers.buildBodyClass = function (req, res, templateData = {}) {
 	console.log('ADAM_SULTAN');
 	const parts = buildSegments(clean);
 	const { template } = templateData;
-	
+
 	addTemplateName(parts, template);
 	addTemplateTopic(parts, template, templateData);
 	addTemplateChats(parts, template, templateData);
