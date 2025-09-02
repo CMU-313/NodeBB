@@ -347,7 +347,6 @@ module.exports = function (User) {
 			titles = user.groupTitle ? [user.groupTitle] : [];
 			user.groupTitle = user.groupTitle || '';
 		}
-		console.log("Felicia Zhang - parseGroupTitle executed");
 		if (!Array.isArray(titles)) {
 			titles = titles ? [titles] : [];
 		}
