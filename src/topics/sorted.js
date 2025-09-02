@@ -37,40 +37,86 @@ module.exports = function (Topics) {
 		return data;
 	};
 
-	async function getTids(params) {
-		if (plugins.hooks.hasListeners('filter:topics.getSortedTids')) {
-			const result = await plugins.hooks.fire('filter:topics.getSortedTids', { params: params, tids: [] });
-			return result.tids;
-		}
-		let tids = [];
-		if (params.term !== 'alltime') {
-			if (params.sort === 'posts') {
-				tids = await getTidsWithMostPostsInTerm(params.cids, params.uid, params.term);
-			} else {
-				const cids = await getCids(params.cids, params.uid);
-				tids = await Topics.getLatestTidsFromSet(
-					cids.map(cid => `cid:${cid}:tids:create`), 0, -1, params.term
-				);
-			}
 
-			if (params.filter === 'watched') {
-				tids = await Topics.filterWatchedTids(tids, params.uid);
-			}
-		} else if (params.filter === 'watched') {
-			tids = await getWatchedTopics(params);
-		} else if (params.cids) {
-			tids = await getCidTids(params);
-		} else if (params.tags.length) {
-			tids = await getTagTids(params);
-		} else {
-			const method = params.sort === 'old' ?
-				'getSortedSetRange' :
-				'getSortedSetRevRange';
-			tids = await db[method](sortToSet(params.sort), 0, meta.config.recentMaxTopics - 1);
-		}
 
+	const sortMethod = sort => (sort === 'old' ? 'getSortedSetRange' : 'getSortedSetRevRange');
+
+	async function termPosts(p) {
+		return getTidsWithMostPostsInTerm(p.cids, p.uid, p.term);
+	}
+
+	async function termLatest(p) {
+		const cids = await getCids(p.cids, p.uid);
+		return Topics.getLatestTidsFromSet(cids.map(cid => `cid:${cid}:tids:create`), 0, -1, p.term);
+	}
+
+	async function allWatched(p) {
+		return getWatchedTopics(p);
+	}
+
+	async function allCids(p) {
+		return getCidTids(p);
+	}
+
+	async function allTags(p) {
+		return getTagTids(p);
+	}
+
+	async function allRecent(p) {
+		const method = sortMethod(p.sort);
+		return db[method](sortToSet(p.sort), 0, meta.config.recentMaxTopics - 1);
+	}
+
+	async function pluginOverride(p) {
+		const { tids } = await plugins.hooks.fire('filter:topics.getSortedTids', { params: p, tids: [] });
 		return tids;
 	}
+
+	function normalizeParams(p) {
+		return {
+			...p,
+			tags: Array.isArray(p.tags) ? p.tags : [],
+		};
+	}
+
+	// Ordered by precedence to exactly match original logic
+	const RULES = [
+		{ when: () => plugins.hooks.hasListeners('filter:topics.getSortedTids'), run: pluginOverride },
+
+		// term !== 'alltime'
+		{ when: p => p.term !== 'alltime' && p.sort === 'posts', run: termPosts },
+		{ when: p => p.term !== 'alltime', run: termLatest },
+
+		// all-time paths
+		{ when: p => p.term === 'alltime' && p.filter === 'watched', run: allWatched },
+		{ when: p => p.term === 'alltime' && !!p.cids, run: allCids },
+		{ when: p => p.term === 'alltime' && p.tags.length > 0, run: allTags },
+
+		// default
+		{ when: () => true, run: allRecent },
+	];
+
+	async function applyWatchedFilterIfNeeded(tids, p) {
+		// In original code, only the non-alltime branch optionally filtered by watched
+		if (p.term !== 'alltime' && p.filter === 'watched') {
+			return Topics.filterWatchedTids(tids, p.uid);
+		}
+		return tids;
+	}
+
+	async function getTids(params) {
+		const p = normalizeParams(params);
+
+		for (const { when, run } of RULES) {
+			if (when(p)) {
+				const tids = run(p);
+				return applyWatchedFilterIfNeeded(tids, p);
+			}
+		}
+	}
+
+
+
 
 	function sortToSet(sort) {
 		const map = {
