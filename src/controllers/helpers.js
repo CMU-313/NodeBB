@@ -312,9 +312,10 @@ helpers.getVisibleCategories = async function (params) {
 			return false;
 		}
 		const hasVisibleChildren = checkVisibleChildren(c, cidToAllowed, cidToWatchState, states);
+		const shouldShowCategory = showLinks || !c.link;
 		const isCategoryVisible = (
 			cidToAllowed[c.cid] &&
-			(showLinks || !c.link) &&
+			shouldShowCategory &&
 			!c.disabled &&
 			states.includes(cidToWatchState[c.cid])
 		);
