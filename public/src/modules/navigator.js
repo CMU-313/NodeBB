@@ -355,8 +355,6 @@ define('navigator', [
 		});
 	}
 
-	// new refactored version
-
 	function toggleAnchor(text, anchorEl) {
 		anchorEl.innerText = text;
 		anchorEl.setAttribute('aria-disabled', text ? 'false' : 'true');
@@ -367,7 +365,6 @@ define('navigator', [
 		}
 	}
 	async function updateUnreadIndicator(index) {
-		console.log('Jessica');
 		const { bookmarkThreshold } = ajaxify.data;
 		if (!paginationBlockUnreadEl.length || ajaxify.data.postcount <= bookmarkThreshold || !bookmarkThreshold) {
 			return;
