@@ -72,15 +72,12 @@ module.exports = function (User) {
 			},
 		];
 
-		console.log('--> middle');
-
 		for (const rule of rules) rule();
 		return;
 	}
 
 	// Refactored
 	async function isReady(uid, cid, field) {
-		// console.log('--> isReady', { uid, cid, field });
 
 		const prelim = await prelimChecks(uid, cid, field);
 		if (prelim.bypass) return;
