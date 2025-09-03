@@ -106,7 +106,7 @@ Categories.setModerator = async (req, res) => {
 	helpers.formatApiResponse(200, res, privilegeSet);
 };
 
-Categories.follow = async (req, res, next) => {
+const handleFollow = action => async (req, res, next) => {
 	const { actor } = req.body;
 	const id = parseInt(req.params.cid, 10);
 
@@ -114,28 +114,13 @@ Categories.follow = async (req, res, next) => {
 		return next();
 	}
 
-	await api.activitypub.follow(req, {
-		type: 'cid',
-		id,
-		actor,
-	});
+	const params = { type: 'cid', id, actor };
+	const fn = action === 'follow' ? api.activitypub.follow : api.activitypub.unfollow;
+	await fn(req, params);
 
 	helpers.formatApiResponse(200, res, {});
 };
 
-Categories.unfollow = async (req, res, next) => {
-	const { actor } = req.body;
-	const id = parseInt(req.params.cid, 10);
+Categories.follow = handleFollow('follow');
 
-	if (!id) { // disallow cid 0
-		return next();
-	}
-
-	await api.activitypub.unfollow(req, {
-		type: 'cid',
-		id,
-		actor,
-	});
-
-	helpers.formatApiResponse(200, res, {});
-};
+Categories.unfollow = handleFollow('unfollow');
