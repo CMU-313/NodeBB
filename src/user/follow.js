@@ -54,7 +54,23 @@ module.exports = function (User) {
 		]);
 	}
  
-	
+
+
+	async function updateFollowCounts(uid, theiruid) {
+		const [followingCount, followingRemoteCount, followerCount, followerRemoteCount] =
+		await db.sortedSetsCard([
+			`following:${uid}`,
+			`followingRemote:${uid}`,
+			`followers:${theiruid}`,
+			`followersRemote:${theiruid}`,
+		]);
+   
+		await Promise.all([
+			User.setUserField(uid, 'followingCount', followingCount + followingRemoteCount),
+			User.setUserField(theiruid, 'followerCount', followerCount + followerRemoteCount),
+		]);
+	}
+ 
 	// main
 	async function toggleFollow(type, uid, theiruid) {
 		const shouldFollow = type === 'follow';
@@ -86,6 +102,8 @@ module.exports = function (User) {
 	
 		assertValidTransition(shouldFollow, isFollowing);
 		await applyFollowAction(shouldFollow, uid, theiruid);
+		await updateFollowCounts(uid, theiruid);
+
 
 	}
 
