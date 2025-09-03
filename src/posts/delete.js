@@ -12,38 +12,40 @@ const flags = require('../flags');
 const activitypub = require('../activitypub');
 const utils = require('../utils');
 
+//cid (category id), pid (post id), tid (topic id), uid (user id)
+
 module.exports = function (Posts) {
 	Posts.delete = async function (pid, uid) {
-		return await deleteOrRestore('delete', pid, uid);
+		return await deleteOrRestore('delete', pid, uid); //calls deleteorrestore with type delete
 	};
 
 	Posts.restore = async function (pid, uid) {
-		return await deleteOrRestore('restore', pid, uid);
+		return await deleteOrRestore('restore', pid, uid); //calls deleteorrestore with type restore
 	};
 
 	async function deleteOrRestore(type, pid, uid) {
 		const isDeleting = type === 'delete';
 		await plugins.hooks.fire(`filter:post.${type}`, { pid: pid, uid: uid });
 		await Posts.setPostFields(pid, {
-			deleted: isDeleting ? 1 : 0,
-			deleterUid: isDeleting ? uid : 0,
+			deleted: isDeleting ? 1 : 0, //set to 1 if isDeleting is true (if deleted)
+			deleterUid: isDeleting ? uid : 0, //post is not deleted bc inserted type is restore
 		});
 		const postData = await Posts.getPostFields(pid, ['pid', 'tid', 'uid', 'content', 'timestamp', 'deleted']);
 		const topicData = await topics.getTopicFields(postData.tid, ['tid', 'cid', 'pinned']);
 		postData.cid = topicData.cid;
 		await Promise.all([
-			topics.updateLastPostTimeFromLastPid(postData.tid),
-			topics.updateTeaser(postData.tid),
+			topics.updateLastPostTimeFromLastPid(postData.tid), //updates the time for the last post
+			topics.updateTeaser(postData.tid), //updates the teaser for the topic
 			isDeleting ?
-				db.sortedSetRemove(`cid:${topicData.cid}:pids`, pid) :
-				db.sortedSetAdd(`cid:${topicData.cid}:pids`, postData.timestamp, pid),
+				db.sortedSetRemove(`cid:${topicData.cid}:pids`, pid) : //removes post id from set
+				db.sortedSetAdd(`cid:${topicData.cid}:pids`, postData.timestamp, pid), //otherwise add back to set 
 		]);
-		await categories.updateRecentTidForCid(postData.cid);
+		await categories.updateRecentTidForCid(postData.cid); //updates data for category
 		plugins.hooks.fire(`action:post.${type}`, { post: _.clone(postData), uid: uid });
 		if (type === 'delete') {
 			await flags.resolveFlag('post', pid, uid);
 		}
-		return postData;
+		return postData; //returns the post data
 	}
 
 	Posts.purge = async function (pids, uid) {
