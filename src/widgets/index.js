@@ -38,18 +38,20 @@ widgets.render = async function (uid, options) {
 
 	return returnData;
 };
-
-async function renderLocation(location, data, uid, options, config) {
-	const widgetsAtLocation = (data[options.template][location] || []).concat(data.global[location] || []);
-
-	if (!widgetsAtLocation.length) {
-		return [];
-	}
-
-	const renderedWidgets = await Promise.all(
+console.log('SKYLAR_ARCE');
+async function renderLocation(location, ctxOrData, ...rest) {
+	const ctx = (ctxOrData && typeof ctxOrData === 'object' &&
+		('data' in ctxOrData || 'uid' in ctxOrData || 'options' in ctxOrData || 'config' in ctxOrData)) ? ctxOrData : 
+		{ data: ctxOrData, uid: rest[0], options: rest[1], config: rest[2] };
+	const { data, uid, options, config } = ctx;
+  
+	const widgetsAtLocation =
+	  (data?.[options?.template]?.[location] ?? []).concat(data?.global?.[location] ?? []);
+	if (!widgetsAtLocation.length) return [];
+  
+	return Promise.all(
 		widgetsAtLocation.map(widget => renderWidget(widget, uid, options, config, location))
 	);
-	return renderedWidgets;
 }
 
 async function renderWidget(widget, uid, options, config, location) {
