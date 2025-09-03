@@ -155,7 +155,10 @@ SocketUser.setModerationNote = async function (socket, data) {
 };
 
 SocketUser.editModerationNote = async function (socket, data) {
-	if (!socket.uid || !data || !data.uid || !data.note || !data.id) {
+	if (!socket.uid || !data) {
+		throw new Error('[[error:invalid-data]]');
+	}
+	if (!data.uid || !data.note || !data.id) {
 		throw new Error('[[error:invalid-data]]');
 	}
 	const noteData = {
