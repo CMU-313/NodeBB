@@ -37,8 +37,8 @@ module.exports = function (Topics) {
 		return data;
 	};
 
-
-
+	
+	// Helper functions for function `getTids`
 	const sortMethod = sort => (sort === 'old' ? 'getSortedSetRange' : 'getSortedSetRevRange');
 
 	async function termPosts(p) {
@@ -72,14 +72,7 @@ module.exports = function (Topics) {
 		return tids;
 	}
 
-	function normalizeParams(p) {
-		return {
-			...p,
-			tags: Array.isArray(p.tags) ? p.tags : [],
-		};
-	}
-
-	// Ordered by precedence to exactly match original logic
+	// Ordered by precedence for the function logic of `getTids`
 	const RULES = [
 		{ when: () => plugins.hooks.hasListeners('filter:topics.getSortedTids'), run: pluginOverride },
 
@@ -97,7 +90,6 @@ module.exports = function (Topics) {
 	];
 
 	async function applyWatchedFilterIfNeeded(tids, p) {
-		// In original code, only the non-alltime branch optionally filtered by watched
 		if (p.term !== 'alltime' && p.filter === 'watched') {
 			return Topics.filterWatchedTids(tids, p.uid);
 		}
@@ -105,12 +97,10 @@ module.exports = function (Topics) {
 	}
 
 	async function getTids(params) {
-		const p = normalizeParams(params);
-
 		for (const { when, run } of RULES) {
-			if (when(p)) {
-				const tids = run(p);
-				return applyWatchedFilterIfNeeded(tids, p);
+			if (when(params)) {
+				const tids = run(params);
+				return applyWatchedFilterIfNeeded(tids, params);
 			}
 		}
 	}
