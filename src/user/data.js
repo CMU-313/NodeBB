@@ -339,28 +339,24 @@ module.exports = function (User) {
 	}
 
 	function parseGroupTitle(user) {
-		try {
-			user.groupTitleArray = JSON.parse(user.groupTitle);
-		} catch (err) {
-			if (user.groupTitle) {
-				user.groupTitleArray = [user.groupTitle];
-			} else {
-				user.groupTitle = '';
-				user.groupTitleArray = [];
-			}
-		}
-		if (!Array.isArray(user.groupTitleArray)) {
-			if (user.groupTitleArray) {
-				user.groupTitleArray = [user.groupTitleArray];
-			} else {
-				user.groupTitleArray = [];
-			}
-		}
-		if (!meta.config.allowMultipleBadges && user.groupTitleArray.length) {
-			user.groupTitleArray = [user.groupTitleArray[0]];
-		}
-	}
+		let titles;
 
+		try {
+			titles = JSON.parse(user.groupTitle);
+		} catch {
+			titles = user.groupTitle ? [user.groupTitle] : [];
+			user.groupTitle = user.groupTitle || '';
+		}
+		if (!Array.isArray(titles)) {
+			titles = titles ? [titles] : [];
+		}
+
+		if (!meta.config.allowMultipleBadges && titles.length) {
+			titles = [titles[0]];
+		}
+
+		user.groupTitleArray = titles;
+	}
 
 	User.getIconBackgrounds = async () => {
 		if (iconBackgrounds) {
