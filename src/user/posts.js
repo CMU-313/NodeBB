@@ -56,7 +56,31 @@ module.exports = function (User) {
 
 	}
 
-	
+
+	function endChecks(userData, lasttime, metaconfig) {
+		const now = Date.now();
+		// const lasttime = userData[field] || 0;
+
+		const rules = [
+			()=>{
+				if (now - userData.joindate < metaconfig.initialPostDelay * 1000) {
+					throw new Error(`[[error:user-too-new, ${metaconfig.initialPostDelay}]]`);
+				}
+			},
+			()=>{
+				if (now - lasttime < metaconfig.postDelay * 1000) {
+					throw new Error(`[[error:too-many-posts, ${metaconfig.postDelay}]]`);
+				}
+			},
+		];
+
+		console.log('Cici Ge middle');
+
+		for (const rule of rules) rule();
+		return;
+	}
+
+	// Refactored
 	async function isReady(uid, cid, field) {
 
 		const prelim = await prelimChecks(uid, cid, field);
@@ -78,42 +102,24 @@ module.exports = function (User) {
 			return;
 		}
 
-		// Refactored
-		const now = Date.now();
+		const metaconfig = meta.config;
+		const isNewbie = !isMemberOfExempt &&
+									 (metaconfig.newbiePostDelay > 0) &&
+									 (metaconfig.newbieReputationThreshold > userData.reputation) &&
+									 (now - lasttime < metaconfig.newbiePostDelay * 1000);
+		const tooFast = metaconfig.newbiewPostDelay % 60 === 0;
+		if (isNewbie && tooFast) {
+			const wholeMinutes = (metaconfig.newbiePostDelay % 60) === 0;
+			const minutes = Math.floor(metaconfig.newbiePostDelay / 60);
+			const msg = wholeMinutes ? 
+				`[[error:too-many-posts-newbie-minutes, ${minutes}, ${metaconfig.newbieReputationThreshold}]]` : 
+				`[[error:too-many-posts-newbie, ${metaconfig.newbiePostDelay}, ${metaconfig.newbieReputationThreshold}]]`;
+			throw new Error(msg);
+		}
+
 		const lasttime = userData[field] || 0;
-
-		const rules = [
-			()=>{
-				if (now - userData.joindate < meta.config.initialPostDelay * 1000) {
-					throw new Error(`[[error:user-too-new, ${meta.config.initialPostDelay}]]`);
-				}
-			},
-			()=>{
-				const isNewbie = !isMemberOfExempt &&
-									 (meta.config.newbiePostDelay > 0) &&
-									 (meta.config.newbieReputationThreshold > userData.reputation) &&
-									 (now - lasttime < meta.config.newbiePostDelay * 1000);
-				const tooFast = meta.config.newbiewPostDelay % 60 === 0;
-				if (isNewbie && tooFast) {
-					const wholeMinutes = (meta.config.newbiePostDelay % 60) === 0;
-					const minutes = Math.floor(meta.config.newbiePostDelay / 60);
-					const msg = wholeMinutes ? 
-						`[[error:too-many-posts-newbie-minutes, ${minutes}, ${meta.config.newbieReputationThreshold}]]` : 
-						`[[error:too-many-posts-newbie, ${meta.config.newbiePostDelay}, ${meta.config.newbieReputationThreshold}]]`;
-					throw new Error(msg);
-				}
-			},
-			()=>{
-				if (now - lasttime < meta.config.postDelay * 1000) {
-					throw new Error(`[[error:too-many-posts, ${meta.config.postDelay}]]`);
-				}
-			},
-
-		];
-
-		console.log('Cici Ge middle');
-
-		for (const rule of rules) rule();
+		endChecks(userData, lasttime, meta.config);
+		
 		return;
 	}
 	
