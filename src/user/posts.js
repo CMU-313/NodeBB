@@ -8,9 +8,11 @@ const groups = require('../groups');
 const activitypub = require('../activitypub');
 
 module.exports = function (User) {
+	console.log('Cici Ge before');
 	User.isReadyToPost = async function (uid, cid) {
 		await isReady(uid, cid, 'lastposttime');
 	};
+	console.log('Cici Ge after');
 
 	User.isReadyToQueue = async function (uid, cid) {
 		await isReady(uid, cid, 'lastqueuetime');
@@ -30,9 +32,10 @@ module.exports = function (User) {
 		}
 	};
 
-	async function isReady(uid, cid, field) {
+	async function prelimChecks(uid, cid, field) {
+		const bypass = {bypass: true};
 		if (activitypub.helpers.isUri(uid) || parseInt(uid, 10) === 0) {
-			return;
+			return bypass;
 		}
 		const [userData, isAdminOrMod, isMemberOfExempt] = await Promise.all([
 			User.getUserFields(uid, ['uid', 'mutedUntil', 'joindate', 'email', 'reputation'].concat([field])),
@@ -45,10 +48,23 @@ module.exports = function (User) {
 		}
 
 		if (isAdminOrMod) {
-			return;
+			return bypass;
 		}
 
+		// return userData, isAdminOrMod, isMemberOfExempt;
+		return {bypass: false, userData: userData, isAdminOrMod: isAdminOrMod, isMemberOfExempt: isMemberOfExempt};
+
+	}
+
+	
+	async function isReady(uid, cid, field) {
+
+		const prelim = await prelimChecks(uid, cid, field);
+		if (prelim.bypass) return;
+		const { userData, isAdminOrMod, isMemberOfExempt } = prelim;
+		
 		await User.checkMuted(uid);
+		
 
 		const { shouldIgnoreDelays } = await plugins.hooks.fire('filter:user.posts.isReady', {
 			shouldIgnoreDelays: false,
@@ -62,30 +78,45 @@ module.exports = function (User) {
 			return;
 		}
 
-		// refactored
+		// Refactored
 		const now = Date.now();
-
-		if (now - userData.joindate < meta.config.initialPostDelay * 1000) {
-			throw new Error(`[[error:user-too-new, ${meta.config.initialPostDelay}]]`);
-		}
-
 		const lasttime = userData[field] || 0;
 
-		if (
-			!isMemberOfExempt &&
-			meta.config.newbiePostDelay > 0 &&
-			meta.config.newbieReputationThreshold > userData.reputation &&
-			now - lasttime < meta.config.newbiePostDelay * 1000
-		) {
-			if (meta.config.newbiewPostDelay % 60 === 0) {
-				throw new Error(`[[error:too-many-posts-newbie-minutes, ${Math.floor(meta.config.newbiePostDelay / 60)}, ${meta.config.newbieReputationThreshold}]]`);
-			} else {
-				throw new Error(`[[error:too-many-posts-newbie, ${meta.config.newbiePostDelay}, ${meta.config.newbieReputationThreshold}]]`);
-			}
-		} else if (now - lasttime < meta.config.postDelay * 1000) {
-			throw new Error(`[[error:too-many-posts, ${meta.config.postDelay}]]`);
-		}
+		const rules = [
+			()=>{
+				if (now - userData.joindate < meta.config.initialPostDelay * 1000) {
+					throw new Error(`[[error:user-too-new, ${meta.config.initialPostDelay}]]`);
+				}
+			},
+			()=>{
+				const isNewbie = !isMemberOfExempt &&
+									 (meta.config.newbiePostDelay > 0) &&
+									 (meta.config.newbieReputationThreshold > userData.reputation) &&
+									 (now - lasttime < meta.config.newbiePostDelay * 1000);
+				const tooFast = meta.config.newbiewPostDelay % 60 === 0;
+				if (isNewbie && tooFast) {
+					const wholeMinutes = (meta.config.newbiePostDelay % 60) === 0;
+					const minutes = Math.floor(meta.config.newbiePostDelay / 60);
+					const msg = wholeMinutes ? 
+						`[[error:too-many-posts-newbie-minutes, ${minutes}, ${meta.config.newbieReputationThreshold}]]` : 
+						`[[error:too-many-posts-newbie, ${meta.config.newbiePostDelay}, ${meta.config.newbieReputationThreshold}]]`;
+					throw new Error(msg);
+				}
+			},
+			()=>{
+				if (now - lasttime < meta.config.postDelay * 1000) {
+					throw new Error(`[[error:too-many-posts, ${meta.config.postDelay}]]`);
+				}
+			},
+
+		];
+
+		console.log('Cici Ge middle');
+
+		for (const rule of rules) rule();
+		return;
 	}
+	
 
 	User.onNewPostMade = async function (postData) {
 		// For scheduled posts, use "action" time. It'll be updated in related cron job when post is published
