@@ -185,49 +185,67 @@ Notifications.push = async function (notification, uids) {
 	}, 500);
 };
 
+async function getUidsBySettings(uids, type) {
+	const uidsToNotify = [];
+	const uidsToEmail = [];
+	const usersSettings = await User.getMultipleUserSettings(uids);
+	usersSettings.forEach((userSettings) => {
+		const setting = userSettings[`notificationType_${type}`] || 'notification';
+
+		if (setting === 'notification' || setting === 'notificationemail') {
+			uidsToNotify.push(userSettings.uid);
+		}
+
+		if (setting === 'email' || setting === 'notificationemail') {
+			uidsToEmail.push(userSettings.uid);
+		}
+	});
+	return { uidsToNotify: uidsToNotify, uidsToEmail: uidsToEmail };
+}
+
+async function sendNotification(uids, notification) {
+	if (!uids.length) {
+		return;
+	}
+	const cutoff = Date.now() - notificationPruneCutoff;
+	const unreadKeys = uids.map(uid => `uid:${uid}:notifications:unread`);
+	const readKeys = uids.map(uid => `uid:${uid}:notifications:read`);
+	await Promise.all([
+		db.sortedSetsAdd(unreadKeys, notification.datetime, notification.nid),
+		db.sortedSetsRemove(readKeys, notification.nid),
+	]);
+	await db.sortedSetsRemoveRangeByScore(unreadKeys.concat(readKeys), '-inf', cutoff);
+	const websockets = require('./socket.io');
+	if (websockets.server) {
+		await Promise.all(uids.map(async (uid) => {
+			await plugins.hooks.fire('filter:sockets.sendNewNoticationToUid', {
+				uid,
+				notification,
+			});
+			websockets.in(`uid_${uid}`).emit('event:new_notification', notification);
+		}));
+	}
+}
+
+async function sendEmailNotifications(uidsToEmail, notification) {
+	const delayNotificationTypes = ['new-chat', 'new-group-chat', 'new-public-chat'];
+	if (delayNotificationTypes.includes(notification.type)) {
+		const cacheKey = `${notification.mergeId}|${uidsToEmail.join(',')}`;
+		const payload = notificationCache.get(cacheKey);
+		let { bodyLong } = notification;
+		if (payload !== undefined) {
+			bodyLong = [payload.notification.bodyLong, bodyLong].join('\n');
+		}
+		notificationCache.set(cacheKey, { uids: uidsToEmail, notification: { ...notification, bodyLong } });
+		if (notification.bodyLong.length >= 1000) {
+			notificationCache.delete(cacheKey);
+		}
+	} else {
+		await sendEmail({ uids: uidsToEmail, notification });
+	}
+}
+
 async function pushToUids(uids, notification) {
-	async function sendNotification(uids) {
-		if (!uids.length) {
-			return;
-		}
-		const cutoff = Date.now() - notificationPruneCutoff;
-		const unreadKeys = uids.map(uid => `uid:${uid}:notifications:unread`);
-		const readKeys = uids.map(uid => `uid:${uid}:notifications:read`);
-		await Promise.all([
-			db.sortedSetsAdd(unreadKeys, notification.datetime, notification.nid),
-			db.sortedSetsRemove(readKeys, notification.nid),
-		]);
-		await db.sortedSetsRemoveRangeByScore(unreadKeys.concat(readKeys), '-inf', cutoff);
-		const websockets = require('./socket.io');
-		if (websockets.server) {
-			await Promise.all(uids.map(async (uid) => {
-				await plugins.hooks.fire('filter:sockets.sendNewNoticationToUid', {
-					uid,
-					notification,
-				});
-				websockets.in(`uid_${uid}`).emit('event:new_notification', notification);
-			}));
-		}
-	}
-
-	async function getUidsBySettings(uids) {
-		const uidsToNotify = [];
-		const uidsToEmail = [];
-		const usersSettings = await User.getMultipleUserSettings(uids);
-		usersSettings.forEach((userSettings) => {
-			const setting = userSettings[`notificationType_${notification.type}`] || 'notification';
-
-			if (setting === 'notification' || setting === 'notificationemail') {
-				uidsToNotify.push(userSettings.uid);
-			}
-
-			if (setting === 'email' || setting === 'notificationemail') {
-				uidsToEmail.push(userSettings.uid);
-			}
-		});
-		return { uidsToNotify: uidsToNotify, uidsToEmail: uidsToEmail };
-	}
-
 	// Remove uid from recipients list if they have blocked the user triggering the notification
 	uids = await User.blocks.filterUids(notification.from, uids);
 	const data = await plugins.hooks.fire('filter:notification.push', {
@@ -241,29 +259,14 @@ async function pushToUids(uids, notification) {
 	notification = data.notification;
 	let results = { uidsToNotify: data.uids, uidsToEmail: [] };
 	if (notification.type) {
-		results = await getUidsBySettings(data.uids);
+		results = await getUidsBySettings(data.uids, notification.type);
 	}
 
-	await sendNotification(results.uidsToNotify);
+	await sendNotification(results.uidsToNotify, notification);
 
 	if (results.uidsToEmail.length) {
-		const delayNotificationTypes = ['new-chat', 'new-group-chat', 'new-public-chat'];
-		if (delayNotificationTypes.includes(notification.type)) {
-			const cacheKey = `${notification.mergeId}|${results.uidsToEmail.join(',')}`;
-			const payload = notificationCache.get(cacheKey);
-			let { bodyLong } = notification;
-			if (payload !== undefined) {
-				bodyLong = [payload.notification.bodyLong, bodyLong].join('\n');
-			}
-			notificationCache.set(cacheKey, { uids: results.uidsToEmail, notification: { ...notification, bodyLong } });
-			if (notification.bodyLong.length >= 1000) {
-				notificationCache.delete(cacheKey);
-			}
-		} else {
-			await sendEmail({ uids: results.uidsToEmail, notification });
-		}
+		await sendEmailNotifications(results.uidsToEmail, notification);
 	}
-
 	plugins.hooks.fire('action:notification.pushed', {
 		notification,
 		uids: results.uidsToNotify,
