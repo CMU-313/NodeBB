@@ -26,48 +26,7 @@ module.exports = function (User) {
 		return n;
 	}
 	
-	function assertValidTransition(shouldFollow, isFollowing) {
-		if (shouldFollow && isFollowing) {
-			throw new Error('[[error:already-following]]');
-		}
-		if (!shouldFollow && !isFollowing) {
-			throw new Error('[[error:not-following]]');
-		}
-	}
-	
-	async function applyFollowAction(shouldFollow, uid, theiruid) {
-		const followingKey = `following:${uid}`;
-		const followersKey = `followers:${theiruid}`;
-	
-		if (shouldFollow) {
-			const now = Date.now();
-			await db.sortedSetAddBulk([
-				[followingKey, now, theiruid],
-				[followersKey, now, uid],
-			]);
-			return;
-		}
-	
-		await db.sortedSetRemoveBulk([
-			[followingKey, theiruid],
-			[followersKey, uid],
-		]);
-	}
-	
-	async function updateFollowCounts(uid, theiruid) {
-		const [followingCount, followingRemoteCount, followerCount, followerRemoteCount] =
-		await db.sortedSetsCard([
-			`following:${uid}`,
-			`followingRemote:${uid}`,
-			`followers:${theiruid}`,
-			`followersRemote:${theiruid}`,
-		]);
-	
-		await Promise.all([
-			User.setUserField(uid, 'followingCount', followingCount + followingRemoteCount),
-			User.setUserField(theiruid, 'followerCount', followerCount + followerRemoteCount),
-		]);
-	}
+
 	
 	// main
 	async function toggleFollow(type, uid, theiruid) {
@@ -98,9 +57,7 @@ module.exports = function (User) {
 			isFollowing,
 		});
 	
-		assertValidTransition(shouldFollow, isFollowing);
-		await applyFollowAction(shouldFollow, uid, theiruid);
-		await updateFollowCounts(uid, theiruid);
+
 	}
 
 	/* end of GenAI assisted code to make toggleFollow less complex */
