@@ -96,53 +96,85 @@ module.exports = function (User) {
 			const { key, type } = field;
 			if (data.hasOwnProperty(key)) {
 				const value = data[key];
-				const minRep = field['min:rep'] || 0;
-				if (reputation < minRep && !meta.config['reputation:disabled']) {
-					throw new Error(tx.compile(
-						'error:not-enough-reputation-custom-field', minRep, field.name
-					));
-				}
-
-				if (typeof value === 'string' && value.length > 255) {
-					throw new Error(tx.compile(
-						'error:custom-user-field-value-too-long', field.name
-					));
-				}
-
-				if (type === 'input-number' && !utils.isNumber(value)) {
-					throw new Error(tx.compile(
-						'error:custom-user-field-invalid-number', field.name
-					));
-				} else if (value && type === 'input-text' && validator.isURL(value)) {
-					throw new Error(tx.compile(
-						'error:custom-user-field-invalid-text', field.name
-					));
-				} else if (value && type === 'input-date' && !validator.isDate(value)) {
-					throw new Error(tx.compile(
-						'error:custom-user-field-invalid-date', field.name
-					));
-				} else if (value && field.type === 'input-link' && !validator.isURL(String(value))) {
-					throw new Error(tx.compile(
-						'error:custom-user-field-invalid-link', field.name
-					));
-				} else if (field.type === 'select') {
-					const opts = field['select-options'].split('\n').filter(Boolean);
-					if (!opts.includes(value) && value !== '') {
-						throw new Error(tx.compile(
-							'error:custom-user-field-select-value-invalid', field.name
-						));
-					}
-				} else if (field.type === 'select-multi') {
-					const opts = field['select-options'].split('\n').filter(Boolean);
-					const values = JSON.parse(value || '[]');
-					if (!Array.isArray(values) || !values.every(value => opts.includes(value))) {
-						throw new Error(tx.compile(
-							'error:custom-user-field-select-value-invalid', field.name
-						));
-					}
-				}
+				validateReputation(field, reputation);
+				validateFieldLength(field, value);
+				validateNumberType(field, type, value);
+				validateTextType(field, type, value);
+				validateDateType(field, type, value);
+				validateUrlType(field, value);
+				validateSelectedFields(field, value);
 			}
 		});
+	}
+
+	function validateReputation(field, reputation) {
+		const minRep = field['min:rep'] || 0;
+		if (reputation < minRep && !meta.config['reputation:disabled']) {
+			throw new Error(tx.compile(
+				'error:not-enough-reputation-custom-field', minRep, field.name
+			));
+		}
+	}
+
+	function validateFieldLength(field, value) {
+		if (typeof value === 'string' && value.length > 255) {
+			throw new Error(tx.compile(
+				'error:custom-user-field-value-too-long', field.name
+			));
+		}
+	}
+
+	function validateNumberType(field, type, value) {
+		if (type === 'input-number' && !utils.isNumber(value)) {
+			throw new Error(tx.compile(
+				'error:custom-user-field-invalid-number', field.name
+			));
+		}
+	}
+
+	function validateTextType(field, type, value) {
+		if (value && type === 'input-text' && validator.isURL(value)) {
+			throw new Error(tx.compile(
+				'error:custom-user-field-invalid-text', field.name
+			));
+		}
+	}
+
+	function validateDateType(field, type, value) {
+		if (value && type === 'input-date' && !validator.isDate(value)) {
+			throw new Error(tx.compile(
+				'error:custom-user-field-invalid-date', field.name
+			));
+		}
+	}
+
+	function validateUrlType(field, value) {
+		if (value && field.type === 'input-link' && !validator.isURL(String(value))) {
+			throw new Error(tx.compile(
+				'error:custom-user-field-invalid-link', field.name
+			));
+		}
+	}
+
+	function validateSelectedFields(field, value) {
+		if (field.type === 'select') {
+			const opts = field['select-options'].split('\n').filter(Boolean);
+			if (!opts.includes(value) && value !== '') {
+				throw new Error(tx.compile(
+					'error:custom-user-field-select-value-invalid', field.name
+				));
+			}
+		}
+
+		if (field.type === 'select-multi') {
+			const opts = field['select-options'].split('\n').filter(Boolean);
+			const values = JSON.parse(value || '[]');
+			if (!Array.isArray(values) || !values.every(value => opts.includes(value))) {
+				throw new Error(tx.compile(
+					'error:custom-user-field-select-value-invalid', field.name
+				));
+			}
+		}
 	}
 
 	async function isEmailValid(data) {
