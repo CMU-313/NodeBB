@@ -26,6 +26,15 @@ module.exports = function (User) {
 		return n;
 	}
 	
+	function assertValidTransition(shouldFollow, isFollowing) {
+		if (shouldFollow && isFollowing) {
+			throw new Error('[[error:already-following]]');
+		}
+		if (!shouldFollow && !isFollowing) {
+			throw new Error('[[error:not-following]]');
+		}
+	}
+ 
 
 	
 	// main
@@ -57,6 +66,7 @@ module.exports = function (User) {
 			isFollowing,
 		});
 	
+		assertValidTransition(shouldFollow, isFollowing);
 
 	}
 
