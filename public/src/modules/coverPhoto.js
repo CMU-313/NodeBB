@@ -10,7 +10,7 @@ define('coverPhoto', [
 		saveFn: null,
 	};
 
-	coverPhoto.init = function (coverEl, saveFn, uploadFn, removeFn) {
+	coverPhoto.init = function (coverEl, [saveFn, uploadFn, removeFn]) {
 		coverPhoto.coverEl = coverEl;
 		coverPhoto.saveFn = saveFn;
 

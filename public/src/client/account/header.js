@@ -82,7 +82,7 @@ define('forum/account/header', [
 	function setupCoverPhoto() {
 		coverPhoto.init(
 			components.get('account/cover'),
-			function (imageData, position, callback) {
+			[function (imageData, position, callback) {
 				socket.emit('user.updateCover', {
 					uid: ajaxify.data.uid,
 					imageData: imageData,
@@ -104,7 +104,7 @@ define('forum/account/header', [
 					components.get('account/cover').css('background-image', 'url(' + imageUrlOnServer + ')');
 				});
 			},
-			removeCover
+			removeCover]
 		);
 	}
 
