@@ -103,6 +103,9 @@ module.exports = function (User) {
 		}
 
 		const metaconfig = meta.config;
+		const lasttime = userData[field] || 0;
+		const now = Date.now();
+
 		const isNewbie = !isMemberOfExempt &&
 									 (metaconfig.newbiePostDelay > 0) &&
 									 (metaconfig.newbieReputationThreshold > userData.reputation) &&
@@ -117,7 +120,7 @@ module.exports = function (User) {
 			throw new Error(msg);
 		}
 
-		const lasttime = userData[field] || 0;
+		
 		endChecks(userData, lasttime, meta.config);
 		
 		return;
