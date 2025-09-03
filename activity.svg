@@ -1,0 +1,21 @@
+<svg height="30" width="970" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<rect fill="#CCE4CC" height="99.5%" rx="4.5" stroke="#003D00" width="99.5%" x="0.5" y="0.5"/>
+<defs/>
+<style>
+
+.header {
+    font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif;
+    fill: #007A00;
+    animation: fadeInAnimation 0.8s ease-in-out forwards;
+}
+.stat {
+    font: 600 14px 'Segoe UI', Ubuntu, "Helvetica Neue", Sans-Serif; fill: #444;
+}
+.bold { font-weight: 700 }
+.icon {
+    fill: #003D00;
+    display: block;
+}
+
+</style>
+</svg>
