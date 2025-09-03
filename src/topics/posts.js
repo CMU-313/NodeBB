@@ -16,6 +16,30 @@ const privileges = require('../privileges');
 
 const backlinkRegex = new RegExp(`(?:${nconf.get('url').replace('/', '\\/')}|\b|\\s)\\/topic\\/(\\d+)(?:\\/\\w+)?`, 'g');
 
+function newRange(start, stop) {
+	if (stop > 0) {
+		stop -= 1;
+		if (start > 0) {
+			start -= 1;
+		}
+	}
+	return { repliesStart: start, repliesStop: stop };
+}
+
+async function filterPosts(postData, uid, reverse) {
+	const allPosts = postData.slice();
+	postData = await user.blocks.filter(uid, postData);
+	if (allPosts.length !== postData.length) {
+		const includedPids = new Set(postData.map(p => p.pid));
+		allPosts.reverse().forEach((p, index) => {
+			if (!includedPids.has(p.pid) && allPosts[index + 1] && !reverse) {
+				allPosts[index + 1].eventEnd = p.eventEnd;
+			}
+		});
+	}
+	return postData;
+}
+
 module.exports = function (Topics) {
 	Topics.onNewPostMade = async function (postData) {
 		await Topics.updateLastPostTime(postData.tid, postData.timestamp);
@@ -27,14 +51,8 @@ module.exports = function (Topics) {
 			return [];
 		}
 
-		let repliesStart = start;
-		let repliesStop = stop;
-		if (stop > 0) {
-			repliesStop -= 1;
-			if (start > 0) {
-				repliesStart -= 1;
-			}
-		}
+		const {repliesStart, repliesStop} = newRange(start, stop);
+
 		let pids = [];
 		if (start !== 0 || stop !== 0) {
 			pids = await posts.getPidsFromSet(set, repliesStart, repliesStop, reverse);
@@ -46,7 +64,7 @@ module.exports = function (Topics) {
 		if (topicData.mainPid && start === 0) {
 			pids.unshift(topicData.mainPid);
 		}
-		let postData = await posts.getPostsByPids(pids, uid);
+		const postData = await posts.getPostsByPids(pids, uid);
 		if (!postData.length) {
 			return [];
 		}
@@ -58,21 +76,13 @@ module.exports = function (Topics) {
 
 		Topics.calculatePostIndices(replies, repliesStart);
 		await addEventStartEnd(postData, set, reverse, topicData);
-		const allPosts = postData.slice();
-		postData = await user.blocks.filter(uid, postData);
-		if (allPosts.length !== postData.length) {
-			const includedPids = new Set(postData.map(p => p.pid));
-			allPosts.reverse().forEach((p, index) => {
-				if (!includedPids.has(p.pid) && allPosts[index + 1] && !reverse) {
-					allPosts[index + 1].eventEnd = p.eventEnd;
-				}
-			});
-		}
+		
+		const filteredPosts = await filterPosts(postData, uid, reverse);
 
 		const result = await plugins.hooks.fire('filter:topic.getPosts', {
 			topic: topicData,
 			uid: uid,
-			posts: await Topics.addPostData(postData, uid),
+			posts:  await Topics.addPostData(filteredPosts,uid),
 		});
 		return result.posts;
 	};
