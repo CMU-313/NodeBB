@@ -264,15 +264,26 @@ module.exports = function (Topics) {
 	}
 
 	Topics.checkTitle = function (title) {
-		check(title, meta.config.minimumTitleLength, meta.config.maximumTitleLength, 'title-too-short', 'title-too-long');
+		check({
+			item: title,
+			min: meta.config.minimumTitleLength,
+			max: meta.config.maximumTitleLength,
+			minError: 'title-too-short',
+			maxError: 'title-too-long',
+		});
 	};
 
 	Topics.checkContent = function (content) {
-		check(content, meta.config.minimumPostLength, meta.config.maximumPostLength, 'content-too-short', 'content-too-long');
+		check({
+			item: content,
+			min: meta.config.minimumPostLength,
+			max: meta.config.maximumPostLength,
+			minError: 'content-too-short',
+			maxError: 'content-too-long',
+		});
 	};
 
-	function check(item, min, max, minError, maxError) {
-		// Trim and remove HTML (latter for composers that send in HTML, like redactor)
+	function check({ item, min, max, minError, maxError }) {
 		if (typeof item === 'string') {
 			item = utils.stripHTMLTags(item).trim();
 		}
