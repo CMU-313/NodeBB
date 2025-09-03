@@ -103,7 +103,14 @@ function loadConfig(configFile) {
 		if (!nconf.get('asset_base_url')) {
 			nconf.set('asset_base_url', `${relativePath}/assets`);
 		}
-		nconf.set('port', nconf.get('PORT') || nconf.get('port') || urlObject.port || (nconf.get('PORT_ENV_VAR') ? nconf.get(nconf.get('PORT_ENV_VAR')) : false) || 4567);
+		
+		let port = nconf.get('PORT') || nconf.get('port') || urlObject.port;
+
+		if (!port && nconf.get('PORT_ENV_VAR')) {
+			port = nconf.get(nconf.get('PORT_ENV_VAR'));
+		}
+
+		nconf.set('port', port || 4567);
 
 		// cookies don't provide isolation by port: http://stackoverflow.com/a/16328399/122353
 		const domain = nconf.get('cookieDomain') || urlObject.hostname;
