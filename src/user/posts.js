@@ -108,10 +108,9 @@ module.exports = function (User) {
 									 (now - lasttime < metaconfig.newbiePostDelay * 1000);
 		const tooFast = metaconfig.newbiewPostDelay % 60 === 0;
 
-		if (isNewbie && tooFast) {
-			const wholeMinutes = (metaconfig.newbiePostDelay % 60) === 0;
+		if (isNewbie) {
 			const minutes = Math.floor(metaconfig.newbiePostDelay / 60);
-			const msg = wholeMinutes ? 
+			const msg = tooFast ? 
 				`[[error:too-many-posts-newbie-minutes, ${minutes}, ${metaconfig.newbieReputationThreshold}]]` : 
 				`[[error:too-many-posts-newbie, ${metaconfig.newbiePostDelay}, ${metaconfig.newbieReputationThreshold}]]`;
 			throw new Error(msg);
