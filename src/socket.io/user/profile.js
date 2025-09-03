@@ -45,7 +45,13 @@ module.exports = function (SocketUser) {
 		if (action !== 'block' && action !== 'unblock') {
 			throw new Error('[[error:unknow-block-action]]');
 		}
-		await user.blocks.can(socket.uid, blockerUid, blockeeUid, action);
+		await user.blocks.can({
+			callerUid: socket.uid,
+			blockerUid,
+			blockeeUid,
+			type: action,
+		});
+
 		if (data.action === 'block') {
 			await user.blocks.add(blockeeUid, blockerUid);
 		} else if (data.action === 'unblock') {
