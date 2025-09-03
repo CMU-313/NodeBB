@@ -118,18 +118,18 @@ module.exports = function (User) {
 	};
 
 	User.incrementUserPostCountBy = async function (uid, value) {
-		return await incrementUserFieldAndSetBy(uid, 'postcount', 'users:postcount', value);
+		return await incrementUserFieldAndSetBy({uid:uid, field:'postcount', set:'users:postcount', value:value});
 	};
 
 	User.incrementUserReputationBy = async function (uid, value) {
-		return await incrementUserFieldAndSetBy(uid, 'reputation', 'users:reputation', value);
+		return await incrementUserFieldAndSetBy({uid:uid, field:'reputation', set:'users:reputation', value:value});
 	};
 
 	User.incrementUserFlagsBy = async function (uid, value) {
-		return await incrementUserFieldAndSetBy(uid, 'flags', 'users:flags', value);
+		return await incrementUserFieldAndSetBy({uid:uid, field:'flags', set:'users:flags', value:value});
 	};
 
-	async function incrementUserFieldAndSetBy(uid, field, set, value) {
+	async function incrementUserFieldAndSetBy({uid, field, set, value}) {
 		value = parseInt(value, 10);
 		if (!value || !field || !(parseInt(uid, 10) > 0)) {
 			return;
