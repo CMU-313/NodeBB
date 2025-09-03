@@ -72,8 +72,11 @@ User.getUidsFromSet = async function (set, start, stop) {
 	return await db.getSortedSetRevRange(set, start, stop);
 };
 
-User.getUsersFromSet = async function (set, uid, start, stop) {
-	const uids = await User.getUidsFromSet(set, start, stop);
+
+User.getUsersFromSet = async function (set, uid, range) {
+	/*parameters used to be (set, uid, start, stop)*/
+	/*range.start and range.stop replaced start and stop*/
+	const uids = await User.getUidsFromSet(set, range.start, range.stop);
 	return await User.getUsers(uids, uid);
 };
 

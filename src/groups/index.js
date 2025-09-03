@@ -196,7 +196,8 @@ Groups.getOwnersAndMembers = async function (groupName, uid, start, stop) {
 	memberStart = Math.max(0, memberStart);
 	memberStop = Math.max(0, memberStop);
 	async function addMembers(start, stop) {
-		let batch = await user.getUsersFromSet(`group:${groupName}:members`, uid, start, stop);
+		/*fix here from getUsersFromSet*/
+		let batch = await user.getUsersFromSet(`group:${groupName}:members`, uid, {start, stop});
 		if (!batch.length) {
 			done = true;
 		}
