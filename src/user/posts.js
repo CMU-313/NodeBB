@@ -8,11 +8,9 @@ const groups = require('../groups');
 const activitypub = require('../activitypub');
 
 module.exports = function (User) {
-	console.log('Cici Ge before');
 	User.isReadyToPost = async function (uid, cid) {
 		await isReady(uid, cid, 'lastposttime');
 	};
-	console.log('Cici Ge after');
 
 	User.isReadyToQueue = async function (uid, cid) {
 		await isReady(uid, cid, 'lastqueuetime');
@@ -74,7 +72,7 @@ module.exports = function (User) {
 			},
 		];
 
-		console.log('Cici Ge middle');
+		console.log('--> middle');
 
 		for (const rule of rules) rule();
 		return;
@@ -82,6 +80,7 @@ module.exports = function (User) {
 
 	// Refactored
 	async function isReady(uid, cid, field) {
+		// console.log('--> isReady', { uid, cid, field });
 
 		const prelim = await prelimChecks(uid, cid, field);
 		if (prelim.bypass) return;
@@ -111,6 +110,7 @@ module.exports = function (User) {
 									 (metaconfig.newbieReputationThreshold > userData.reputation) &&
 									 (now - lasttime < metaconfig.newbiePostDelay * 1000);
 		const tooFast = metaconfig.newbiewPostDelay % 60 === 0;
+
 		if (isNewbie && tooFast) {
 			const wholeMinutes = (metaconfig.newbiePostDelay % 60) === 0;
 			const minutes = Math.floor(metaconfig.newbiePostDelay / 60);
@@ -121,7 +121,7 @@ module.exports = function (User) {
 		}
 
 		
-		endChecks(userData, lasttime, meta.config);
+		endChecks(userData, lasttime, metaconfig);
 		
 		return;
 	}
