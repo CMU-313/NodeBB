@@ -57,7 +57,9 @@ module.exports = function (Topics) {
 		}
 
 		Topics.calculatePostIndices(replies, repliesStart);
-		await addEventStartEnd(postData, set, reverse, topicData);
+
+		const topicContext = {set, reverse, topicData};
+		await addEventStartEnd(postData, topicContext);
 		const allPosts = postData.slice();
 		postData = await user.blocks.filter(uid, postData);
 		if (allPosts.length !== postData.length) {
@@ -77,10 +79,16 @@ module.exports = function (Topics) {
 		return result.posts;
 	};
 
-	async function addEventStartEnd(postData, set, reverse, topicData) {
+	async function addEventStartEnd(postData, topicContext) {
 		if (!postData.length) {
 			return;
 		}
+
+		let {set, reverse, topicData} = topicContext;
+		if (!set && topicData && topicData.tid != null) {
+			set = `tid:${topicData.tid}:posts`;
+		}
+
 		postData.forEach((p, index) => {
 			if (p && p.index === 0 && reverse) {
 				p.eventStart = topicData.lastposttime;
