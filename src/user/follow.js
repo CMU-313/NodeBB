@@ -35,7 +35,25 @@ module.exports = function (User) {
 		}
 	}
  
-
+	async function applyFollowAction(shouldFollow, uid, theiruid) {
+		const followingKey = `following:${uid}`;
+		const followersKey = `followers:${theiruid}`;
+   
+		if (shouldFollow) {
+			const now = Date.now();
+			await db.sortedSetAddBulk([
+				[followingKey, now, theiruid],
+				[followersKey, now, uid],
+			]);
+			return;
+		}
+   
+		await db.sortedSetRemoveBulk([
+			[followingKey, theiruid],
+			[followersKey, uid],
+		]);
+	}
+ 
 	
 	// main
 	async function toggleFollow(type, uid, theiruid) {
@@ -67,6 +85,7 @@ module.exports = function (User) {
 		});
 	
 		assertValidTransition(shouldFollow, isFollowing);
+		await applyFollowAction(shouldFollow, uid, theiruid);
 
 	}
 
