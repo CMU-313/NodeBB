@@ -101,7 +101,6 @@ function addStatusAuth(parts, req, res) {
 
 helpers.buildBodyClass = function (req, res, templateData = {}) {
 	const clean = normalizePath(req.path);
-	console.log('ADAM_SULTAN');
 	const parts = buildSegments(clean);
 	const { template } = templateData;
 
