@@ -360,7 +360,7 @@ chatsAPI.getPinnedMessages = async (caller, { start, roomId }) => {
 	if (!isInRoom) {
 		throw new Error('[[error:no-privileges]]');
 	}
-	const messages = await messaging.getPinnedMessages(roomId, caller.uid, start, start + 49);
+	const messages = await messaging.getPinnedMessages(roomId, {uid: caller.uid, start, stop: start + 49});
 	return { messages };
 };
 
