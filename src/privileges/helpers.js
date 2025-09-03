@@ -34,20 +34,36 @@ helpers.isUsersAllowedTo = async function (privilege, uids, cid) {
 	return result.allowed;
 };
 
-helpers.isAllowedTo = async function (privilege, uidOrGroupName, cid) {
-	// Remote categories (non-numeric) inherit world privileges
+
+helpers.ensureIsValidNumOrNumArray = function (cid) {
 	if (Array.isArray(cid)) {
 		cid = cid.map(cid => (utils.isNumber(cid) ? cid : -1));
 	} else {
 		cid = utils.isNumber(cid) ? cid : -1;
 	}
 
-	let allowed;
-	if (Array.isArray(privilege) && !Array.isArray(cid)) {
-		allowed = await isAllowedToPrivileges(privilege, uidOrGroupName, cid);
-	} else if (Array.isArray(cid) && !Array.isArray(privilege)) {
-		allowed = await isAllowedToCids(privilege, uidOrGroupName, cid);
+	return cid;
+};
+
+helpers.getAllowedOffPrivAndCid = async function (privilege, uidOrGroupName, cid) {
+	const privIsArr = Array.isArray(privilege);
+	const cidIsArr = Array.isArray(cid);
+
+	if (privIsArr && !cidIsArr) {
+		return await isAllowedToPrivileges(privilege, uidOrGroupName, cid);
+	} else if (cidIsArr && !privIsArr) {
+		return await isAllowedToCids(privilege, uidOrGroupName, cid);
 	}
+};
+
+helpers.isAllowedTo = async function (privilege, uidOrGroupName, cid) {
+	// Remote categories (non-numeric) inherit world privileges
+	cid = helpers.ensureIsValidNumOrNumArray(cid);
+
+	let allowed = await helpers.getAllowedOffPrivAndCid(privilege, uidOrGroupName, cid);
+	
+	console.log('RAVI');
+
 	if (allowed) {
 		({ allowed } = await plugins.hooks.fire('filter:privileges:isAllowedTo', { allowed: allowed, privilege: privilege, uid: uidOrGroupName, cid: cid }));
 		return allowed;
