@@ -456,16 +456,18 @@ async function canSeeVotes(uid, cids, type) {
 		privileges.users.isModerator(uid, cids),
 	]);
 	const cidToAllowed = _.zipObject(uniqCids, canRead);
-	const checks = cids.map(
-		(cid, index) => isAdmin || isMod[index] ||
-		(
-			cidToAllowed[cid] &&
-			(
-				meta.config[type] === 'all' ||
-				(meta.config[type] === 'loggedin' && parseInt(uid, 10) > 0)
-			)
-		)
-	);
+
+	const configValue = meta && meta.config ? meta.config[type] : undefined;
+	const forAllUsers = configValue === 'all';
+	const forLoggedInUsers = configValue === 'loggedin';
+	const userIsLoggedIn = Number.isFinite(Number(uid)) && Number(uid) > 0;
+	const configAllowsView = forAllUsers || (forLoggedInUsers && userIsLoggedIn);
+	console.log('Jerry Chen', configValue, userIsLoggedIn, uid);
+	const checks = cids.map((cid, index) => {
+		const hasPriv = cidToAllowed[cid];
+		const modAtIndex = isMod[index];
+		return isAdmin || modAtIndex || (hasPriv && configAllowsView);
+	});
 	return isArray ? checks : checks[0];
 }
 
