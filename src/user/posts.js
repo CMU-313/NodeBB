@@ -62,7 +62,9 @@ module.exports = function (User) {
 			return;
 		}
 
+		// refactored
 		const now = Date.now();
+
 		if (now - userData.joindate < meta.config.initialPostDelay * 1000) {
 			throw new Error(`[[error:user-too-new, ${meta.config.initialPostDelay}]]`);
 		}
