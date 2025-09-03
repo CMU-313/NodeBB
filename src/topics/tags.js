@@ -66,7 +66,8 @@ module.exports = function (Topics) {
 		);
 	};
 
-	Topics.validateTags = async function (tags, cid, uid, tid = null) {
+	Topics.validateTags = async function ({ tags, cid, uid, tid}) {
+		tid = tid ?? null;
 		if (!Array.isArray(tags)) {
 			throw new Error('[[error:invalid-data]]');
 		}

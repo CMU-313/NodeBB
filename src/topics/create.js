@@ -98,7 +98,7 @@ module.exports = function (Topics) {
 			Topics.checkTitle(data.title);
 		}
 
-		await Topics.validateTags(data.tags, data.cid, uid);
+		await Topics.validateTags({ tags: data.tags, cid: data.cid, uid: uid });
 		data.tags = await Topics.filterTags(data.tags, data.cid);
 		if (!data.fromQueue && !isAdmin) {
 			Topics.checkContent(data.sourceContent || data.content);

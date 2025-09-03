@@ -266,7 +266,7 @@ module.exports = function (Posts) {
 		if (type === 'topic') {
 			topics.checkTitle(data.title);
 			if (data.tags) {
-				await topics.validateTags(data.tags, cid, data.uid);
+				await topics.validateTags({ tags: data.tags, cid: cid, uid: data.uid });
 			}
 		}
 

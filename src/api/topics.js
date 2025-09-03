@@ -190,7 +190,7 @@ topicsAPI.updateTags = async (caller, { tid, tags }) => {
 	}
 
 	const cid = await topics.getTopicField(tid, 'cid');
-	await topics.validateTags(tags, cid, caller.uid, tid);
+	await topics.validateTags({ tags: tags, cid: cid, uid: caller.uid, tid: tid });
 	await topics.updateTopicTags(tid, tags);
 	return await topics.getTopicTagsObjects(tid);
 };
@@ -201,7 +201,7 @@ topicsAPI.addTags = async (caller, { tid, tags }) => {
 	}
 
 	const cid = await topics.getTopicField(tid, 'cid');
-	await topics.validateTags(tags, cid, caller.uid, tid);
+	await topics.validateTags({ tags: tags, cid: cid, uid: caller.uid, tid: tid });
 	tags = await topics.filterTags(tags, cid);
 
 	await topics.addTags(tags, [tid]);
