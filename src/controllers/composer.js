@@ -39,9 +39,15 @@ exports.get = async function (req, res, callback) {
 	}
 };
 
-exports.post = async function (req, res) {
-	const { body } = req;
-	const data = {
+// Helpers to reduce complexity
+// Used ChatGPT to name all the helpers
+
+function invalidDataError() {
+	return new Error('[[error:invalid-data]]');
+}
+
+function buildBaseData(req, body) {
+	const base = {
 		uid: req.uid,
 		req: req,
 		timestamp: Date.now(),
@@ -49,49 +55,91 @@ exports.post = async function (req, res) {
 		handle: body.handle,
 		fromQueue: false,
 	};
+	
 	req.body.noscript = 'true';
+	return base;
+}
 
+function ensureContent(data) {
 	if (!data.content) {
-		return helpers.noScriptErrors(req, res, '[[error:invalid-data]]', 400);
+		throw invalidDataError();
 	}
-	async function queueOrPost(postFn, data) {
-		const shouldQueue = await posts.shouldQueue(req.uid, data);
-		if (shouldQueue) {
-			delete data.req;
-			return await posts.addToQueue(data);
-		}
-		return await postFn(data);
-	}
+}
 
+function decideAction(body) {
+	if (body.tid) {
+		return 'reply';
+	}
+	if (body.cid) {
+		return 'topic';
+	}
+	throw invalidDataError();
+}
+
+function enrichForAction(data, body, action) {
+	if (action === 'reply') {
+		data.tid = body.tid;
+		return;
+	}
+	
+	data.cid = body.cid;
+	data.title = body.title;
+	data.tags = [];
+	data.thumb = '';
+}
+
+async function queueOrPost(uid, postFn, data) {
+	const shouldQueue = await posts.shouldQueue(uid, data);
+	if (shouldQueue) {
+		delete data.req;
+		return posts.addToQueue(data);
+	}
+	return postFn(data);
+}
+
+async function performPost(action, uid, data) {
+	const map = {
+		reply: topics.reply,
+		topic: topics.post,
+	};
+	const postFn = map[action];
+	return queueOrPost(uid, postFn, data);
+}
+
+//Used help of CoPilot/ChatGPT for body of conditionals
+function computeRedirectPath(result) {
+	let path = nconf.get('relative_path');
+	if (result.pid) {
+		path += `/post/${result.pid}`;
+	} else if (result.topicData) {
+		path += `/topic/${result.topicData.slug}`;
+	}
+	return path;
+}
+
+exports.post = async function (req, res) {
 	try {
-		let result;
-		if (body.tid) {
-			data.tid = body.tid;
-			result = await queueOrPost(topics.reply, data);
-		} else if (body.cid) {
-			data.cid = body.cid;
-			data.title = body.title;
-			data.tags = [];
-			data.thumb = '';
-			result = await queueOrPost(topics.post, data);
-		} else {
-			throw new Error('[[error:invalid-data]]');
-		}
+		const { body } = req;
+
+		const data = buildBaseData(req, body);
+		ensureContent(data);
+
+		const action = decideAction(body);
+		enrichForAction(data, body, action);
+
+		const result = await performPost(action, req.uid, data);
 		if (!result) {
-			throw new Error('[[error:invalid-data]]');
+			throw invalidDataError();
 		}
+
 		if (result.queued) {
 			return res.redirect(`${nconf.get('relative_path') || '/'}?noScriptMessage=[[success:post-queued]]`);
 		}
+
 		user.updateOnlineUsers(req.uid);
-		let path = nconf.get('relative_path');
-		if (result.pid) {
-			path += `/post/${result.pid}`;
-		} else if (result.topicData) {
-			path += `/topic/${result.topicData.slug}`;
-		}
-		res.redirect(path);
+		const path = computeRedirectPath(result);
+		return res.redirect(path);
 	} catch (err) {
-		helpers.noScriptErrors(req, res, err.message, 400);
+		return helpers.noScriptErrors(req, res, err.message, 400);
 	}
 };
