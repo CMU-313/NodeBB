@@ -87,6 +87,7 @@ define('forum/topic/diffs', ['api', 'bootbox', 'alerts', 'forum/topic/images'], 
 	};
 
 	Diffs.delete = function ({ pid, timestamp, $selectEl, $numberOfDiffCon }) {
+		console.log('hi I am running');
 		api.del(`/posts/${encodeURIComponent(pid)}/diffs/${timestamp}`)
 			.then((data) => {
 				parsePostHistory(data, 'diffs').then(($html) => {
