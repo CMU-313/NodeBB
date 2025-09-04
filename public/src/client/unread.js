@@ -1,6 +1,5 @@
 'use strict';
 
-
 define('forum/unread', [
 	'forum/header/unread', 'topicSelect', 'components', 'topicList', 'categorySelector', 'alerts', 'api',
 ], function (headerUnread, topicSelect, components, topicList, categorySelector, alerts, api) {
@@ -16,61 +15,65 @@ define('forum/unread', [
 		headerUnread.updateUnreadTopicCount('/' + ajaxify.data.selectedFilter.url, ajaxify.data.topicCount);
 	};
 
-	function handleMarkRead() {
-		function markAllRead() {
-			socket.emit('topics.markAllRead', function (err) {
-				if (err) {
-					return alerts.error(err);
-				}
-
-				alerts.success('[[unread:topics-marked-as-read.success]]');
-
-				$('[component="category"]').empty();
-				$('[component="pagination"]').addClass('hidden');
-				$('#category-no-topics').removeClass('hidden');
-				$('.markread').addClass('hidden');
-			});
-		}
-
-		function markSelectedRead() {
-			const tids = topicSelect.getSelectedTids();
-			if (!tids.length) {
-				return;
+	// --- extracted helpers ---
+	function markAllRead() {
+		socket.emit('topics.markAllRead', function (err) {
+			if (err) {
+				return alerts.error(err);
 			}
 
-			Promise.all(tids.map(async tid => api.put(`/topics/${tid}/read`))).then(() => {
-				doneRemovingTids(tids);
-			});
+			alerts.success('[[unread:topics-marked-as-read.success]]');
+
+			$('[component="category"]').empty();
+			$('[component="pagination"]').addClass('hidden');
+			$('#category-no-topics').removeClass('hidden');
+			$('.markread').addClass('hidden');
+		});
+	}
+
+	function markSelectedRead() {
+		const tids = topicSelect.getSelectedTids();
+		if (!tids.length) {
+			return;
 		}
 
-		function markCategoryRead(cid) {
-			function getCategoryTids(cid) {
-				const tids = [];
-				components.get('category/topic', 'cid', cid).each(function () {
-					tids.push($(this).attr('data-tid'));
-				});
-				return tids;
+		Promise.all(tids.map(async tid => api.put(`/topics/${tid}/read`))).then(() => {
+			doneRemovingTids(tids);
+		});
+	}
+
+	function markCategoryRead(cid) {
+		const tids = getCategoryTids(cid);
+		socket.emit('topics.markCategoryTopicsRead', cid, function (err) {
+			if (err) {
+				return alerts.error(err);
 			}
-			const tids = getCategoryTids(cid);
 
-			socket.emit('topics.markCategoryTopicsRead', cid, function (err) {
-				if (err) {
-					return alerts.error(err);
-				}
+			doneRemovingTids(tids);
+		});
+	}
 
-				doneRemovingTids(tids);
-			});
-		}
+	function getCategoryTids(cid) {
+		const tids = [];
+		components.get('category/topic', 'cid', cid).each(function () {
+			tids.push($(this).attr('data-tid'));
+		});
+		return tids;
+	}
 
-		// Generate list of default categories based on topic list
-		let defaultCategories = ajaxify.data.topics.reduce((map, topic) => {
+	function buildDefaultCategories() {
+		const map = ajaxify.data.topics.reduce((acc, topic) => {
 			const { category } = topic;
 			let { cid } = category;
 			cid = utils.isNumber(cid) ? parseInt(cid, 10) : cid;
-			map.set(cid, category);
-			return map;
+			acc.set(cid, category);
+			return acc;
 		}, new Map());
-		defaultCategories = Array.from(defaultCategories.values());
+		return Array.from(map.values());
+	}
+
+	function initCategorySelector() {
+		const defaultCategories = buildDefaultCategories();
 
 		const selector = categorySelector.init($('[component="category-selector"]'), {
 			onSelect: function (category) {
@@ -85,19 +88,18 @@ define('forum/unread', [
 			},
 			selectCategoryLabel: ajaxify.data.selectCategoryLabel || '[[unread:mark-as-read]]',
 			localCategories: [
-				{
-					cid: 'selected',
-					name: '[[unread:selected]]',
-					icon: '',
-				},
-				{
-					cid: 'all',
-					name: '[[unread:all]]',
-					icon: '',
-				},
+				{ cid: 'selected', name: '[[unread:selected]]', icon: '' },
+				{ cid: 'all', name: '[[unread:all]]', icon: '' },
 			],
 			defaultCategories,
 		});
+
+		return selector;
+	}
+
+	// --- refactored function ---
+	function handleMarkRead() {
+		initCategorySelector();
 	}
 
 	function doneRemovingTids(tids) {
