@@ -145,6 +145,21 @@ searchController.search = async function (req, res, next) {
 };
 
 const searches = {};
+const QueuedSearches = async function (data) {
+	if (searches[data.uid] && searches[data.uid].queries) {
+		const copy = searches[data.uid].queries.slice();
+		const filtered = searches[data.uid].queries.filter(
+			q => !copy.find(query => query.startsWith(q) && query.length > q.length)
+		);
+		delete searches[data.uid];
+		const dayTimestamp = (new Date());
+		dayTimestamp.setHours(0, 0, 0, 0);
+		await Promise.all(_.uniq(filtered).map(async (query) => {
+			await db.sortedSetIncrBy('searches:all', 1, query);
+			await db.sortedSetIncrBy(`searches:${dayTimestamp.getTime()}`, 1, query);
+		}));
+	}
+};
 
 async function recordSearch(data) {
 	const { query, searchIn } = data;
@@ -158,21 +173,7 @@ async function recordSearch(data) {
 		if (searches[data.uid].timeoutId) {
 			clearTimeout(searches[data.uid].timeoutId);
 		}
-		searches[data.uid].timeoutId = setTimeout(async () => {
-			if (searches[data.uid] && searches[data.uid].queries) {
-				const copy = searches[data.uid].queries.slice();
-				const filtered = searches[data.uid].queries.filter(
-					q => !copy.find(query => query.startsWith(q) && query.length > q.length)
-				);
-				delete searches[data.uid];
-				const dayTimestamp = (new Date());
-				dayTimestamp.setHours(0, 0, 0, 0);
-				await Promise.all(_.uniq(filtered).map(async (query) => {
-					await db.sortedSetIncrBy('searches:all', 1, query);
-					await db.sortedSetIncrBy(`searches:${dayTimestamp.getTime()}`, 1, query);
-				}));
-			}
-		}, 5000);
+		searches[data.uid].timeoutId = setTimeout(async () => QueuedSearches(data), 5000);
 	}
 }
 
