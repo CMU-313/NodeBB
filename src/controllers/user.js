@@ -15,25 +15,27 @@ userController.getCurrentUser = async function (req, res) {
 	res.json(userData);
 };
 
-userController.getUserByUID = async function (req, res, next) {
-	await byType('uid', req, res, next);
-};
+userController.getUserByUID = getUserByField('uid');
 
-userController.getUserByUsername = async function (req, res, next) {
-	await byType('username', req, res, next);
-};
+userController.getUserByUsername = getUserByField('username');
 
-userController.getUserByEmail = async function (req, res, next) {
-	await byType('email', req, res, next);
-};
 
-async function byType(type, req, res, next) {
-	const userData = await userController.getUserDataByField(req.uid, type, req.params[type]);
-	if (!userData) {
-		return next();
-	}
-	res.json(userData);
+userController.getUserByEmail = getUserByField('email');
+
+// Factory function that returns an Express handler for a given field
+function getUserByField(type) {
+	return async (req, res, next) => {
+		try {
+			const userData = await userController.getUserDataByField(req.uid, type, req.params[type]);
+			if (!userData) return next();
+			res.json(userData);
+		} catch (err) {
+			next(err);
+		}
+	};
 }
+
+
 
 userController.getUserDataByField = async function (callerUid, field, fieldValue) {
 	let uid = null;
