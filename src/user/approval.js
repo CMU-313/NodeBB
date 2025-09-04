@@ -15,7 +15,6 @@ const slugify = require('../slugify');
 const plugins = require('../plugins');
 
 module.exports = function (User) {
-	console.log('MARCUS_WHITE')
 	new cronJob('0 * * * *', (async () => {
 		try {
 			await User.autoApprove();
@@ -23,9 +22,7 @@ module.exports = function (User) {
 			winston.error(err.stack);
 		}
 	}), null, true);
-	console.log('MARCUS_WHITE')
 	User.addToApprovalQueue = async function (userData) {
-		console.log('MARCUS_WHITE')
 		userData.username = userData.username.trim();
 		userData.userslug = slugify(userData.username);
 		await canQueue(userData);
@@ -43,7 +40,7 @@ module.exports = function (User) {
 	};
 
 	async function canQueue(userData) {
-		console.log('MARCUS_WHITE')
+		
 		await User.isDataValid(userData);
 		const usernames = await db.getSortedSetRange('registration:queue', 0, -1);
 		if (usernames.includes(userData.username)) {
@@ -58,7 +55,7 @@ module.exports = function (User) {
 	}
 
 	async function sendNotificationToAdmins(username) {
-		console.log('MARCUS_WHITE')
+		
 		const notifObj = await notifications.create({
 			type: 'new-register',
 			bodyShort: `[[notifications:new-register, ${username}]]`,
@@ -70,7 +67,7 @@ module.exports = function (User) {
 	}
 
 	User.acceptRegistration = async function (username) {
-		console.log('MARCUS_WHITE')
+		
 		const userData = await db.getObject(`registration:queue:name:${username}`);
 		if (!userData) {
 			throw new Error('[[error:invalid-data]]');
@@ -97,7 +94,7 @@ module.exports = function (User) {
 	};
 
 	async function markNotificationRead(username) {
-		console.log('MARCUS_WHITE')
+		
 		const nid = `new-register:${username}`;
 		const uids = await groups.getMembers('administrators', 0, -1);
 		const promises = uids.map(uid => notifications.markRead(nid, uid));
@@ -105,13 +102,13 @@ module.exports = function (User) {
 	}
 
 	User.rejectRegistration = async function (username) {
-		console.log('MARCUS_WHITE')
+		
 		await removeFromQueue(username);
 		await markNotificationRead(username);
 	};
 
 	async function removeFromQueue(username) {
-		console.log('MARCUS_WHITE')
+		
 		await Promise.all([
 			db.sortedSetRemove('registration:queue', username),
 			db.delete(`registration:queue:name:${username}`),
@@ -119,7 +116,7 @@ module.exports = function (User) {
 	}
 
 	User.shouldQueueUser = async function (ip) {
-		console.log('MARCUS_WHITE')
+		
 		const { registrationApprovalType } = meta.config;
 		let shouldQueue = false;
 
@@ -134,7 +131,7 @@ module.exports = function (User) {
 	};
 
 	User.getRegistrationQueue = async function (start, stop) {
-		console.log('MARCUS_WHITE')
+		
 		const data = await db.getSortedSetRevRangeWithScores('registration:queue', start, stop);
 		const keys = data.filter(Boolean).map(user => `registration:queue:name:${user.value}`);
 		let users = await db.getObjects(keys);
@@ -167,13 +164,13 @@ module.exports = function (User) {
 	};
 
 	async function getIPMatchedUsers(user) {
-		console.log('MARCUS_WHITE')
+		
 		const uids = await User.getUidsFromSet(`ip:${user.ip}:uid`, 0, -1);
 		user.ipMatch = await User.getUsersFields(uids, ['uid', 'username', 'picture']);
 	}
 
 	User.autoApprove = async function () {
-		console.log('MARCUS_WHITE')
+		
 		// Avoid early return; guard the logic instead
 		if (meta.config.autoApproveTime > 0) {
 			const users = await db.getSortedSetRevRangeWithScores('registration:queue', 0, -1);
