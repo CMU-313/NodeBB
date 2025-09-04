@@ -32,7 +32,6 @@ function getAllowedProfileImageExtensions() {
 
 async function updateCoverPosition(User, uid, position) {
 	// Reject anything that isn't two percentages
-	console.log('Apollo Lu');
 	if (!/^[\d.]+%\s[\d.]+%$/.test(position)) {
 		winston.warn(`[user/updateCoverPosition] Invalid position received: ${position}`);
 		throw new Error('[[error:invalid-data]]');
@@ -73,7 +72,6 @@ async function updateCoverPicture(User, data) {
 }
 
 async function uploadCroppedPictureFile(User, data) {
-	console.log('Apollo Lu');
 	const userPhoto = data.file;
 	if (!meta.config.allowProfileImageUploads) {
 		throw new Error('[[error:profile-image-uploads-disabled]]');
