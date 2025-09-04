@@ -376,8 +376,6 @@ function buildComparator(fields, direction) {
 }
 
 function sortPosts(posts, data) {
-	console.log('My name is Arianna');
-
 	if (!posts.length || data.sortBy === 'relevance') return;
   
 	const direction = (data.sortDirection || 'desc') === 'desc' ? 1 : -1;
