@@ -79,19 +79,27 @@ module.exports = function (module) {
 		return await sortedSetRangeByScore('zrangebyscore', key, start, count, min, max, false);
 	};
 
+
 	module.getSortedSetRevRangeByScore = async function (key, start, count, max, min) {
 		return await sortedSetRangeByScore('zrevrangebyscore', key, start, count, min, max, false);
 	};
+
 
 	module.getSortedSetRangeByScoreWithScores = async function (key, start, count, min, max) {
 		return await sortedSetRangeByScore('zrangebyscore', key, start, count, min, max, true);
 	};
 
+
 	module.getSortedSetRevRangeByScoreWithScores = async function (key, start, count, max, min) {
 		return await sortedSetRangeByScore('zrevrangebyscore', key, start, count, min, max, true);
 	};
 
-	async function sortedSetRangeByScore(method, key, start, count, min, max, withScores) {
+	async function sortedSetRangeByScore(opts) {
+		const { method, key, start, count, min, max, withScores } = opts;
+		if (!key || !utils.isNumber(start) || !utils.isNumber(count)) {
+			return [];
+		}
+
 		if (parseInt(count, 10) === 0) {
 			return [];
 		}
