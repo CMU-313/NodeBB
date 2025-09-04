@@ -41,6 +41,7 @@ exports.get = async function (req, res, callback) {
 
 // Helpers to reduce complexity
 // Used ChatGPT to name all the helpers
+//Split into 7 helpers
 
 function invalidDataError() {
 	return new Error('[[error:invalid-data]]');
