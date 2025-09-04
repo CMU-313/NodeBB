@@ -25,14 +25,10 @@ ajaxify.widgets = { render: render };
 	}
 
 	ajaxify.check = (item) => {
-		/**
-		 * returns:
-		 *   true  (ajaxify OK)
-		 *   false (browser default)
-		 *   null  (no action)
-		 */
+
 		let urlObj;
 		let pathname = item instanceof Element ? item.getAttribute('href') : undefined;
+		
 		try {
 			urlObj = new URL(item, `${document.location.origin}${config.relative_path}`);
 			if (!pathname) {
@@ -44,44 +40,53 @@ ajaxify.widgets = { render: render };
 		}
 
 		const internalLink = utils.isInternalURI(urlObj, window.location, config.relative_path);
-
 		const hrefEmpty = href => href === undefined || href === '' || href === 'javascript:;';
 
 		if (item instanceof Element) {
-			if (item.getAttribute('data-ajaxify') === 'false') {
-				if (!internalLink) {
-					return false;
-				}
-
-				return null;
-			}
-
-			if (hrefEmpty(urlObj.href) || urlObj.protocol === 'javascript:' || pathname === '#' || pathname === '') {
-				return null;
+			const elementCheckResult = checkElementSpecificRules(item, urlObj, pathname, hrefEmpty, internalLink);
+			if (elementCheckResult !== undefined) {
+				return elementCheckResult;
 			}
 		}
 
 		if (internalLink) {
-			// Default behaviour for rss feeds
-			if (pathname.endsWith('.rss')) {
-				return false;
-			}
-
-			// Default behaviour for sitemap
-			if (String(pathname).startsWith(config.relative_path + '/sitemap') && pathname.endsWith('.xml')) {
-				return false;
-			}
-
-			// Default behaviour for uploads and direct links to API urls
-			if (['/uploads', '/assets/', '/api/'].some(function (prefix) {
-				return String(pathname).startsWith(config.relative_path + prefix);
-			})) {
-				return false;
+			const internalLinkCheckResult = checkInternalLinkRules(pathname);
+			if (internalLinkCheckResult !== undefined) {
+				return internalLinkCheckResult;
 			}
 		}
 
 		return true;
 	};
+
+	function checkElementSpecificRules(item, urlObj, pathname, hrefEmpty, internalLink) {
+		if (item.getAttribute('data-ajaxify') === 'false') {
+			return internalLink ? null : false;
+		}
+
+		if (hrefEmpty(urlObj.href) || urlObj.protocol === 'javascript:' || pathname === '#' || pathname === '') {
+			return null;
+		}
+
+		return undefined;
+	}
+
+	function checkInternalLinkRules(pathname) {
+		if (pathname.endsWith('.rss')) {
+			return false;
+		}
+
+		if (String(pathname).startsWith(config.relative_path + '/sitemap') && pathname.endsWith('.xml')) {
+			return false;
+		}
+
+		const restrictedPrefixes = ['/uploads', '/assets/', '/api/'];
+		if (restrictedPrefixes.some(prefix => String(pathname).startsWith(config.relative_path + prefix))) {
+			return false;
+		}
+
+		return undefined;
+	}
 
 	ajaxify.go = function (url, callback, quiet) {
 		// Automatically reconnect to socket and re-ajaxify on success
