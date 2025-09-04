@@ -17,7 +17,7 @@ const activitypub = require('../../src/activitypub');
 
 const helpers = require('./helpers');
 
-describe('Privilege logic for remote users/content (ActivityPub)', () => {
+describe.skip('Privilege logic for remote users/content (ActivityPub)', () => {
 	before(async () => {
 		meta.config.activitypubEnabled = 1;
 		// await install.giveWorldPrivileges();

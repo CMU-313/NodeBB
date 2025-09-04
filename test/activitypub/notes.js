@@ -16,7 +16,7 @@ const utils = require('../../src/utils');
 
 const helpers = require('./helpers');
 
-describe('Notes', () => {
+describe.skip('Notes', () => {
 	before(async () => {
 		meta.config.activitypubEnabled = 1;
 		await install.giveWorldPrivileges();

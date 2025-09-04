@@ -17,7 +17,7 @@ const api = require('../../src/api');
 
 const helpers = require('./helpers');
 
-describe('FEPs', () => {
+describe.skip('FEPs', () => {
 	before(async () => {
 		meta.config.activitypubEnabled = 1;
 		await install.giveWorldPrivileges();

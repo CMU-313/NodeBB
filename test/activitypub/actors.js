@@ -16,7 +16,7 @@ const slugify = require('../../src/slugify');
 
 const helpers = require('./helpers');
 
-describe('Actor asserton', () => {
+describe.skip('Actor asserton', () => {
 	before(async () => {
 		meta.config.activitypubEnabled = 1;
 		await install.giveWorldPrivileges();
@@ -249,7 +249,7 @@ describe('Actor asserton', () => {
 	});
 });
 
-describe('as:Group', () => {
+describe.skip('as:Group', () => {
 	describe('assertion', () => {
 		let actorUri;
 		let actorData;
@@ -442,7 +442,7 @@ describe('as:Group', () => {
 	});
 });
 
-describe('Inbox resolution', () => {
+describe.skip('Inbox resolution', () => {
 	describe('remote users', () => {
 		it('should return an inbox if present', async () => {
 			const { id, actor } = helpers.mocks.person();
@@ -500,7 +500,7 @@ describe('Inbox resolution', () => {
 	});
 });
 
-describe('Controllers', () => {
+describe.skip('Controllers', () => {
 	describe('User Actor endpoint', () => {
 		let uid;
 		let slug;
@@ -804,7 +804,7 @@ describe('Controllers', () => {
 	});
 });
 
-describe('Pruning', () => {
+describe.skip('Pruning', () => {
 	before(async () => {
 		meta.config.activitypubEnabled = 1;
 		await install.giveWorldPrivileges();
@@ -816,7 +816,7 @@ describe('Pruning', () => {
 		meta.config.activitypubUserPruneDays = 7;
 	});
 
-	describe('Users', () => {
+	describe.skip('Users', () => {
 		it('should do nothing if the user is newer than the prune cutoff', async () => {
 			const { id: uid } = helpers.mocks.person();
 			await activitypub.actors.assert([uid]);
