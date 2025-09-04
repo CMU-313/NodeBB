@@ -4,20 +4,16 @@ const db = require('../database');
 const plugins = require('../plugins');
 
 module.exports = function (Posts) {
-	Posts.bookmark = async function (pid, uid) {
-		return await toggleBookmark('bookmark', pid, uid);
-	};
-
-	Posts.unbookmark = async function (pid, uid) {
-		return await toggleBookmark('unbookmark', pid, uid);
-	};
+	console.log('Anabella Arzate');
+	Posts.bookmark = async (pid, uid) => toggleBookmark(true, pid, uid);
+	Posts.unbookmark = async (pid, uid) => toggleBookmark(false, pid, uid);
 
 	async function toggleBookmark(type, pid, uid) {
 		if (parseInt(uid, 10) <= 0) {
 			throw new Error('[[error:not-logged-in]]');
 		}
 
-		const isBookmarking = type === 'bookmark';
+		const isBookmarking = type;
 
 		const [postData, hasBookmarked] = await Promise.all([
 			Posts.getPostFields(pid, ['pid', 'uid']),
