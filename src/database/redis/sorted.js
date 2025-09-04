@@ -26,35 +26,47 @@ module.exports = function (module) {
 		return await sortedSetRange('zrevrange', key, start, stop, '-inf', '+inf', true);
 	};
 
-	async function sortedSetRange(method, key, start, stop, min, max, withScores) {
+	async function sortedSetRange(method, key, ...rest) {
+		// Accept EITHER options object OR legacy positional args
+		let opts;
+		if (rest.length === 1 && rest[0] && typeof rest[0] === 'object') {
+			opts = rest[0];
+		} else {
+			// Legacy: (start, stop, min, max, withScores)
+			const [pStart, pStop, pMin, pMax, pWithScores] = rest;
+			opts = { start: pStart, stop: pStop, min: pMin, max: pMax, withScores: pWithScores };
+		}
+
+		// Defaults mirror old behavior (use const — we don't reassign)
+		const {
+			start = 0,
+			stop = -1,
+			min = '-inf',
+			max = '+inf',
+			withScores = false,
+		} = opts;
+
 		if (Array.isArray(key)) {
 			if (!key.length) {
 				return [];
 			}
 			const batch = module.client.batch();
-			key.forEach(key => batch[method](genParams(method, key, 0, stop, min, max, true)));
+			// Always fetch WITHSCORES for batch merge
+			key.forEach(k => batch[method](genParams(method, k, 0, stop, min, max, true)));
 			const data = await helpers.execBatch(batch);
 
 			const batchData = data.map(setData => helpers.zsetToObjectArray(setData));
-
 			let objects = dbHelpers.mergeBatch(batchData, 0, stop, method === 'zrange' ? 1 : -1);
 
 			if (start > 0) {
 				objects = objects.slice(start, stop !== -1 ? stop + 1 : undefined);
 			}
-			if (!withScores) {
-				objects = objects.map(item => item.value);
-			}
-			return objects;
+			return withScores ? objects : objects.map(item => item.value);
 		}
 
 		const params = genParams(method, key, start, stop, min, max, withScores);
 		const data = await module.client[method](params);
-		if (!withScores) {
-			return data;
-		}
-		const objects = helpers.zsetToObjectArray(data);
-		return objects;
+		return withScores ? helpers.zsetToObjectArray(data) : data;
 	}
 
 	function genParams(method, key, start, stop, min, max, withScores) {
