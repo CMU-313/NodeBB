@@ -15,27 +15,13 @@ const utils = require('../utils');
 const plugins = require('../plugins');
 
 module.exports = function (User) {
-	User.getInvites = async function (uid) {
-		const emails = await db.getSetMembers(`invitation:uid:${uid}`);
-		return emails.map(email => validator.escape(String(email)));
-	};
-
-	User.getInvitesNumber = async function (uid) {
-		return await db.setCount(`invitation:uid:${uid}`);
-	};
-
-	User.getInvitingUsers = async function () {
-		return await db.getSetMembers('invitation:uids');
-	};
-
-	User.getAllInvites = async function () {
-		const uids = await User.getInvitingUsers();
-		const invitations = await async.map(uids, User.getInvites);
-		return invitations.map((invites, index) => ({
-			uid: uids[index],
-			invitations: invites,
-		}));
-	};
+	User.getInvites = getInvites;
+	User.getInvitesNumber = getInvitesNumber;
+	User.getInvitingUsers = getInvitingUsers;
+	User.getAllInvites = getAllInvites;
+	User.verifyInvitation = verifyInvitation;
+	User.joinGroupsFromInvitation = joinGroupsFromInvitation;
+	User.deleteInvitationKey = deleteInvitationKey;
 
 	User.sendInvitationEmail = async function (uid, email, groupsToJoin) {
 		if (!uid) {
@@ -58,20 +44,6 @@ module.exports = function (User) {
 		plugins.hooks.fire('action:user.invite', { uid, email, groupsToJoin });
 	};
 
-	User.verifyInvitation = async function (query) {
-		if (!query.token) {
-			if (meta.config.registrationType.startsWith('admin-')) {
-				throw new Error('[[register:invite.error-admin-only]]');
-			} else {
-				throw new Error('[[register:invite.error-invite-only]]');
-			}
-		}
-		const token = await db.getObjectField(`invitation:token:${query.token}`, 'token');
-		if (!token || token !== query.token) {
-			throw new Error('[[register:invite.error-invalid-data]]');
-		}
-	};
-
 	User.confirmIfInviteEmailIsUsed = async function (token, enteredEmail, uid) {
 		if (!enteredEmail) {
 			return;
@@ -82,23 +54,6 @@ module.exports = function (User) {
 			await User.setUserField(uid, 'email', email);
 			await User.email.confirmByUid(uid);
 		}
-	};
-
-	User.joinGroupsFromInvitation = async function (uid, token) {
-		let groupsToJoin = await db.getObjectField(`invitation:token:${token}`, 'groupsToJoin');
-
-		try {
-			groupsToJoin = JSON.parse(groupsToJoin);
-		} catch (err) {
-			winston.error(`[User.joinGroupsFromInvitation] ${err.stack}`);
-			return;
-		}
-
-		if (!groupsToJoin || groupsToJoin.length < 1) {
-			return;
-		}
-
-		await groups.join(groupsToJoin, uid);
 	};
 
 	User.deleteInvitation = async function (invitedBy, email) {
@@ -113,39 +68,6 @@ module.exports = function (User) {
 			db.delete(`invitation:token:${token}`),
 		]);
 	};
-
-	User.deleteInvitationKey = async function (registrationEmail, token) {
-		if (registrationEmail) {
-			const uids = await User.getInvitingUsers();
-			await Promise.all(uids.map(uid => deleteFromReferenceList(uid, registrationEmail)));
-			// Delete all invites to an email address if it has joined
-			const tokens = await db.getSetMembers(`invitation:invited:${registrationEmail}`);
-			const keysToDelete = [`invitation:invited:${registrationEmail}`].concat(tokens.map(token => `invitation:token:${token}`));
-			await db.deleteAll(keysToDelete);
-		}
-		if (token) {
-			const invite = await db.getObject(`invitation:token:${token}`);
-			if (!invite) {
-				return;
-			}
-			await deleteFromReferenceList(invite.inviter, invite.email);
-			await db.deleteAll([
-				`invitation:invited:${invite.email}`,
-				`invitation:token:${token}`,
-			]);
-		}
-	};
-
-	async function deleteFromReferenceList(uid, email) {
-		await Promise.all([
-			db.setRemove(`invitation:uid:${uid}`, email),
-			db.delete(`invitation:uid:${uid}:invited:${email}`),
-		]);
-		const count = await db.setCount(`invitation:uid:${uid}`);
-		if (count === 0) {
-			await db.setRemove('invitation:uids', uid);
-		}
-	}
 
 	async function prepareInvitation(uid, email, groupsToJoin) {
 		const inviterExists = await User.exists(uid);
@@ -188,3 +110,90 @@ module.exports = function (User) {
 		};
 	}
 };
+
+// Helpers
+async function getInvites(uid) {
+	const emails = await db.getSetMembers(`invitation:uid:${uid}`);
+	return emails.map(email => validator.escape(String(email)));
+};
+
+async function getInvitesNumber(uid) {
+	return await db.setCount(`invitation:uid:${uid}`);
+};
+
+async function getInvitingUsers() {
+	return await db.getSetMembers('invitation:uids');
+};
+
+async function getAllInvites() {
+	const uids = await getInvitingUsers();
+	const invitations = await async.map(uids, getInvites);
+	return invitations.map((invites, index) => ({
+		uid: uids[index],
+		invitations: invites,
+	}));
+};
+
+async function verifyInvitation(query) {
+	if (!query.token) {
+		if (meta.config.registrationType.startsWith('admin-')) {
+			throw new Error('[[register:invite.error-admin-only]]');
+		} else {
+			throw new Error('[[register:invite.error-invite-only]]');
+		}
+	}
+	const token = await db.getObjectField(`invitation:token:${query.token}`, 'token');
+	if (!token || token !== query.token) {
+		throw new Error('[[register:invite.error-invalid-data]]');
+	}
+};
+
+async function joinGroupsFromInvitation(uid, token) {
+	let groupsToJoin = await db.getObjectField(`invitation:token:${token}`, 'groupsToJoin');
+
+	try {
+		groupsToJoin = JSON.parse(groupsToJoin);
+	} catch (err) {
+		winston.error(`[User.joinGroupsFromInvitation] ${err.stack}`);
+		return;
+	}
+
+	if (!groupsToJoin || groupsToJoin.length < 1) {
+		return;
+	}
+
+	await groups.join(groupsToJoin, uid);
+};
+
+async function deleteInvitationKey(registrationEmail, token) {
+	if (registrationEmail) {
+		const uids = await getInvitingUsers();
+		await Promise.all(uids.map(uid => deleteFromReferenceList(uid, registrationEmail)));
+		// Delete all invites to an email address if it has joined
+		const tokens = await db.getSetMembers(`invitation:invited:${registrationEmail}`);
+		const keysToDelete = [`invitation:invited:${registrationEmail}`].concat(tokens.map(token => `invitation:token:${token}`));
+		await db.deleteAll(keysToDelete);
+	}
+	if (token) {
+		const invite = await db.getObject(`invitation:token:${token}`);
+		if (!invite) {
+			return;
+		}
+		await deleteFromReferenceList(invite.inviter, invite.email);
+		await db.deleteAll([
+			`invitation:invited:${invite.email}`,
+			`invitation:token:${token}`,
+		]);
+	}
+};
+
+async function deleteFromReferenceList(uid, email) {
+	await Promise.all([
+		db.setRemove(`invitation:uid:${uid}`, email),
+		db.delete(`invitation:uid:${uid}:invited:${email}`),
+	]);
+	const count = await db.setCount(`invitation:uid:${uid}`);
+	if (count === 0) {
+		await db.setRemove('invitation:uids', uid);
+	}
+}
