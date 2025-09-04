@@ -1,0 +1,54 @@
+[1mdiff --git a/public/src/client/topic/diffs.js b/public/src/client/topic/diffs.js[m
+[1mindex 6fb5c9e018..18def67fc5 100644[m
+[1m--- a/public/src/client/topic/diffs.js[m
+[1m+++ b/public/src/client/topic/diffs.js[m
+[36m@@ -40,7 +40,13 @@[m [mdefine('forum/topic/diffs', ['api', 'bootbox', 'alerts', 'forum/topic/images'],[m
+ 				});[m
+ [m
+ 				$deleteEl.on('click', function () {[m
+[31m-					Diffs.delete(pid, $selectEl.val(), $selectEl, $numberOfDiffCon);[m
+[32m+[m					[32m//Diffs.delete(pid, $selectEl.val(), $selectEl, $numberOfDiffCon);[m
+[32m+[m					[32mDiffs.delete({[m
+[32m+[m						[32mpid,[m
+[32m+[m						[32mtimestamp: $selectEl.val(),[m
+[32m+[m						[32m$selectEl,[m
+[32m+[m						[32m$numberOfDiffCon,[m
+[32m+[m					[32m});[m
+ 				});[m
+ [m
+ 				$modal.on('shown.bs.modal', function () {[m
+[36m@@ -80,18 +86,24 @@[m [mdefine('forum/topic/diffs', ['api', 'bootbox', 'alerts', 'forum/topic/images'],[m
+ 		}).catch(alerts.error);[m
+ 	};[m
+ [m
+[31m-	Diffs.delete = function (pid, timestamp, $selectEl, $numberOfDiffCon) {[m
+[31m-		api.del(`/posts/${encodeURIComponent(pid)}/diffs/${timestamp}`).then((data) => {[m
+[31m-			parsePostHistory(data, 'diffs').then(($html) => {[m
+[31m-				$selectEl.empty().append($html);[m
+[31m-				$selectEl.trigger('change');[m
+[31m-				const numberOfDiffs = $selectEl.find('option').length;[m
+[31m-				$numberOfDiffCon.text(numberOfDiffs);[m
+[31m-				alerts.success('[[topic:diffs.deleted]]');[m
+[31m-			});[m
+[31m-		}).catch(alerts.error);[m
+[32m+[m	[32mDiffs.delete = function ({ pid, timestamp, $selectEl, $numberOfDiffCon }) {[m
+[32m+[m		[32mconsole.log('hi I am running');[m
+[32m+[m		[32mapi.del(`/posts/${encodeURIComponent(pid)}/diffs/${timestamp}`)[m
+[32m+[m			[32m.then((data) => {[m
+[32m+[m				[32mparsePostHistory(data, 'diffs').then(($html) => {[m
+[32m+[m					[32m$selectEl.empty().append($html);[m
+[32m+[m					[32m$selectEl.trigger('change');[m
+[32m+[m
+[32m+[m					[32mconst numberOfDiffs = $selectEl.find('option').length;[m
+[32m+[m					[32m$numberOfDiffCon.text(numberOfDiffs);[m
+[32m+[m
+[32m+[m					[32malerts.success('[[topic:diffs.deleted]]');[m
+[32m+[m				[32m});[m
+[32m+[m			[32m})[m
+[32m+[m			[32m.catch(alerts.error);[m
+ 	};[m
+ [m
+[32m+[m
+ 	function parsePostHistory(data, blockName) {[m
+ 		return new Promise((resolve) => {[m
+ 			const params = [{[m

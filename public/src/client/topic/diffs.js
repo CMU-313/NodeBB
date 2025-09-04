@@ -80,17 +80,22 @@ define('forum/topic/diffs', ['api', 'bootbox', 'alerts', 'forum/topic/images'], 
 		}).catch(alerts.error);
 	};
 
-	Diffs.delete = function (pid, timestamp, $selectEl, $numberOfDiffCon) {
-		api.del(`/posts/${encodeURIComponent(pid)}/diffs/${timestamp}`).then((data) => {
-			parsePostHistory(data, 'diffs').then(($html) => {
-				$selectEl.empty().append($html);
-				$selectEl.trigger('change');
-				const numberOfDiffs = $selectEl.find('option').length;
-				$numberOfDiffCon.text(numberOfDiffs);
-				alerts.success('[[topic:diffs.deleted]]');
-			});
-		}).catch(alerts.error);
+	Diffs.delete = function ({ pid, timestamp, $selectEl, $numberOfDiffCon }) {
+		api.del(`/posts/${encodeURIComponent(pid)}/diffs/${timestamp}`)
+			.then((data) => {
+				parsePostHistory(data, 'diffs').then(($html) => {
+					$selectEl.empty().append($html);
+					$selectEl.trigger('change');
+
+					const numberOfDiffs = $selectEl.find('option').length;
+					$numberOfDiffCon.text(numberOfDiffs);
+
+					alerts.success('[[topic:diffs.deleted]]');
+				});
+			})
+			.catch(alerts.error);
 	};
+
 
 	function parsePostHistory(data, blockName) {
 		return new Promise((resolve) => {
