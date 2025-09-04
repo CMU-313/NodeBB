@@ -47,12 +47,12 @@ async function renderLocation(location, data, uid, options, config) {
 	}
 
 	const renderedWidgets = await Promise.all(
-		widgetsAtLocation.map(widget => renderWidget(widget, uid, options, config, location))
+		widgetsAtLocation.map(widget => renderWidget({widget, uid, options, config, location}))
 	);
 	return renderedWidgets;
 }
 
-async function renderWidget(widget, uid, options, config, location) {
+async function renderWidget({widget, uid, options, config, location}) {
 	if (!widget || !widget.data || (!!widget.data['hide-mobile'] && options.req.useragent.isMobile)) {
 		return;
 	}
