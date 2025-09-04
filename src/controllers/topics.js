@@ -208,75 +208,57 @@ async function addOldCategory(topicData, userPrivileges) {
 	}
 }
 
-async function addTags(topicData, req, res, currentPage, postAtIndex) {
-	let description = '';
-	if (postAtIndex && postAtIndex.content) {
-		description = utils.stripHTMLTags(utils.decodeHTMLEntities(postAtIndex.content)).trim();
+/**
+ * Generates a truncated and cleaned page description from a post's content.
+ */
+function generateDescription(post) {
+	if (!post || !post.content) {
+		return '';
 	}
 
+	let description = utils.stripHTMLTags(utils.decodeHTMLEntities(post.content)).trim();
 	if (description.length > 160) {
 		description = `${description.slice(0, 157)}...`;
 	}
-	description = description.replace(/\n/g, ' ').trim();
+	return description.replace(/\n/g, ' ').trim();
+}
 
-	let mainPost = topicData.posts.find(p => parseInt(p.index, 10) === 0);
-	if (!mainPost) {
-		mainPost = await posts.getPostData(topicData.mainPid);
-	}
-
-	res.locals.metaTags = [
-		{
-			name: 'title',
-			content: topicData.titleRaw,
-		},
-		{
-			property: 'og:title',
-			content: topicData.titleRaw,
-		},
-		{
-			property: 'og:type',
-			content: 'article',
-		},
-		{
-			property: 'article:published_time',
-			content: utils.toISOString(topicData.timestamp),
-		},
-		{
-			property: 'article:modified_time',
-			content: utils.toISOString(Math.max(topicData.lastposttime, mainPost && mainPost.edited)),
-		},
-		{
-			property: 'article:section',
-			content: topicData.category ? topicData.category.name : '',
-		},
+/**
+ * Builds the array of <meta> tags for the topic page.
+ */
+function buildMetaTags(topicData, mainPost, description) {
+	const metaTags = [
+		{ name: 'title', content: topicData.titleRaw },
+		{ property: 'og:title', content: topicData.titleRaw },
+		{ property: 'og:type', content: 'article' },
+		{ property: 'article:published_time', content: utils.toISOString(topicData.timestamp) },
+		{ property: 'article:modified_time', content: utils.toISOString(Math.max(topicData.lastposttime, mainPost && mainPost.edited)) },
+		{ property: 'article:section', content: topicData.category ? topicData.category.name : '' },
 	];
 
-	if (description && description.length) {
-		res.locals.metaTags.push(
-			{
-				name: 'description',
-				content: description,
-			},
-			{
-				property: 'og:description',
-				content: description,
-			},
+	if (description) {
+		metaTags.push(
+			{ name: 'description', content: description },
+			{ property: 'og:description', content: description }
 		);
 	}
 
-	await addOGImageTags(res, topicData, postAtIndex);
+	return metaTags;
+}
 
-	const page = currentPage > 1 ? `?page=${currentPage}` : '';
-	res.locals.linkTags = [
-		{
-			rel: 'canonical',
-			href: `${url}/topic/${topicData.slug}${page}`,
-			noEscape: true,
-		},
-	];
+/**
+ * Builds the array of <link> tags for the topic page.
+ */
+function buildLinkTags(topicData, postAtIndex, currentPage) {
+	const pageQuery = currentPage > 1 ? `?page=${currentPage}` : '';
+	const linkTags = [{
+		rel: 'canonical',
+		href: `${url}/topic/${topicData.slug}${pageQuery}`,
+		noEscape: true,
+	}];
 
 	if (!topicData['feeds:disableRSS']) {
-		res.locals.linkTags.push({
+		linkTags.push({
 			rel: 'alternate',
 			type: 'application/rss+xml',
 			href: topicData.rssFeedUrl,
@@ -284,14 +266,14 @@ async function addTags(topicData, req, res, currentPage, postAtIndex) {
 	}
 
 	if (topicData.category) {
-		res.locals.linkTags.push({
+		linkTags.push({
 			rel: 'up',
 			href: `${url}/category/${topicData.category.slug}`,
 		});
 	}
 
 	if (postAtIndex) {
-		res.locals.linkTags.push({
+		linkTags.push({
 			rel: 'author',
 			href: `${url}/user/${postAtIndex.user.userslug}`,
 		});
@@ -299,12 +281,32 @@ async function addTags(topicData, req, res, currentPage, postAtIndex) {
 
 	if (meta.config.activitypubEnabled && postAtIndex) {
 		const { pid } = postAtIndex;
-		res.locals.linkTags.push({
+		linkTags.push({
 			rel: 'alternate',
 			type: 'application/activity+json',
 			href: utils.isNumber(pid) ? `${nconf.get('url')}/post/${pid}` : pid,
 		});
 	}
+
+	return linkTags;
+}
+
+async function addTags(topicData, req, res, currentPage, postAtIndex) {
+	// 1. Find the main post if it's not already loaded
+	let mainPost = topicData.posts.find(p => parseInt(p.index, 10) === 0);
+	if (!mainPost) {
+		mainPost = await posts.getPostData(topicData.mainPid);
+	}
+
+	// 2. Generate the page description from the current post
+	const description = generateDescription(postAtIndex);
+
+	// 3. Build and assign the meta and link tags using new helper functions
+	res.locals.metaTags = buildMetaTags(topicData, mainPost, description);
+	res.locals.linkTags = buildLinkTags(topicData, postAtIndex, currentPage);
+
+	// 4. Add Open Graph image tags (this function was already well-defined)
+	await addOGImageTags(res, topicData, postAtIndex);
 }
 
 async function addOGImageTags(res, topicData, postAtIndex) {
