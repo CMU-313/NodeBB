@@ -21,6 +21,7 @@ module.exports = function (Categories) {
 
 		const pinnedTids = await db.getSortedSetRevRange(`cid:${cid}:tids:pinned`, 0, -1);
 		await async.eachLimit(pinnedTids, 10, async (tid) => {
+			console.log('categories');
 			await topics.purgePostsAndTopic(tid, uid);
 		});
 		const categoryData = await Categories.getCategoryData(cid);
