@@ -373,6 +373,7 @@ function buildComparator(fields, direction) {
 		if (s1 < s2) return -direction;
 		return 0;
 	};
+}
 
 function sortPosts(posts, data) {
 	console.log('My name is Arianna');
