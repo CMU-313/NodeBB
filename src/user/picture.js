@@ -10,6 +10,13 @@ const file = require('../file');
 const image = require('../image');
 const meta = require('../meta');
 
+function nodeify(promise, cb) {
+	if (typeof cb === 'function') {
+		promise.then(res => cb(null, res)).catch(cb);
+	}
+	return promise; // still works with Promise callers
+}
+
 
 function getAllowedImageTypes() {
 	return ['image/png', 'image/jpeg', 'image/bmp', 'image/gif'];
@@ -211,15 +218,15 @@ module.exports = function (User) {
 	User.getAllowedProfileImageExtensions = getAllowedProfileImageExtensions;
 
 
-	User.updateCoverPosition = (uid,position) => updateCoverPosition(User, uid, position);
+	User.updateCoverPosition = (uid,position,cb) => nodeify(updateCoverPosition(User, uid, position),cb);
 
-	User.updateCoverPicture = data => updateCoverPicture(User, data); 
+	User.updateCoverPicture = (data,cb) => nodeify(updateCoverPicture(User, data),cb); 
 
 	// uploads a image file as profile picture
-	User.uploadCroppedPictureFile = data => uploadCroppedPictureFile(User, data);
+	User.uploadCroppedPictureFile = (data,cb) => nodeify(uploadCroppedPictureFile(User, data),cb);
 
 	// uploads image data in base64 as profile picture
-	User.uploadCroppedPicture = data => uploadCroppedPicture(User, data);
+	User.uploadCroppedPicture = (data,cb) => nodeify(uploadCroppedPicture(User, data),cb);
 
 	User.deleteCurrentPicture = (uid, field) => deleteCurrentPicture(User, uid, field);
 	
