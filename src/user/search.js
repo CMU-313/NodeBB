@@ -10,6 +10,11 @@ const groups = require('../groups');
 const activitypub = require('../activitypub');
 const utils = require('../utils');
 
+const apMapping = {
+	username: 'ap.preferredUsername',
+	fullname: 'ap.name',
+};
+
 module.exports = function (User) {
 	const filterFnMap = {
 		online: user => user.status !== 'offline' && (Date.now() - user.lastonline < 300000),
@@ -35,48 +40,13 @@ module.exports = function (User) {
 
 		const startTime = process.hrtime();
 
-		let uids = [];
-		if (searchBy === 'ip') {
-			uids = await searchByIP(query);
-		} else if (searchBy === 'uid') {
-			uids = [query];
-		} else {
-			if (!data.findUids && data.uid) {
-				const handle = activitypub.helpers.isWebfinger(data.query);
-				if (handle || activitypub.helpers.isUri(data.query)) {
-					const local = await activitypub.helpers.resolveLocalId(data.query);
-					if (local.type === 'user' && utils.isNumber(local.id)) {
-						uids = [local.id];
-					} else {
-						const assertion = await activitypub.actors.assert([handle || data.query]);
-						if (assertion === true) {
-							uids = [handle ? await User.getUidByUserslug(handle) : query];
-						} else if (Array.isArray(assertion) && assertion.length) {
-							uids = assertion.map(u => u.id);
-						}
-					}
-				}
-			}
-
-			if (!uids.length) {
-				const searchMethod = data.findUids || findUids;
-				uids = await searchMethod(query, searchBy, data.hardCap);
-
-				const mapping = {
-					username: 'ap.preferredUsername',
-					fullname: 'ap.name',
-				};
-				if (meta.config.activitypubEnabled && mapping.hasOwnProperty(searchBy)) {
-					uids = uids.concat(await searchMethod(query, mapping[searchBy], data.hardCap));
-				}
-			}
-		}
+		let uids = await resolveUidsFromSearchBy({ query, searchBy, data, User });
 
 		uids = await filterAndSortUids(uids, data);
 		if (data.hardCap > 0) {
 			uids.length = data.hardCap;
 		}
-
+		
 		const result = await plugins.hooks.fire('filter:users.search', { uids: uids, uid: uid });
 		uids = result.uids;
 
@@ -86,30 +56,89 @@ module.exports = function (User) {
 
 		if (paginate) {
 			const resultsPerPage = data.resultsPerPage || meta.config.userSearchResultsPerPage;
-			const start = Math.max(0, page - 1) * resultsPerPage;
-			const stop = start + resultsPerPage;
-			searchResult.pageCount = Math.ceil(uids.length / resultsPerPage);
-			uids = uids.slice(start, stop);
+			const {slice, pageCount} = applyPagniation(uids, page, resultsPerPage);
+			searchResult.pageCount = pageCount;
+			uids = slice;
 		}
 
 		const [userData, blocks] = await Promise.all([
 			User.getUsers(uids, uid),
 			User.blocks.list(uid),
 		]);
-
-		if (blocks.length) {
-			userData.forEach((user) => {
-				if (user) {
-					user.isBlocked = blocks.includes(user.uid);
-				}
-			});
-		}
+		attachBlockFlags(userData, blocks);
 
 		searchResult.timing = (process.elapsedTimeSince(startTime) / 1000).toFixed(2);
 		searchResult.users = userData.filter(user => (user &&
 			utils.isNumber(user.uid) ? user.uid > 0 : activitypub.helpers.isUri(user.uid)));
 		return searchResult;
 	};
+
+	async function resolveUidsFromSearchBy({ query, searchBy, data, User }) {
+		if (searchBy === 'ip') {
+			return searchByIP(query);
+		}
+		if (searchBy === 'uid') {
+			return [query];
+		}
+
+		let uids = [];
+		if (!data.findUids && data.uid) {
+			uids = await resolveActivityPubCandidates({ query: data.query, User});
+			if (uids.length) return uids;
+		}
+
+		return runSearchMethodWithApFallback({ query, searchBy, data });
+	}
+
+	async function resolveActivityPubCandidates({ query, User}) {
+		const handle = activitypub.helpers.isWebfinger(query);
+		const isUri = activitypub.helpers.isUri(query);
+
+		if (!handle && !isUri) return [];
+
+		const local = await activitypub.helpers.resolveLocalId(query);
+		if (local.type === 'user' && utils.isNumber(local.id)) {
+			return [local.id];
+		}
+
+		const assertion = await activitypub.actors.assert([handle || query]);
+		if (assertion === true) {
+			const uid = handle ? await User.getUidByUserslug(handle) : query;
+			return [uid];
+		}
+		if (Array.isArray(assertion) && assertion.length) {
+			return assertion.map(u => u.id);
+		}
+		return [];
+	}
+
+	async function runSearchMethodWithApFallback({ query, searchBy, data}) {
+		const searchMethod = data.findUids || findUids;
+		let uids = await searchMethod(query, searchBy, data.hardCap);
+
+		if (meta.config.activitypubEnabled && Object.prototype.hasOwnProperty.call(apMapping, searchBy)) {
+			const apField = apMapping[searchBy];
+			const apUids = await searchMethod(query, apField, data.hardCap);
+			uids = uids.concat(apUids);
+		}
+		return uids;
+	}
+
+	function applyPagniation(uids, page, resultsPerPage) {
+		const start = Math.max(0, page - 1) * resultsPerPage;
+		const stop = start + resultsPerPage;
+		return {
+			slice: uids.slice(start, stop),
+			pageCount: Math.ceil(uids.length / resultsPerPage),
+		};
+	}
+
+	function attachBlockFlags(userData, blocks) {
+		if (!blocks || !blocks.length || !userData) return;
+		userData.forEach((user) => {
+			if (user) user.isBlocked = blocks.includes(user.uid);
+		});
+	}
 
 	async function findUids(query, searchBy, hardCap) {
 		if (!query) {
