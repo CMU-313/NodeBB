@@ -81,11 +81,19 @@ Events.init = async () => {
 	Events._types = types;
 };
 
-async function translateEventArgs(event, language, prefix, ...args) {
+
+async function translateEventArgs(...args) {
+	console.log('ADITI_AGNI');
+	const event = args[0];
+	const language = args[1];
+	const prefix = args[2];
+	const remainingArgs = args.slice(3);
+
 	const key = getTranslationKey(event, prefix);
-	const compiled = translator.compile.apply(null, [key, ...args]);
+	const compiled = translator.compile.apply(null, [key, ...remainingArgs]);
 	return utils.decodeHTMLEntities(await translator.translate(compiled, language));
-}
+
+} //fix here 
 
 async function translateSimple(event, language, prefix) {
 	return await translateEventArgs(event, language, prefix, renderUser(event), renderTimeago(event));
