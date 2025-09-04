@@ -312,11 +312,11 @@ module.exports = function (Topics) {
 	};
 
 	Topics.increasePostCount = async function (tid) {
-		incrementFieldAndUpdateSortedSet(tid, 'postcount', 1, 'topics:posts');
+		await incrementFieldAndUpdateSortedSet({tid,field:'postcount', by:1, set:'topics:posts'});
 	};
 
 	Topics.decreasePostCount = async function (tid) {
-		incrementFieldAndUpdateSortedSet(tid, 'postcount', -1, 'topics:posts');
+		await incrementFieldAndUpdateSortedSet({tid, field:'postcount',by:-1,set: 'topics:posts'});
 	};
 
 	Topics.increaseViewCount = async function (req, tid) {
@@ -327,13 +327,14 @@ module.exports = function (Topics) {
 			const interval = meta.config.incrementTopicViewsInterval * 60000;
 			if (!req.session.tids_viewed[tid] || req.session.tids_viewed[tid] < now - interval) {
 				const cid = await Topics.getTopicField(tid, 'cid');
-				incrementFieldAndUpdateSortedSet(tid, 'viewcount', 1, ['topics:views', `cid:${cid}:tids:views`]);
+				await incrementFieldAndUpdateSortedSet({tid, field:'viewcount', by:1, set:['topics:views', `cid:${cid}:tids:views`]});
 				req.session.tids_viewed[tid] = now;
 			}
 		}
 	};
 
-	async function incrementFieldAndUpdateSortedSet(tid, field, by, set) {
+	async function incrementFieldAndUpdateSortedSet({tid, field, by, set}) {
+		//console.log('claire sze');
 		const value = await db.incrObjectFieldBy(`topic:${tid}`, field, by);
 		await db[Array.isArray(set) ? 'sortedSetsAdd' : 'sortedSetAdd'](set, value, tid);
 	}
