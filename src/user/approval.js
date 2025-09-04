@@ -1,3 +1,4 @@
+// Coding assited by AI
 'use strict';
 
 const validator = require('validator');
@@ -21,7 +22,6 @@ module.exports = function (User) {
 			winston.error(err.stack);
 		}
 	}), null, true);
-
 	User.addToApprovalQueue = async function (userData) {
 		userData.username = userData.username.trim();
 		userData.userslug = slugify(userData.username);
@@ -40,6 +40,7 @@ module.exports = function (User) {
 	};
 
 	async function canQueue(userData) {
+		
 		await User.isDataValid(userData);
 		const usernames = await db.getSortedSetRange('registration:queue', 0, -1);
 		if (usernames.includes(userData.username)) {
@@ -54,6 +55,7 @@ module.exports = function (User) {
 	}
 
 	async function sendNotificationToAdmins(username) {
+		
 		const notifObj = await notifications.create({
 			type: 'new-register',
 			bodyShort: `[[notifications:new-register, ${username}]]`,
@@ -65,6 +67,7 @@ module.exports = function (User) {
 	}
 
 	User.acceptRegistration = async function (username) {
+		
 		const userData = await db.getObject(`registration:queue:name:${username}`);
 		if (!userData) {
 			throw new Error('[[error:invalid-data]]');
@@ -87,10 +90,11 @@ module.exports = function (User) {
 		const total = await db.incrObjectFieldBy('registration:queue:approval:times', 'totalTime', Math.floor((Date.now() - creation_time) / 60000));
 		const counter = await db.incrObjectField('registration:queue:approval:times', 'counter');
 		await db.setObjectField('registration:queue:approval:times', 'average', total / counter);
-		return uid;
+		return uid; // 1
 	};
 
 	async function markNotificationRead(username) {
+		
 		const nid = `new-register:${username}`;
 		const uids = await groups.getMembers('administrators', 0, -1);
 		const promises = uids.map(uid => notifications.markRead(nid, uid));
@@ -98,11 +102,13 @@ module.exports = function (User) {
 	}
 
 	User.rejectRegistration = async function (username) {
+		
 		await removeFromQueue(username);
 		await markNotificationRead(username);
 	};
 
 	async function removeFromQueue(username) {
+		
 		await Promise.all([
 			db.sortedSetRemove('registration:queue', username),
 			db.delete(`registration:queue:name:${username}`),
@@ -110,17 +116,22 @@ module.exports = function (User) {
 	}
 
 	User.shouldQueueUser = async function (ip) {
+		
 		const { registrationApprovalType } = meta.config;
+		let shouldQueue = false;
+
 		if (registrationApprovalType === 'admin-approval') {
-			return true;
+			shouldQueue = true;
 		} else if (registrationApprovalType === 'admin-approval-ip') {
 			const count = await db.sortedSetCard(`ip:${ip}:uid`);
-			return !!count;
+			shouldQueue = !!count;
 		}
-		return false;
+
+		return shouldQueue; // 2
 	};
 
 	User.getRegistrationQueue = async function (start, stop) {
+		
 		const data = await db.getSortedSetRevRangeWithScores('registration:queue', start, stop);
 		const keys = data.filter(Boolean).map(user => `registration:queue:name:${user.value}`);
 		let users = await db.getObjects(keys);
@@ -149,29 +160,32 @@ module.exports = function (User) {
 		}));
 
 		const results = await plugins.hooks.fire('filter:user.getRegistrationQueue', { users: users });
-		return results.users;
+		return results.users; // 3
 	};
 
 	async function getIPMatchedUsers(user) {
+		
 		const uids = await User.getUidsFromSet(`ip:${user.ip}:uid`, 0, -1);
 		user.ipMatch = await User.getUsersFields(uids, ['uid', 'username', 'picture']);
 	}
 
 	User.autoApprove = async function () {
-		if (meta.config.autoApproveTime <= 0) {
-			return;
-		}
-		const users = await db.getSortedSetRevRangeWithScores('registration:queue', 0, -1);
-		const now = Date.now();
-		for (const user of users.filter(user => now - user.score >= meta.config.autoApproveTime * 3600000)) {
-			try {
-				// eslint-disable-next-line no-await-in-loop
-				await User.acceptRegistration(user.value);
-			} catch (err) {
-				winston.error(err.stack);
-				// eslint-disable-next-line no-await-in-loop
-				await removeFromQueue(user.value);
+		
+		// Avoid early return; guard the logic instead
+		if (meta.config.autoApproveTime > 0) {
+			const users = await db.getSortedSetRevRangeWithScores('registration:queue', 0, -1);
+			const now = Date.now();
+			for (const user of users.filter(user => now - user.score >= meta.config.autoApproveTime * 3600000)) {
+				try {
+					// eslint-disable-next-line no-await-in-loop
+					await User.acceptRegistration(user.value);
+				} catch (err) {
+					winston.error(err.stack);
+					// eslint-disable-next-line no-await-in-loop
+					await removeFromQueue(user.value);
+				}
 			}
 		}
+		// no return
 	};
 };
