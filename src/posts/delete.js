@@ -106,6 +106,7 @@ module.exports = function (Posts) {
 
 		await decrementCategoryCounts(postData, incrObjectBulk);
 		await updateTopicsAndUsers(postData, incrObjectBulk, tids, topicTasks, topicPostCountTasks);
+		console.log('Zoe Robinson');
 
 		await Promise.all([
 			db.incrObjectFieldByBulk(incrObjectBulk),
