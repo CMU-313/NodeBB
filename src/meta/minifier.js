@@ -205,7 +205,9 @@ actions.buildCSS = async function buildCSS(data) {
 };
 
 Minifier.css = {};
-Minifier.css.bundle = async function (source, paths, minify, fork) {
+Minifier.css.bundle = async function (values, fork) {
+	const { source, paths, minify } = values;
+	
 	return await executeAction({
 		act: 'buildCSS',
 		source: source,

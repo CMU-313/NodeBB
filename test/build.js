@@ -7,6 +7,7 @@ const { mkdirp } = require('mkdirp');
 
 const db = require('./mocks/databasemock');
 const file = require('../src/file');
+const { options } = require('yargs');
 
 describe('minifier', () => {
 	const testPath = path.join(__dirname, '../test/build');
@@ -67,7 +68,13 @@ describe('minifier', () => {
 		path.resolve(__dirname, './files'),
 	];
 	it('.css.bundle() should concat styles', (done) => {
-		minifier.css.bundle(styles, paths, false, false, 'ltr', (err, bundle) => {
+		const values = {
+			source: styles,
+			paths: paths,
+			minify: false, 
+		};
+		const fork = false; 
+		minifier.css.bundle(values, fork, (err, bundle) => {
 			assert.ifError(err);
 			assert.strictEqual(bundle.ltr.code, '.help {\n  margin: 10px;\n}\n\n.yellow {\n  background: yellow;\n}\n\n.help {\n  display: block;\n}\n.help .blue {\n  background: blue;\n}');
 			done();
@@ -75,7 +82,13 @@ describe('minifier', () => {
 	});
 
 	it('.css.bundle() should minify styles', (done) => {
-		minifier.css.bundle(styles, paths, true, false, 'ltr', (err, bundle) => {
+		const values = {
+			source: styles,
+			paths: paths,
+			minify: true, 
+		};
+		const fork = false; 
+		minifier.css.bundle(values, fork, (err, bundle) => {
 			assert.ifError(err);
 			assert.strictEqual(bundle.ltr.code, '.help{margin:10px}.yellow{background:#ff0}.help{display:block}.help .blue{background:#00f}');
 			done();
