@@ -292,7 +292,6 @@ const helpers = require('./helpers');
 const modsController = module.exports;
 modsController.flags = {};
 
-console.log('Ruhani: flags.list executed');
 
 // ----------------- Helper Functions -----------------
 async function parseFilters(req, validFilters) {
@@ -423,7 +422,6 @@ modsController.flags.detail = async function (req, res, next) {
             if (!isFlagInModeratedCids.includes(true)) return next();
         }
     }
-    console.log('Ruhani: flags.list executed');
     
     async function getAssignees(flagData) {
         let uids = [];
@@ -493,7 +491,6 @@ modsController.postQueue = async function (req, res, next) {
     ]);
     _privileges = { ..._privileges[0], ..._privileges[1] };
 
-    console.log('Ruhani: flags.list executed');
 
     // Filter and map posts
     postData = postData
