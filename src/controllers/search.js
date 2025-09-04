@@ -33,10 +33,12 @@ searchController.search = async function (req, res, next) {
 		'search:tags': privileges.global.can('search:tags', req.uid),
 	});
 	req.query.in = req.query.in || meta.config.searchDefaultIn || 'titlesposts';
-	let allowed = (req.query.in === 'users' && userPrivileges['search:users']) ||
-					(req.query.in === 'tags' && userPrivileges['search:tags']) ||
-					(req.query.in === 'categories') ||
-					(['titles', 'titlesposts', 'posts', 'bookmarks'].includes(req.query.in) && userPrivileges['search:content']);
+	const searchIn = req.query.in;
+	const canSearchUsers = (searchIn === 'users') && userPrivileges['search:users'];
+	const canSearchTags = (searchIn === 'tags') && userPrivileges['search:tags'];
+	const isCategorySearch = (searchIn === 'categories');
+	const canSearchContent = (['titles', 'titlesposts', 'posts', 'bookmarks'].includes(searchIn)) && userPrivileges['search:content'];
+	let allowed = canSearchUsers || canSearchTags || isCategorySearch || canSearchContent;
 	({ allowed } = await plugins.hooks.fire('filter:search.isAllowed', {
 		uid: req.uid,
 		query: req.query,
