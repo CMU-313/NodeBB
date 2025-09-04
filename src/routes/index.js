@@ -56,7 +56,8 @@ _mounts.globalMod = (app, middleware, controllers) => {
 	setupPageRoute(app, '/registration-queue', [], controllers.globalMods.registrationQueue);
 };
 
-_mounts.topic = (app, name, middleware, controllers) => {
+// eslint-disable-next-line no-unused-vars
+_mounts.topic = ({ app, name, middleware, controllers }) => {
 	setupPageRoute(app, `/${name}/:topic_id/:slug/:post_index?`, [], controllers.topics.get);
 	setupPageRoute(app, `/${name}/:topic_id/:slug?`, [], controllers.topics.get);
 };
@@ -220,7 +221,10 @@ function addRemountableRoutes(app, router, middleware, mounts) {
 				controllerHelpers.redirect(res, `${nconf.get('relative_path')}/${mount}${req.path}`);
 			});
 		}
-
-		_mounts[original](router, mount, middleware, controllers);
+		if (original === 'topic') {
+			_mounts.topic({ app: router, name: mount, middleware, controllers });
+		} else {
+			_mounts[original](router, mount, middleware, controllers);
+		}
 	});
 }
