@@ -11,7 +11,7 @@ const activitypub = require('../activitypub');
 const utils = require('../utils');
 
 module.exports = function (Topics) {
-	Topics.createTopicFromPosts = async function (uid, title, pids, fromTid, cid) {
+	Topics.createTopicFromPosts = async function (uid, title, pids) {
 		if (title) {
 			title = title.trim();
 		}
@@ -25,6 +25,15 @@ module.exports = function (Topics) {
 		if (!pids || !pids.length) {
 			throw new Error('[[error:invalid-pid]]');
 		}
+		const mainPid = pids[0];
+		const cid = await posts.getCidByPid(mainPid);
+
+		const [mainPost, isAdminOrMod] = await Promise.all([
+			posts.getPostData(mainPid),
+			privileges.categories.isAdminOrMod(cid, uid),
+		]);
+		// CHATGPT generated line
+		const fromTid = mainPost.tid; 
 
 		if (pids.every(isFinite)) {
 			pids.sort((a, b) => a - b);
@@ -35,15 +44,7 @@ module.exports = function (Topics) {
 			pids = pidsDatetime.map(key => map.get(key));
 		}
 
-		const mainPid = pids[0];
-		if (!cid) {
-			cid = await posts.getCidByPid(mainPid);
-		}
-
-		const [mainPost, isAdminOrMod] = await Promise.all([
-			posts.getPostData(mainPid),
-			privileges.categories.isAdminOrMod(cid, uid),
-		]);
+		
 		let lastPost = mainPost;
 		if (pids.length > 1) {
 			lastPost = await posts.getPostData(pids[pids.length - 1]);

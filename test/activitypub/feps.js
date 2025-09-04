@@ -256,7 +256,7 @@ describe.skip('FEPs', () => {
 					const { pid: reply1Pid } = await topics.reply({ uid, tid, content: utils.generateUUID() });
 					const { pid: reply2Pid } = await topics.reply({ uid, tid, content: utils.generateUUID() });
 					await topics.createTopicFromPosts(
-						adminUid, utils.generateUUID(), [reply1Pid, reply2Pid], tid, cid
+						adminUid, utils.generateUUID(), [reply1Pid, reply2Pid]
 					);
 
 					assert.strictEqual(activitypub._sent.size, 2, activitypub._sent.keys());
