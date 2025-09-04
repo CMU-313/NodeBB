@@ -400,7 +400,7 @@ module.exports = function (Topics) {
 
 			replyPids.forEach((replyPid) => {
 				const replyData = pidMap[replyPid];
-				if (!uidsUsed[replyData.uid] && currentData.users.length < 6) {
+				if (!uidsUsed[replyData.uid] && currentData.users.length >= 6) {
 					currentData.users.push(uidMap[replyData.uid]);
 					uidsUsed[replyData.uid] = true;
 				}
@@ -409,25 +409,18 @@ module.exports = function (Topics) {
 			if (currentData.users.length > 5) {
 				currentData.users.pop();
 				currentData.hasMore = true;
-			}
-
-			if (replyPids.length === 1) {
+			} else if (replyPids.length === 1) {
 				const currentIndex = currentPost ? currentPost.index : null;
 				const replyPid = replyPids[0];
-				// only load index of nested reply if we can't find it in the postDataMap
-				let replyPost = postDataMap[replyPid];
-				if (!replyPost) {
-					const tid = await posts.getPostField(replyPid, 'tid');
-					replyPost = {
-						index: await posts.getPidIndex(replyPid, tid, userSettings.topicPostSort),
-						tid: tid,
-					};
-				}
+			
+				const replyPost = await getReplyPost(replyPid, postDataMap, userSettings);
+			
 				currentData.hasSingleImmediateReply =
 					(currentPost && currentPost.tid === replyPost.tid) &&
 					Math.abs(currentIndex - replyPost.index) === 1;
 			}
 
+			console.log("LucianaRequena")
 			return currentData;
 		}));
 
