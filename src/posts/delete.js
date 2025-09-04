@@ -48,17 +48,17 @@ module.exports = function (Posts) {
 		return postData; //returns the post data
 	}
 
-	Posts.purge = async function (pids, uid) {
-		pids = Array.isArray(pids) ? pids : [pids];
+	Posts.purge = async function (pids, uid) { //async purge function, takes pids and uid
+		pids = Array.isArray(pids) ? pids : [pids]; //checks if input pid is an array
 		let postData = await Posts.getPostsData(pids);
-		pids = pids.filter((pid, index) => !!postData[index]);
-		postData = postData.filter(Boolean);
+		pids = pids.filter((pid, index) => !!postData[index]); 
+		postData = postData.filter(Boolean); //checks post validity
 		if (!postData.length) {
 			return;
 		}
 		const uniqTids = _.uniq(postData.map(p => p.tid));
 		const topicData = await topics.getTopicsFields(uniqTids, ['tid', 'cid', 'pinned', 'postcount']);
-		const tidToTopic = _.zipObject(uniqTids, topicData);
+		const tidToTopic = _.zipObject(uniqTids, topicData); //gets unique ids
 
 		postData.forEach((p) => {
 			p.topic = tidToTopic[p.tid];
@@ -71,7 +71,7 @@ module.exports = function (Posts) {
 			uid: uid,
 		});
 
-		await Promise.all([
+		await Promise.all([ //deleting from various places for consistancy 
 			deleteFromTopicUserNotification(postData),
 			deleteFromCategoryRecentPosts(postData),
 			deleteFromUsersBookmarks(pids),
@@ -90,7 +90,7 @@ module.exports = function (Posts) {
 
 		plugins.hooks.fire('action:posts.purge', { posts: postData, uid: uid });
 
-		await db.deleteAll(postData.map(p => `post:${p.pid}`));
+		await db.deleteAll(postData.map(p => `post:${p.pid}`)); //deletes completely from db
 	};
 
 	async function deleteFromTopicUserNotification(postData) {
