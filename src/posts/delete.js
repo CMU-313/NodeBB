@@ -94,48 +94,18 @@ module.exports = function (Posts) {
 	};
 
 	async function deleteFromTopicUserNotification(postData) {
-		const bulkRemove = [];
-		postData.forEach((p) => {
-			bulkRemove.push([`tid:${p.tid}:posts`, p.pid]);
-			bulkRemove.push([`tid:${p.tid}:posts:votes`, p.pid]);
-			bulkRemove.push([`uid:${p.uid}:posts`, p.pid]);
-			bulkRemove.push([`cid:${p.cid}:uid:${p.uid}:pids`, p.pid]);
-			bulkRemove.push([`cid:${p.cid}:uid:${p.uid}:pids:votes`, p.pid]);
-		});
+		const bulkRemove = await getBulkRemove(postData);
 		await db.sortedSetRemoveBulk(bulkRemove);
 
-		const localCount = postData.filter(p => utils.isNumber(p.pid)).length;
-		const incrObjectBulk = [['global', { postCount: -localCount }]];
-
-		const postsByCategory = _.groupBy(postData, p => parseInt(p.cid, 10));
-		for (const [cid, posts] of Object.entries(postsByCategory)) {
-			incrObjectBulk.push([`category:${cid}`, { post_count: -posts.length }]);
-		}
-
-		const postsByTopic = _.groupBy(postData, p => String(p.tid));
-		const topicPostCountTasks = [];
+		// eslint-disable-next-line max-len
+		const localCount = postData.filter(p => utils.isNumber(p.pid)).length; //finds valid mosts being deleted + decreases global count
+		const incrObjectBulk = [['global', { postCount: -localCount }]]; 
 		const topicTasks = [];
-		const zsetIncrBulk = [];
 		const tids = [];
-		for (const [tid, posts] of Object.entries(postsByTopic)) {
-			tids.push(tid);
-			incrObjectBulk.push([`topic:${tid}`, { postcount: -posts.length }]);
-			if (posts.length && posts[0]) {
-				const topicData = posts[0].topic;
-				const newPostCount = topicData.postcount - posts.length;
-				topicPostCountTasks.push(['topics:posts', newPostCount, tid]);
-				if (!topicData.pinned) {
-					zsetIncrBulk.push([`cid:${topicData.cid}:tids:posts`, -posts.length, tid]);
-				}
-			}
-			topicTasks.push(topics.updateTeaser(tid));
-			topicTasks.push(topics.updateLastPostTimeFromLastPid(tid));
-			const postsByUid = _.groupBy(posts, p => parseInt(p.uid, 10));
-			for (const [uid, uidPosts] of Object.entries(postsByUid)) {
-				zsetIncrBulk.push([`tid:${tid}:posters`, -uidPosts.length, uid]);
-			}
-			topicTasks.push(db.sortedSetIncrByBulk(zsetIncrBulk));
-		}
+		const topicPostCountTasks = [];
+
+		await decrementCategoryCounts(postData, incrObjectBulk);
+		await updateTopicsAndUsers(postData, incrObjectBulk, tids, topicTasks, topicPostCountTasks);
 
 		await Promise.all([
 			db.incrObjectFieldByBulk(incrObjectBulk),
@@ -144,6 +114,7 @@ module.exports = function (Posts) {
 			user.updatePostCount(_.uniq(postData.map(p => p.uid))),
 			notifications.rescind(...postData.map(p => `new_post:tid:${p.tid}:pid:${p.pid}:uid:${p.uid}`)),
 		]);
+
 		const tidPosterZsets = tids.map(tid => `tid:${tid}:posters`);
 		await db.sortedSetsRemoveRangeByScore(tidPosterZsets, '-inf', 0);
 		const posterCounts = await db.sortedSetsCard(tidPosterZsets);
@@ -152,6 +123,58 @@ module.exports = function (Posts) {
 				[`topic:${tid}`, { postercount: posterCounts[idx] || 0 }]
 			))
 		);
+	}
+
+	//updates topics, category, and users post counts
+	async function updateTopicsAndUsers(postData, incrObjectBulk, tids, topicTasks, topicPostCountTasks) {
+		if (postData.length === 0) return; // Early return if postData is empty
+		const postsByTopic = _.groupBy(postData, p => String(p.tid)); //groups posts by topic
+		const zsetIncrBulk = [];
+		for (const [tid, posts] of Object.entries(postsByTopic)) { //decrements post counts for topics
+			tids.push(tid);
+			incrObjectBulk.push([`topic:${tid}`, { postcount: -posts.length }]);
+			if (posts.length && posts[0]) {
+				const topicData = posts[0].topic;
+				const newPostCount = topicData.postcount - posts.length; //update postcount
+				topicPostCountTasks.push(['topics:posts', newPostCount, tid]);
+				if (!topicData.pinned) {
+					zsetIncrBulk.push([`cid:${topicData.cid}:tids:posts`, -posts.length, tid]); //update pinned
+				}
+			}
+			topicTasks.push(topics.updateTeaser(tid));
+			topicTasks.push(topics.updateLastPostTimeFromLastPid(tid));
+			processZsets(tid, posts, zsetIncrBulk);
+			topicTasks.push(db.sortedSetIncrByBulk(zsetIncrBulk));
+		}
+	}
+
+	//updates user zsets for posts
+	function processZsets(tid, posts, zsetIncrBulk) {
+		const postsByUid = _.groupBy(posts, p => parseInt(p.uid, 10));
+		for (const [uid, uidPosts] of Object.entries(postsByUid)) {
+			zsetIncrBulk.push([`tid:${tid}:posters`, -uidPosts.length, uid]);
+		}
+	}
+
+	//creates references to remove in bulk from various places
+	async function getBulkRemove(postData) {
+		const bulkRemove = [];
+		postData.forEach((p) => { 
+			bulkRemove.push([`tid:${p.tid}:posts`, p.pid]);
+			bulkRemove.push([`tid:${p.tid}:posts:votes`, p.pid]);
+			bulkRemove.push([`uid:${p.uid}:posts`, p.pid]);
+			bulkRemove.push([`cid:${p.cid}:uid:${p.uid}:pids`, p.pid]);
+			bulkRemove.push([`cid:${p.cid}:uid:${p.uid}:pids:votes`, p.pid]);
+		});
+		return bulkRemove;
+	}
+
+	//decrements category post counts
+	async function decrementCategoryCounts(postData, incrObjectBulk) {
+		const postsByCategory = _.groupBy(postData, p => parseInt(p.cid, 10));
+		for (const [cid, posts] of Object.entries(postsByCategory)) {
+			incrObjectBulk.push([`category:${cid}`, { post_count: -posts.length }]);
+		}
 	}
 
 	async function deleteFromCategoryRecentPosts(postData) {
