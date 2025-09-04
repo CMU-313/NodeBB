@@ -128,8 +128,6 @@ privsPosts.canEdit = async function (pid, uid) {
 		userData: user.getUserFields(uid, ['reputation']),
 	});
 
-	console.log('Raymond Welgosh');
-
 	results.isMod = results.isMod[0];
 	if (results.isAdmin) {
 		return { flag: true };
