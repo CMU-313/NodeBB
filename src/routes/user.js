@@ -4,7 +4,7 @@ const helpers = require('./helpers');
 
 const { setupPageRoute } = helpers;
 
-module.exports = function (app, name, middleware, controllers) {
+module.exports = function (app, name, { middleware, controllers }) {
 	const middlewares = [
 		middleware.exposeUid,
 		middleware.canViewUsers,
