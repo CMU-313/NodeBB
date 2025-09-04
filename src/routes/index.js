@@ -56,12 +56,12 @@ _mounts.globalMod = (app, middleware, controllers) => {
 	setupPageRoute(app, '/registration-queue', [], controllers.globalMods.registrationQueue);
 };
 
-_mounts.topic = (app, name, middleware, controllers) => {
+_mounts.topic = (app, name, { controllers }) => {
 	setupPageRoute(app, `/${name}/:topic_id/:slug/:post_index?`, [], controllers.topics.get);
 	setupPageRoute(app, `/${name}/:topic_id/:slug?`, [], controllers.topics.get);
 };
 
-_mounts.post = (app, name, middleware, controllers) => {
+_mounts.post = (app, name, { middleware, controllers }) => {
 	const middlewares = [
 		middleware.maintenanceMode,
 		middleware.authenticateRequest,
@@ -72,11 +72,11 @@ _mounts.post = (app, name, middleware, controllers) => {
 	app.get(`/api/${name}/:pid`, middlewares, helpers.tryRoute(controllers.posts.redirectToPost));
 };
 
-_mounts.tags = (app, name, middleware, controllers) => {
+_mounts.tags = (app, name, { middleware, controllers }) => {
 	setupPageRoute(app, `/${name}/:tag`, [middleware.privateTagListing], controllers.tags.getTag);
 	setupPageRoute(app, `/${name}`, [middleware.privateTagListing], controllers.tags.getTags);
 };
-_mounts.categories = (app, name, middleware, controllers) => {
+_mounts.categories = (app, name, { middleware, controllers }) => {
 	setupPageRoute(app, '/categories', [], controllers.categories.list);
 	setupPageRoute(app, '/popular', [], controllers.popular.get);
 	setupPageRoute(app, '/recent', [], controllers.recent.get);
@@ -84,18 +84,18 @@ _mounts.categories = (app, name, middleware, controllers) => {
 	setupPageRoute(app, '/unread', [middleware.ensureLoggedIn], controllers.unread.get);
 };
 
-_mounts.category = (app, name, middleware, controllers) => {
+_mounts.category = (app, name, { controllers }) => {
 	setupPageRoute(app, `/${name}/:category_id/:slug/:topic_index`, [], controllers.category.get);
 	setupPageRoute(app, `/${name}/:category_id/:slug?`, [], controllers.category.get);
 };
 
-_mounts.users = (app, name, middleware, controllers) => {
+_mounts.users = (app, name, { middleware, controllers }) => {
 	const middlewares = [middleware.canViewUsers];
 
 	setupPageRoute(app, `/${name}`, middlewares, controllers.users.index);
 };
 
-_mounts.groups = (app, name, middleware, controllers) => {
+_mounts.groups = (app, name, { middleware, controllers }) => {
 	const middlewares = [middleware.canViewGroups];
 
 	setupPageRoute(app, `/${name}`, middlewares, controllers.groups.list);
@@ -221,6 +221,6 @@ function addRemountableRoutes(app, router, middleware, mounts) {
 			});
 		}
 
-		_mounts[original](router, mount, middleware, controllers);
+		_mounts[original](router, mount, { middleware, controllers });
 	});
 }
