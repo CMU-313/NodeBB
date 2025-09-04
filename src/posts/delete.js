@@ -12,51 +12,53 @@ const flags = require('../flags');
 const activitypub = require('../activitypub');
 const utils = require('../utils');
 
+//cid (category id), pid (post id), tid (topic id), uid (user id)
+
 module.exports = function (Posts) {
 	Posts.delete = async function (pid, uid) {
-		return await deleteOrRestore('delete', pid, uid);
+		return await deleteOrRestore('delete', pid, uid); //calls deleteorrestore with type delete
 	};
 
 	Posts.restore = async function (pid, uid) {
-		return await deleteOrRestore('restore', pid, uid);
+		return await deleteOrRestore('restore', pid, uid); //calls deleteorrestore with type restore
 	};
 
 	async function deleteOrRestore(type, pid, uid) {
 		const isDeleting = type === 'delete';
 		await plugins.hooks.fire(`filter:post.${type}`, { pid: pid, uid: uid });
 		await Posts.setPostFields(pid, {
-			deleted: isDeleting ? 1 : 0,
-			deleterUid: isDeleting ? uid : 0,
+			deleted: isDeleting ? 1 : 0, //set to 1 if isDeleting is true (if deleted)
+			deleterUid: isDeleting ? uid : 0, //post is not deleted bc inserted type is restore
 		});
 		const postData = await Posts.getPostFields(pid, ['pid', 'tid', 'uid', 'content', 'timestamp', 'deleted']);
 		const topicData = await topics.getTopicFields(postData.tid, ['tid', 'cid', 'pinned']);
 		postData.cid = topicData.cid;
 		await Promise.all([
-			topics.updateLastPostTimeFromLastPid(postData.tid),
-			topics.updateTeaser(postData.tid),
+			topics.updateLastPostTimeFromLastPid(postData.tid), //updates the time for the last post
+			topics.updateTeaser(postData.tid), //updates the teaser for the topic
 			isDeleting ?
-				db.sortedSetRemove(`cid:${topicData.cid}:pids`, pid) :
-				db.sortedSetAdd(`cid:${topicData.cid}:pids`, postData.timestamp, pid),
+				db.sortedSetRemove(`cid:${topicData.cid}:pids`, pid) : //removes post id from set
+				db.sortedSetAdd(`cid:${topicData.cid}:pids`, postData.timestamp, pid), //otherwise add back to set 
 		]);
-		await categories.updateRecentTidForCid(postData.cid);
+		await categories.updateRecentTidForCid(postData.cid); //updates data for category
 		plugins.hooks.fire(`action:post.${type}`, { post: _.clone(postData), uid: uid });
 		if (type === 'delete') {
 			await flags.resolveFlag('post', pid, uid);
 		}
-		return postData;
+		return postData; //returns the post data
 	}
 
-	Posts.purge = async function (pids, uid) {
-		pids = Array.isArray(pids) ? pids : [pids];
+	Posts.purge = async function (pids, uid) { //async purge function, takes pids and uid
+		pids = Array.isArray(pids) ? pids : [pids]; //checks if input pid is an array
 		let postData = await Posts.getPostsData(pids);
-		pids = pids.filter((pid, index) => !!postData[index]);
-		postData = postData.filter(Boolean);
+		pids = pids.filter((pid, index) => !!postData[index]); 
+		postData = postData.filter(Boolean); //checks post validity
 		if (!postData.length) {
 			return;
 		}
 		const uniqTids = _.uniq(postData.map(p => p.tid));
 		const topicData = await topics.getTopicsFields(uniqTids, ['tid', 'cid', 'pinned', 'postcount']);
-		const tidToTopic = _.zipObject(uniqTids, topicData);
+		const tidToTopic = _.zipObject(uniqTids, topicData); //gets unique ids
 
 		postData.forEach((p) => {
 			p.topic = tidToTopic[p.tid];
@@ -69,7 +71,7 @@ module.exports = function (Posts) {
 			uid: uid,
 		});
 
-		await Promise.all([
+		await Promise.all([ //deleting from various places for consistancy 
 			deleteFromTopicUserNotification(postData),
 			deleteFromCategoryRecentPosts(postData),
 			deleteFromUsersBookmarks(pids),
@@ -88,52 +90,22 @@ module.exports = function (Posts) {
 
 		plugins.hooks.fire('action:posts.purge', { posts: postData, uid: uid });
 
-		await db.deleteAll(postData.map(p => `post:${p.pid}`));
+		await db.deleteAll(postData.map(p => `post:${p.pid}`)); //deletes completely from db
 	};
 
 	async function deleteFromTopicUserNotification(postData) {
-		const bulkRemove = [];
-		postData.forEach((p) => {
-			bulkRemove.push([`tid:${p.tid}:posts`, p.pid]);
-			bulkRemove.push([`tid:${p.tid}:posts:votes`, p.pid]);
-			bulkRemove.push([`uid:${p.uid}:posts`, p.pid]);
-			bulkRemove.push([`cid:${p.cid}:uid:${p.uid}:pids`, p.pid]);
-			bulkRemove.push([`cid:${p.cid}:uid:${p.uid}:pids:votes`, p.pid]);
-		});
+		const bulkRemove = await getBulkRemove(postData);
 		await db.sortedSetRemoveBulk(bulkRemove);
 
-		const localCount = postData.filter(p => utils.isNumber(p.pid)).length;
-		const incrObjectBulk = [['global', { postCount: -localCount }]];
-
-		const postsByCategory = _.groupBy(postData, p => parseInt(p.cid, 10));
-		for (const [cid, posts] of Object.entries(postsByCategory)) {
-			incrObjectBulk.push([`category:${cid}`, { post_count: -posts.length }]);
-		}
-
-		const postsByTopic = _.groupBy(postData, p => String(p.tid));
-		const topicPostCountTasks = [];
+		// eslint-disable-next-line max-len
+		const localCount = postData.filter(p => utils.isNumber(p.pid)).length; //finds valid mosts being deleted + decreases global count
+		const incrObjectBulk = [['global', { postCount: -localCount }]]; 
 		const topicTasks = [];
-		const zsetIncrBulk = [];
 		const tids = [];
-		for (const [tid, posts] of Object.entries(postsByTopic)) {
-			tids.push(tid);
-			incrObjectBulk.push([`topic:${tid}`, { postcount: -posts.length }]);
-			if (posts.length && posts[0]) {
-				const topicData = posts[0].topic;
-				const newPostCount = topicData.postcount - posts.length;
-				topicPostCountTasks.push(['topics:posts', newPostCount, tid]);
-				if (!topicData.pinned) {
-					zsetIncrBulk.push([`cid:${topicData.cid}:tids:posts`, -posts.length, tid]);
-				}
-			}
-			topicTasks.push(topics.updateTeaser(tid));
-			topicTasks.push(topics.updateLastPostTimeFromLastPid(tid));
-			const postsByUid = _.groupBy(posts, p => parseInt(p.uid, 10));
-			for (const [uid, uidPosts] of Object.entries(postsByUid)) {
-				zsetIncrBulk.push([`tid:${tid}:posters`, -uidPosts.length, uid]);
-			}
-			topicTasks.push(db.sortedSetIncrByBulk(zsetIncrBulk));
-		}
+		const topicPostCountTasks = [];
+
+		await decrementCategoryCounts(postData, incrObjectBulk);
+		await updateTopicsAndUsers(postData, incrObjectBulk, tids, topicTasks, topicPostCountTasks);
 
 		await Promise.all([
 			db.incrObjectFieldByBulk(incrObjectBulk),
@@ -142,6 +114,7 @@ module.exports = function (Posts) {
 			user.updatePostCount(_.uniq(postData.map(p => p.uid))),
 			notifications.rescind(...postData.map(p => `new_post:tid:${p.tid}:pid:${p.pid}:uid:${p.uid}`)),
 		]);
+
 		const tidPosterZsets = tids.map(tid => `tid:${tid}:posters`);
 		await db.sortedSetsRemoveRangeByScore(tidPosterZsets, '-inf', 0);
 		const posterCounts = await db.sortedSetsCard(tidPosterZsets);
@@ -150,6 +123,58 @@ module.exports = function (Posts) {
 				[`topic:${tid}`, { postercount: posterCounts[idx] || 0 }]
 			))
 		);
+	}
+
+	//updates topics, category, and users post counts
+	async function updateTopicsAndUsers(postData, incrObjectBulk, tids, topicTasks, topicPostCountTasks) {
+		if (postData.length === 0) return; // Early return if postData is empty
+		const postsByTopic = _.groupBy(postData, p => String(p.tid)); //groups posts by topic
+		const zsetIncrBulk = [];
+		for (const [tid, posts] of Object.entries(postsByTopic)) { //decrements post counts for topics
+			tids.push(tid);
+			incrObjectBulk.push([`topic:${tid}`, { postcount: -posts.length }]);
+			if (posts.length && posts[0]) {
+				const topicData = posts[0].topic;
+				const newPostCount = topicData.postcount - posts.length; //update postcount
+				topicPostCountTasks.push(['topics:posts', newPostCount, tid]);
+				if (!topicData.pinned) {
+					zsetIncrBulk.push([`cid:${topicData.cid}:tids:posts`, -posts.length, tid]); //update pinned
+				}
+			}
+			topicTasks.push(topics.updateTeaser(tid));
+			topicTasks.push(topics.updateLastPostTimeFromLastPid(tid));
+			processZsets(tid, posts, zsetIncrBulk);
+			topicTasks.push(db.sortedSetIncrByBulk(zsetIncrBulk));
+		}
+	}
+
+	//updates user zsets for posts
+	function processZsets(tid, posts, zsetIncrBulk) {
+		const postsByUid = _.groupBy(posts, p => parseInt(p.uid, 10));
+		for (const [uid, uidPosts] of Object.entries(postsByUid)) {
+			zsetIncrBulk.push([`tid:${tid}:posters`, -uidPosts.length, uid]);
+		}
+	}
+
+	//creates references to remove in bulk from various places
+	async function getBulkRemove(postData) {
+		const bulkRemove = [];
+		postData.forEach((p) => { 
+			bulkRemove.push([`tid:${p.tid}:posts`, p.pid]);
+			bulkRemove.push([`tid:${p.tid}:posts:votes`, p.pid]);
+			bulkRemove.push([`uid:${p.uid}:posts`, p.pid]);
+			bulkRemove.push([`cid:${p.cid}:uid:${p.uid}:pids`, p.pid]);
+			bulkRemove.push([`cid:${p.cid}:uid:${p.uid}:pids:votes`, p.pid]);
+		});
+		return bulkRemove;
+	}
+
+	//decrements category post counts
+	async function decrementCategoryCounts(postData, incrObjectBulk) {
+		const postsByCategory = _.groupBy(postData, p => parseInt(p.cid, 10));
+		for (const [cid, posts] of Object.entries(postsByCategory)) {
+			incrObjectBulk.push([`category:${cid}`, { post_count: -posts.length }]);
+		}
 	}
 
 	async function deleteFromCategoryRecentPosts(postData) {
