@@ -159,7 +159,6 @@ define('forum/post-queue', [
 							break;
 
 						default:
-							console.log('[LENA_POSHNI] default case');
 							handleQueueActions.call(e.target);
 							break;
 					}
@@ -175,8 +174,6 @@ define('forum/post-queue', [
 		const action = $(this).attr('data-action');
 		const id = parent.attr('data-id');
 		const listContainer = parent.get(0).parentNode;
-
-		console.log('[LENA_POSHNI] before processQueueAction', { action, id });
 
 
 
