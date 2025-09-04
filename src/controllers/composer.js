@@ -128,6 +128,8 @@ exports.post = async function (req, res) {
 		const action = decideAction(body);
 		enrichForAction(data, body, action);
 
+		console.log('JORDAN_BAIN');
+
 		const result = await performPost(action, req.uid, data);
 		if (!result) {
 			throw invalidDataError();
