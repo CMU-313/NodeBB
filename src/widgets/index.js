@@ -237,8 +237,8 @@ widgets.saveLocationsOnThemeReset = async function () {
 
 
 async function findAndClearMissingWidgets(locations, available, saveDraftWidgets) {
-  // let saveDraftWidgets = [];
-  for (const [template, tplLocations] of Object.entries(locations)) {
+
+	for (const [template, tplLocations] of Object.entries(locations)) {
 		for (const location of tplLocations) {
 			const locationExists = available.find(
 				area => area.template === template && area.location === location
@@ -247,7 +247,7 @@ async function findAndClearMissingWidgets(locations, available, saveDraftWidgets
 			if (!locationExists) {
 				const widgetsAtLocation = await widgets.getArea(template, location);
 				saveDraftWidgets = saveDraftWidgets.concat(widgetsAtLocation);
-				await widgets.setArea({template, location, widgets: [],});
+				await widgets.setArea({template, location, widgets: []});
 			}
 		}
 	}
@@ -267,9 +267,9 @@ widgets.moveMissingAreasToDrafts = async function () {
 		const draftWidgets = await widgets.getArea('global', 'drafts');
 
 		
-		let saveDraftWidgets = draftWidgets || [];
+		const saveDraftWidgets = draftWidgets || [];
 
-		await findAndClearMissingWidgets(locations, available, saveDraftWidgets)
+		await findAndClearMissingWidgets(locations, available, saveDraftWidgets);
 
 		await widgets.setArea({
 			template: 'global',
