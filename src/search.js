@@ -352,37 +352,39 @@ function filterByTags(posts, hasTags) {
 	return posts;
 }
 
+function buildComparator(fields, direction) {
+	const [a, b] = fields;
+  
+	const getVal = b ?
+		p => (p && p[a] ? p[a][b] : undefined) :
+		p => (p ? p[a] : undefined);
+  
+	return (p1, p2) => {
+		const v1 = getVal(p1);
+		const v2 = getVal(p2);
+
+		if (utils.isNumber(v1) && utils.isNumber(v2)) {
+			return direction * ((v2 ?? 0) - (v1 ?? 0));
+		}
+
+		const s1 = (v1 ?? '').toString();
+		const s2 = (v2 ?? '').toString();
+		if (s1 > s2) return direction;
+		if (s1 < s2) return -direction;
+		return 0;
+	};
+}
+
 function sortPosts(posts, data) {
-	if (!posts.length || data.sortBy === 'relevance') {
-		return;
-	}
-
-	data.sortDirection = data.sortDirection || 'desc';
-	const direction = data.sortDirection === 'desc' ? 1 : -1;
+	if (!posts.length || data.sortBy === 'relevance') return;
+  
+	const direction = (data.sortDirection || 'desc') === 'desc' ? 1 : -1;
 	const fields = data.sortBy.split('.');
-	if (fields.length === 1) {
-		return posts.sort((p1, p2) => direction * (p2[fields[0]] - p1[fields[0]]));
-	}
-
-	const firstPost = posts[0];
-	if (!fields || fields.length !== 2 || !firstPost[fields[0]] || !firstPost[fields[0]][fields[1]]) {
-		return;
-	}
-
-	const isNumeric = utils.isNumber(firstPost[fields[0]][fields[1]]);
-
-	if (isNumeric) {
-		posts.sort((p1, p2) => direction * (p2[fields[0]][fields[1]] - p1[fields[0]][fields[1]]));
-	} else {
-		posts.sort((p1, p2) => {
-			if (p1[fields[0]][fields[1]] > p2[fields[0]][fields[1]]) {
-				return direction;
-			} else if (p1[fields[0]][fields[1]] < p2[fields[0]][fields[1]]) {
-				return -direction;
-			}
-			return 0;
-		});
-	}
+  
+	if (!fields.length || fields.length > 2) return;
+  
+	const comparator = buildComparator(fields, direction);
+	posts.sort(comparator);
 }
 
 async function getSearchCids(data) {
