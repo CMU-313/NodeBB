@@ -27,11 +27,14 @@ const Assert = module.exports;
 
 Assert.user = helpers.try(async (req, res, next) => {
 	const uid = req.params.uid || res.locals.uid;
-
+	const uidNotNeg2 = uid !== -2;
+	const isNumberOrIsUri = utils.isNumber(uid) || activitypub.helpers.isUri(uid);
+	const isUidValidSlug = uid.indexOf('@') !== -1 && await user.existsBySlug(uid);
+	const isUidValidNumberOrUri = isNumberOrIsUri && await user.exists(uid);
+	const isUidValid = isUidValidNumberOrUri || isUidValidSlug;
 	if (
-		uid !== -2 && // exposeUid middleware was in chain (means route is local user only) and resolved to fediverse user
-		(((utils.isNumber(uid) || activitypub.helpers.isUri(uid)) && await user.exists(uid)) ||
-		(uid.indexOf('@') !== -1 && await user.existsBySlug(uid)))
+		uidNotNeg2 && isUidValid
+		// exposeUid middleware was in chain (means route is local user only) and resolved to fediverse user 
 	) {
 		return next();
 	}
