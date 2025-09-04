@@ -25,7 +25,6 @@ ajaxify.widgets = { render: render };
 	}
 
 	ajaxify.check = (item) => {
-		console.log("MASON BROWNRIGG – ajaxify.check triggered"); 
 
 		let urlObj;
 		let pathname = item instanceof Element ? item.getAttribute('href') : undefined;
