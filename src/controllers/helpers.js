@@ -453,92 +453,84 @@ helpers.formatApiResponse = async (statusCode, res, payload) => {
 	}
 
 	if (String(statusCode).startsWith('2')) {
-		if (res.req.loggedIn) {
-			res.set('cache-control', 'private');
-		}
-
-		let code = 'ok';
-		let message = 'OK';
-		switch (statusCode) {
-			case 202:
-				code = 'accepted';
-				message = 'Accepted';
-				break;
-
-			case 204:
-				code = 'no-content';
-				message = 'No Content';
-				break;
-		}
-
-		res.status(statusCode).json({
-			status: { code, message },
-			response: payload || {},
-		});
+		return await formatSuccessResponse(statusCode, res, payload);
 	} else if (payload instanceof Error || typeof payload === 'string') {
-		const message = payload instanceof Error ? payload.message : payload;
-		const response = {};
-
-		// Update status code based on some common error codes
-		switch (message) {
-			case '[[error:user-banned]]':
-				Object.assign(response, await generateBannedResponse(res));
-				// intentional fall through
-
-			case '[[error:no-privileges]]':
-				statusCode = 403;
-				break;
-
-			case '[[error:invalid-uid]]':
-				statusCode = 401;
-				break;
-
-			case '[[error:no-topic]]':
-				statusCode = 404;
-				break;
-		}
-
-		if (message.startsWith('[[error:required-parameters-missing, ')) {
-			const params = message.slice('[[error:required-parameters-missing, '.length, -2).split(' ');
-			Object.assign(response, { params });
-		}
-
-		const returnPayload = await helpers.generateError(statusCode, message, res);
-		returnPayload.response = response;
-
-		if (global.env === 'development') {
-			returnPayload.stack = payload.stack;
-			process.stdout.write(`[${chalk.yellow('api')}] Exception caught, error with stack trace follows:\n`);
-			process.stdout.write(payload.stack);
-		}
-		res.status(statusCode).json(returnPayload);
-	} else {
-		// Non-2xx statusCode, generate predefined error
-		const message = payload ? String(payload) : null;
-		const returnPayload = await helpers.generateError(statusCode, message, res);
-		res.status(statusCode).json(returnPayload);
+		return await formatErrorResponse(statusCode, res, payload);
 	}
+	// Non-2xx statusCode, generate predefined error
+	const message = payload ? String(payload) : null;
+	const returnPayload = await helpers.generateError(statusCode, message, res);
+	res.status(statusCode).json(returnPayload);
 };
 
-async function generateBannedResponse(res) {
-	const response = {};
-	const [reason, expiry] = await Promise.all([
-		user.bans.getReason(res.req.uid),
-		user.getUserField(res.req.uid, 'banned:expire'),
-	]);
-
-	response.reason = reason;
-	if (expiry) {
-		Object.assign(response, {
-			expiry,
-			expiryISO: new Date(expiry).toISOString(),
-			expiryLocaleString: new Date(expiry).toLocaleString(),
-		});
+async function formatSuccessResponse(statusCode, res, payload) {
+	if (res.req.loggedIn) {
+		res.set('cache-control', 'private');
 	}
 
-	return response;
+	let code = 'ok';
+	let message = 'OK';
+	switch (statusCode) {
+		case 202:
+			code = 'accepted';
+			message = 'Accepted';
+			break;
+
+		case 204:
+			code = 'no-content';
+			message = 'No Content';
+			break;
+	}
+
+	res.status(statusCode).json({
+		status: { code, message },
+		response: payload || {},
+	});
 }
 
+async function formatErrorResponse(statusCode, res, payload) {
+	const message = payload instanceof Error ? payload.message : payload;
+	const response = {};
+
+	// Update status code based on common error types
+	statusCode = getAdjustedStatusCode(message, statusCode);
+    
+	if (message.startsWith('[[error:required-parameters-missing, ')) {
+		const params = message.slice('[[error:required-parameters-missing, '.length, -2).split(' ');
+		Object.assign(response, { params });
+	}
+
+	if (message === '[[error:user-banned]]') {
+		Object.assign(response, await generateBannedResponse(res));
+	}
+
+	const returnPayload = await helpers.generateError(statusCode, message, res);
+	returnPayload.response = response;
+
+	// Add stack trace in development
+	if (global.env === 'development' && payload instanceof Error) {
+		returnPayload.stack = payload.stack;
+		console.log('EDISON'); // Add this to confirm the function is triggered
+		process.stdout.write(`[${chalk.yellow('api')}] Exception caught, error with stack trace follows:\n`);
+		process.stdout.write(payload.stack);
+	}
+    
+	res.status(statusCode).json(returnPayload);
+}
+
+function getAdjustedStatusCode(message, defaultStatusCode) {
+	switch (message) {
+		case '[[error:user-banned]]':
+		case '[[error:no-privileges]]':
+			return 403;
+		case '[[error:invalid-uid]]':
+			return 401;
+		case '[[error:no-topic]]':
+			return 404;
+		default:
+			return defaultStatusCode;
+	}
+}
 helpers.generateError = async (statusCode, message, res) => {
 	async function translateMessage(message) {
 		const { req } = res;
@@ -598,5 +590,24 @@ helpers.generateError = async (statusCode, message, res) => {
 
 	return payload;
 };
+
+async function generateBannedResponse(res) {
+	const response = {};
+	const [reason, expiry] = await Promise.all([
+		user.bans.getReason(res.req.uid),
+		user.getUserField(res.req.uid, 'banned:expire'),
+	]);
+
+	response.reason = reason;
+	if (expiry) {
+		Object.assign(response, {
+			expiry,
+			expiryISO: new Date(expiry).toISOString(),
+			expiryLocaleString: new Date(expiry).toLocaleString(),
+		});
+	}
+
+	return response;
+}
 
 require('../promisify')(helpers);
