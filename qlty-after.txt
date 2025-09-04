@@ -1,0 +1,9 @@
+
+
+src/controllers/mods.js
+ 243  Function with many parameters (count = 4): filterAndAnnotateQueuedPosts
+ 250  Complex binary expression
+   1  High total complexity (count = 57)
+  22  Function with high complexity (count = 23): list
+ 131  Function with high complexity (count = 20): detail
+

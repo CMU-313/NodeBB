@@ -211,61 +211,114 @@ modsController.flags.detail = async function (req, res, next) {
 	}));
 };
 
+
+// --- helpers extracted to lower complexity of postQueue() ---
+
+async function computeViewerRolesAndPrivs(uid, cid) {
+	const [
+		isAdmin,
+		isGlobalMod,
+		moderatedCids,
+		categoriesData,
+		globalPrivs,
+		adminPrivs,
+	] = await Promise.all([
+		user.isAdministrator(uid),
+		user.isGlobalModerator(uid),
+		user.getModeratedCids(uid),
+		helpers.getSelectedCategory(cid),
+		privileges.global.get(uid),
+		privileges.admin.get(uid),
+	]);
+  
+	return {
+		isAdmin,
+		isGlobalMod,
+		moderatedCids,
+		categoriesData,
+		privileges: { ...globalPrivs, ...adminPrivs },
+	};
+}
+  
+function filterAndAnnotateQueuedPosts(postsList, reqUid, roles, categoriesData) {
+	const selected = (categoriesData && categoriesData.selectedCids) || [];
+  
+	return postsList
+		.filter(p =>
+			p &&
+		(!selected.length || selected.includes(p.category.cid)) &&
+		(roles.isAdmin ||
+		 roles.isGlobalMod ||
+		 roles.moderatedCids.includes(Number(p.category.cid)) ||
+		 reqUid === p.user.uid))
+		.map((p) => {
+			const isSelf = p.user.uid === reqUid;
+			p.canAccept = !isSelf && (roles.isAdmin || roles.isGlobalMod || roles.moderatedCids.length > 0);
+			p.canEdit = isSelf || roles.isAdmin || roles.isGlobalMod;
+			return p;
+		});
+}
+  
+function paginate(items, page, perPage) {
+	const pageCount = Math.max(1, Math.ceil(items.length / perPage));
+	const start = (page - 1) * perPage;
+	const stop = start + perPage - 1;
+	return { pageCount, slice: items.slice(start, stop + 1) };
+}
+  
+function buildCrumbs(id, postDataSlice) {
+	const crumbs = [{ text: '[[pages:post-queue]]', url: id ? '/post-queue' : undefined }];
+	if (id && postDataSlice.length) {
+		const text = postDataSlice[0].data.tid ? '[[post-queue:reply]]' : '[[post-queue:topic]]';
+		crumbs.push({ text });
+	}
+	return crumbs;
+}
+
 modsController.postQueue = async function (req, res, next) {
+	// keep the original early-return for unauthenticated users
 	if (!req.loggedIn) {
 		return next();
 	}
+  
 	const { id } = req.params;
 	const { cid } = req.query;
 	const page = parseInt(req.query.page, 10) || 1;
 	const postsPerPage = 20;
-
-	let postData = await posts.getQueuedPosts({ id: id });
-	let [isAdmin, isGlobalMod, moderatedCids, categoriesData, _privileges] = await Promise.all([
-		user.isAdministrator(req.uid),
-		user.isGlobalModerator(req.uid),
-		user.getModeratedCids(req.uid),
-		helpers.getSelectedCategory(cid),
-		Promise.all(['global', 'admin'].map(async type => privileges[type].get(req.uid))),
-	]);
-	_privileges = { ..._privileges[0], ..._privileges[1] };
-
-	postData = postData
-		.filter(p => p &&
-			(!categoriesData.selectedCids.length || categoriesData.selectedCids.includes(p.category.cid)) &&
-			(isAdmin || isGlobalMod || moderatedCids.includes(Number(p.category.cid)) || req.uid === p.user.uid))
-		.map((post) => {
-			const isSelf = post.user.uid === req.uid;
-			post.canAccept = !isSelf && (isAdmin || isGlobalMod || !!moderatedCids.length);
-			post.canEdit = isSelf || isAdmin || isGlobalMod;
-			return post;
-		});
-
+  
+	// original data load
+	let postData = await posts.getQueuedPosts({ id });
+  
+	// gather viewer roles/privileges & selected categories
+	const roles = await computeViewerRolesAndPrivs(req.uid, cid);
+  
+	// original filter + canAccept/canEdit logic, extracted
+	postData = filterAndAnnotateQueuedPosts(postData, req.uid, roles, roles.categoriesData);
+  
+	// keep the plugin hook exactly as before
 	({ posts: postData } = await plugins.hooks.fire('filter:post-queue.get', {
 		posts: postData,
-		req: req,
+		req,
 	}));
-
-	const pageCount = Math.max(1, Math.ceil(postData.length / postsPerPage));
-	const start = (page - 1) * postsPerPage;
-	const stop = start + postsPerPage - 1;
-	postData = postData.slice(start, stop + 1);
-	const crumbs = [{ text: '[[pages:post-queue]]', url: id ? '/post-queue' : undefined }];
-	if (id && postData.length) {
-		const text = postData[0].data.tid ? '[[post-queue:reply]]' : '[[post-queue:topic]]';
-		crumbs.push({ text: text });
-	}
+  
+	// original pagination math, extracted
+	const { pageCount, slice } = paginate(postData, page, postsPerPage);
+  
+	// original breadcrumb semantics, extracted
+	const crumbs = buildCrumbs(id, slice);
+  
+	// render payload mirrors the original keys/values
 	res.render('post-queue', {
 		title: '[[pages:post-queue]]',
-		posts: postData,
-		isAdmin: isAdmin,
-		canAccept: isAdmin || isGlobalMod,
-		...categoriesData,
+		posts: slice,
+		isAdmin: roles.isAdmin,
+		canAccept: roles.isAdmin || roles.isGlobalMod,
+		...roles.categoriesData,
 		allCategoriesUrl: `post-queue${helpers.buildQueryString(req.query, 'cid', '')}`,
 		pagination: pagination.create(page, pageCount),
 		breadcrumbs: helpers.buildBreadcrumbs(crumbs),
 		enabled: meta.config.postQueue,
 		singlePost: !!id,
-		privileges: _privileges,
+		privileges: roles.privileges,
 	});
 };
