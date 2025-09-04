@@ -284,60 +284,6 @@ widgets.moveMissingAreasToDrafts = async function () {
 };
 
 
-
-
-
-
-
-
-
-// widgets.moveMissingAreasToDrafts = async function () {
-// 	const locationsObj = await db.get('widgets:draft:locations');
-// 	if (!locationsObj) {
-// 		return;
-// 	}
-// 	try {
-// 		const locations = JSON.parse(locationsObj);
-// 		const [available, draftWidgets] = await Promise.all([
-// 			widgets.getAvailableAreas(),
-// 			widgets.getArea('global', 'drafts'),
-// 		]);
-// 		let saveDraftWidgets = draftWidgets || [];
-// 		for (const [template, tplLocations] of Object.entries(locations)) {
-// 			for (const location of tplLocations) {
-// 				const locationExists = available.find(
-// 					area => area.template === template && area.location === location
-// 				);
-// 				if (!locationExists) {
-// 					const widgetsAtLocation = await widgets.getArea(template, location);
-// 					saveDraftWidgets = saveDraftWidgets.concat(widgetsAtLocation);
-// 					await widgets.setArea({
-// 						template,
-// 						location,
-// 						widgets: [],
-// 					});
-// 				}
-// 			}
-// 		}
-// 		await widgets.setArea({
-// 			template: 'global',
-// 			location: 'drafts',
-// 			widgets: saveDraftWidgets,
-// 		});
-// 	} catch (err) {
-// 		winston.error(err.stack);
-// 	} finally {
-// 		await db.delete('widgets:draft:locations');
-// 	}
-// };
-
-
-
-
-
-
-
-
 widgets.reset = async function () {
 	const [areas, drafts] = await Promise.all([
 		widgets.getAvailableAreas(),
