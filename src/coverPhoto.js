@@ -16,25 +16,34 @@ coverPhoto.getDefaultProfileCover = function (uid) {
 	return getCover('profile', parseInt(uid, 10));
 };
 
+
 function getCover(type, id) {
 	const defaultCover = `${relative_path}/assets/images/cover-default.png`;
-	if (meta.config[`${type}:defaultCovers`]) {
-		const covers = String(meta.config[`${type}:defaultCovers`]).trim().split(/[\s,]+/g);
-		let coverPhoto = defaultCover;
-		if (!covers.length) {
-			return coverPhoto;
-		}
-
-		if (typeof id === 'string') {
-			id = (id.charCodeAt(0) + id.charCodeAt(1)) % covers.length;
-		} else {
-			id %= covers.length;
-		}
-		if (covers[id]) {
-			coverPhoto = covers[id].startsWith('http') ? covers[id] : (relative_path + covers[id]);
-		}
-		return coverPhoto;
+	const config = meta.config[`${type}:defaultCovers`];
+	if (!config) {
+		return defaultCover;
 	}
+	const covers = String(config).trim().split(/[\s,]+/g);
+	if (!covers.length) {
+		return defaultCover;
+	}
+	const index = normalizeID(id, covers.length);
+	return buildCoverURL(covers[index], defaultCover);
+};
 
-	return defaultCover;
-}
+function normalizeID(id, length) {
+	if (typeof id === 'string') {
+		return (id.charCodeAt(0) + id.charCodeAt(1)) % length;
+	}
+	return id % length;
+};
+
+function buildCoverURL(selectedCover, defaultCover) {
+	if (!selectedCover) {
+		return defaultCover;
+	}
+	if (selectedCover.startsWith('http')) {
+		return selectedCover;
+	}
+	return relative_path + selectedCover;
+};

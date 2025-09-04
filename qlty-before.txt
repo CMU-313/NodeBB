@@ -1,0 +1,5 @@
+
+
+src/coverPhoto.js
+  19  Function with high complexity (count = 12): getCover
+
