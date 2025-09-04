@@ -4,36 +4,36 @@ define('accounts/delete', ['api', 'bootbox', 'alerts'], function (api, bootbox, 
 	const Delete = {};
 
 	Delete.account = function (uid, callback) {
-		executeAction(
+		executeAction({
 			uid,
-			'[[user:delete-this-account-confirm]]',
-			'/account',
-			'[[user:account-deleted]]',
-			callback
-		);
+			confirmText : '[[user:delete-this-account-confirm]]',
+			path : '/account',
+			successText : '[[user:account-deleted]]',
+			callback,
+		});
 	};
 
 	Delete.content = function (uid, callback) {
-		executeAction(
+		executeAction({
 			uid,
-			'[[user:delete-account-content-confirm]]',
-			'/content',
-			'[[user:account-content-deleted]]',
-			callback
-		);
+			confirmText : '[[user:delete-account-content-confirm]]',
+			path : '/content',
+			successText : '[[user:account-content-deleted]]',
+			callback,
+		});
 	};
 
 	Delete.purge = function (uid, callback) {
-		executeAction(
+		executeAction({
 			uid,
-			'[[user:delete-all-confirm]]',
-			'',
-			'[[user:account-deleted]]',
-			callback
-		);
+			confirmText : '[[user:delete-all-confirm]]',
+			path : '',
+			successText : '[[user:account-deleted]]',
+			callback,
+		});
 	};
 
-	function executeAction(uid, confirmText, path, successText, callback) {
+	function executeAction({uid, confirmText, path, successText, callback}) {
 		bootbox.confirm(confirmText, function (confirm) {
 			if (!confirm) {
 				return;
