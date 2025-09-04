@@ -11,31 +11,8 @@ const utils = require('../utils');
 module.exports = function (User) {
 	User.auth = {};
 
-	User.auth.logAttempt = async function (uid, ip) {
-		if (!(parseInt(uid, 10) > 0)) {
-			return;
-		}
-		const exists = await db.exists(`lockout:${uid}`);
-		if (exists) {
-			throw new Error('[[error:account-locked]]');
-		}
-		const attempts = await db.increment(`loginAttempts:${uid}`);
-		if (attempts <= meta.config.loginAttempts) {
-			return await db.pexpire(`loginAttempts:${uid}`, 1000 * 60 * 60);
-		}
-		// Lock out the account
-		await db.set(`lockout:${uid}`, '');
-		const duration = 1000 * 60 * meta.config.lockoutDuration;
-
-		await db.delete(`loginAttempts:${uid}`);
-		await db.pexpire(`lockout:${uid}`, duration);
-		await events.log({
-			type: 'account-locked',
-			uid: uid,
-			ip: ip,
-		});
-		throw new Error('[[error:account-locked]]');
-	};
+	// Handles login attempts and lockouts
+	loginAttempts(User);
 
 	User.auth.getFeedToken = async function (uid) {
 		if (!(parseInt(uid, 10) > 0)) {
@@ -60,6 +37,70 @@ module.exports = function (User) {
 		]);
 	};
 
+	// Handles Session management
+	sessionManagement(User);
+};
+
+async function cleanExpiredSessions(uid) {
+	const sids = await db.getSortedSetRange(`uid:${uid}:sessions`, 0, -1);
+	if (!sids.length) {
+		return [];
+	}
+
+	const expiredSids = [];
+	const activeSids = [];
+	await Promise.all(sids.map(async (sid) => {
+		const sessionObj = await db.sessionStoreGet(sid);
+		const expired = !sessionObj || !sessionObj.hasOwnProperty('passport') ||
+			!sessionObj.passport.hasOwnProperty('user') ||
+			parseInt(sessionObj.passport.user, 10) !== parseInt(uid, 10);
+		if (expired) {
+			expiredSids.push(sid);
+		} else {
+			activeSids.push(sid);
+		}
+	}));
+
+	await db.sortedSetRemove(`uid:${uid}:sessions`, expiredSids);
+	return activeSids;
+}
+
+async function revokeSessionsAboveThreshold(activeSids, uid, user) {
+	if (meta.config.maxUserSessions > 0 && activeSids.length > meta.config.maxUserSessions) {
+		const sessionsToRevoke = activeSids.slice(0, activeSids.length - meta.config.maxUserSessions);
+		await user.auth.revokeSession(sessionsToRevoke, uid);
+	}
+}
+
+async function loginAttempts(user) {
+	user.auth.logAttempt = async function (uid, ip) {
+		if (!(parseInt(uid, 10) > 0)) {
+			return;
+		}
+		const exists = await db.exists(`lockout:${uid}`);
+		if (exists) {
+			throw new Error('[[error:account-locked]]');
+		}
+		const attempts = await db.increment(`loginAttempts:${uid}`);
+		if (attempts <= meta.config.loginAttempts) {
+			return await db.pexpire(`loginAttempts:${uid}`, 1000 * 60 * 60);
+		}
+		// Lock out the account
+		await db.set(`lockout:${uid}`, '');
+		const duration = 1000 * 60 * meta.config.lockoutDuration;
+
+		await db.delete(`loginAttempts:${uid}`);
+		await db.pexpire(`lockout:${uid}`, duration);
+		await events.log({
+			type: 'account-locked',
+			uid: uid,
+			ip: ip,
+		});
+		throw new Error('[[error:account-locked]]');
+	};
+}
+
+async function sessionManagement(User) {
 	User.auth.getSessions = async function (uid, curSessionId) {
 		await cleanExpiredSessions(uid);
 		const sids = await db.getSortedSetRevRange(`uid:${uid}:sessions`, 0, 19);
@@ -75,30 +116,6 @@ module.exports = function (User) {
 		return sessions;
 	};
 
-	async function cleanExpiredSessions(uid) {
-		const sids = await db.getSortedSetRange(`uid:${uid}:sessions`, 0, -1);
-		if (!sids.length) {
-			return [];
-		}
-
-		const expiredSids = [];
-		const activeSids = [];
-		await Promise.all(sids.map(async (sid) => {
-			const sessionObj = await db.sessionStoreGet(sid);
-			const expired = !sessionObj || !sessionObj.hasOwnProperty('passport') ||
-				!sessionObj.passport.hasOwnProperty('user') ||
-				parseInt(sessionObj.passport.user, 10) !== parseInt(uid, 10);
-			if (expired) {
-				expiredSids.push(sid);
-			} else {
-				activeSids.push(sid);
-			}
-		}));
-
-		await db.sortedSetRemove(`uid:${uid}:sessions`, expiredSids);
-		return activeSids;
-	}
-
 	User.auth.addSession = async function (uid, sessionId) {
 		if (!(parseInt(uid, 10) > 0)) {
 			return;
@@ -106,15 +123,8 @@ module.exports = function (User) {
 
 		const activeSids = await cleanExpiredSessions(uid);
 		await db.sortedSetAdd(`uid:${uid}:sessions`, Date.now(), sessionId);
-		await revokeSessionsAboveThreshold(activeSids.push(sessionId), uid);
+		await revokeSessionsAboveThreshold(activeSids.push(sessionId), uid, User);
 	};
-
-	async function revokeSessionsAboveThreshold(activeSids, uid) {
-		if (meta.config.maxUserSessions > 0 && activeSids.length > meta.config.maxUserSessions) {
-			const sessionsToRevoke = activeSids.slice(0, activeSids.length - meta.config.maxUserSessions);
-			await User.auth.revokeSession(sessionsToRevoke, uid);
-		}
-	}
 
 	User.auth.revokeSession = async function (sessionIds, uid) {
 		sessionIds = Array.isArray(sessionIds) ? sessionIds : [sessionIds];
@@ -150,4 +160,4 @@ module.exports = function (User) {
 			]);
 		}, { batch: 1000 });
 	};
-};
+}
