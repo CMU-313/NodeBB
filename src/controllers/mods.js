@@ -19,10 +19,32 @@ const helpers = require('./helpers');
 const modsController = module.exports;
 modsController.flags = {};
 
+function getValidSort(query, allowedSorts) {
+	const s = query && query.sort ? String(query.sort) : null;
+	if (!s) return undefined;
+	const picked = allowedSorts.includes(s) ? s : null;
+	return picked === 'newest' ? undefined : (picked || undefined);
+}
+
+function parseValidFiltersFromQuery(req, allowedFilters) {
+	//console.log('Celine Rakab: reached mods.flags.list');
+	return allowedFilters.reduce((memo, cur) => {
+		if (Object.prototype.hasOwnProperty.call(req.query, cur)) {
+			const val = req.query[cur];
+			if (typeof val === 'string' && val.trim() !== '') {
+				memo[cur] = validator.escape(String(val.trim()));
+			} else if (Array.isArray(val) && val.length) {
+				memo[cur] = val.map(item => validator.escape(String(String(item).trim())));
+			}
+		}
+		return memo;
+	}, {});
+}
+
 modsController.flags.list = async function (req, res) {
 	const validFilters = ['assignee', 'state', 'reporterId', 'type', 'targetUid', 'cid', 'quick', 'page', 'perPage'];
 	const validSorts = ['newest', 'oldest', 'reports', 'upvotes', 'downvotes', 'replies'];
-
+	
 	const results = await Promise.all([
 		user.isAdminOrGlobalMod(req.uid),
 		user.getModeratedCids(req.uid),
@@ -40,27 +62,14 @@ modsController.flags.list = async function (req, res) {
 		res.locals.cids = moderatedCids.map(cid => String(cid));
 	}
 
-	// Parse query string params for filters, eliminate non-valid filters
-	filters = filters.reduce((memo, cur) => {
-		if (req.query.hasOwnProperty(cur)) {
-			if (typeof req.query[cur] === 'string' && req.query[cur].trim() !== '') {
-				memo[cur] = validator.escape(String(req.query[cur].trim()));
-			} else if (Array.isArray(req.query[cur]) && req.query[cur].length) {
-				memo[cur] = req.query[cur].map(item => validator.escape(String(item).trim()));
-			}
-		}
-
-		return memo;
-	}, {});
+	filters = parseValidFiltersFromQuery(req, filters);
 
 	let hasFilter = !!Object.keys(filters).length;
 
 	if (res.locals.cids) {
 		if (!filters.cid) {
-			// If mod and no cid filter, add filter for their modded categories
 			filters.cid = res.locals.cids;
 		} else if (Array.isArray(filters.cid)) {
-			// Remove cids they do not moderate
 			filters.cid = filters.cid.filter(cid => res.locals.cids.includes(String(cid)));
 		} else if (!res.locals.cids.includes(String(filters.cid))) {
 			filters.cid = res.locals.cids;
@@ -68,7 +77,6 @@ modsController.flags.list = async function (req, res) {
 		}
 	}
 
-	// Pagination doesn't count as a filter
 	if (
 		(Object.keys(filters).length === 1 && filters.hasOwnProperty('page')) ||
 		(Object.keys(filters).length === 2 && filters.hasOwnProperty('page') && filters.hasOwnProperty('perPage'))
@@ -76,15 +84,8 @@ modsController.flags.list = async function (req, res) {
 		hasFilter = false;
 	}
 
-	// Parse sort from query string
-	let sort;
-	if (req.query.sort) {
-		sort = sorts.includes(req.query.sort) ? req.query.sort : null;
-	}
-	if (sort === 'newest') {
-		sort = undefined;
-	}
-	hasFilter = hasFilter || !!sort;
+	const sort = getValidSort(req.query, sorts);
+	hasFilter = hasFilter || Boolean(sort);
 
 	const [flagsData, analyticsData, selectData] = await Promise.all([
 		flags.list({
@@ -97,7 +98,6 @@ modsController.flags.list = async function (req, res) {
 		helpers.getSelectedCategory(filters.cid),
 	]);
 
-	// Send back information for userFilter module
 	const selected = {};
 	await Promise.all(['assignee', 'reporterId', 'targetUid'].map(async (filter) => {
 		let uids = filters[filter];
@@ -128,6 +128,7 @@ modsController.flags.list = async function (req, res) {
 	});
 };
 
+
 modsController.flags.detail = async function (req, res, next) {
 	const results = await utils.promiseParallel({
 		isAdminOrGlobalMod: user.isAdminOrGlobalMod(req.uid),
@@ -137,10 +138,9 @@ modsController.flags.detail = async function (req, res, next) {
 	});
 	results.privileges = { ...results.privileges[0], ...results.privileges[1] };
 	if (!results.flagData || (!(results.isAdminOrGlobalMod || !!results.moderatedCids.length))) {
-		return next(); // 404
+		return next();
 	}
 
-	// extra checks for plain moderators
 	if (!results.isAdminOrGlobalMod) {
 		if (results.flagData.type === 'user') {
 			return next();
@@ -155,7 +155,6 @@ modsController.flags.detail = async function (req, res, next) {
 			}
 		}
 	}
-
 
 	async function getAssignees(flagData) {
 		let uids = [];
