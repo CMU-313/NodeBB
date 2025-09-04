@@ -26,6 +26,7 @@ const controllerHelpers = require('../controllers/helpers');
 const Assert = module.exports;
 
 Assert.user = helpers.try(async (req, res, next) => {
+	console.log('Adam Nurlign');
 	const uid = req.params.uid || res.locals.uid;
 	const uidNotNeg2 = uid !== -2;
 	const isNumberOrIsUri = utils.isNumber(uid) || activitypub.helpers.isUri(uid);
