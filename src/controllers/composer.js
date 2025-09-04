@@ -136,6 +136,7 @@ exports.post = async function (req, res) {
 			return res.redirect(`${nconf.get('relative_path') || '/'}?noScriptMessage=[[success:post-queued]]`);
 		}
 
+		
 		user.updateOnlineUsers(req.uid);
 		const path = computeRedirectPath(result);
 		return res.redirect(path);
