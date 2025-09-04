@@ -67,37 +67,55 @@ async function getGroups(req, sort, page) {
 	return [groupData, pageCount];
 }
 
-groupsController.details = async function (req, res, next) {
+/**  
+ The following functions were refactored with the assistance of Claude Sonnet 4 on Cursor:
+	* validateSlugAndRedirect
+	* validateGroupAccess
+	* fetchGroupDetailsData
+	* renderGroupDetails
+	* groupsController.details
+*/
+
+async function validateSlugAndRedirect(req, res) {
 	const lowercaseSlug = req.params.slug.toLowerCase();
 	if (req.params.slug !== lowercaseSlug) {
 		if (res.locals.isAPI) {
 			req.params.slug = lowercaseSlug;
 		} else {
-			return res.redirect(`${nconf.get('relative_path')}/groups/${lowercaseSlug}`);
+			res.redirect(`${nconf.get('relative_path')}/groups/${lowercaseSlug}`);
+			return false; // Indicates redirect happened
 		}
 	}
-	const groupName = await groups.getGroupNameByGroupSlug(req.params.slug);
-	if (!groupName) {
-		return next();
-	}
+	return true; // Continue processing
+}
+
+async function validateGroupAccess(req, groupName) {
 	const [exists, isHidden, isAdmin, isGlobalMod] = await Promise.all([
 		groups.exists(groupName),
 		groups.isHidden(groupName),
 		privileges.admin.can('admin:groups', req.uid),
 		user.isGlobalModerator(req.uid),
 	]);
+
 	if (!exists) {
-		return next();
+		return { hasAccess: false };
 	}
+
 	if (isHidden && !isAdmin && !isGlobalMod) {
 		const [isMember, isInvited] = await Promise.all([
 			groups.isMember(req.uid, groupName),
 			groups.isInvited(req.uid, groupName),
 		]);
+		
 		if (!isMember && !isInvited) {
-			return next();
+			return { hasAccess: false };
 		}
 	}
+
+	return { hasAccess: true, isAdmin, isGlobalMod };
+}
+
+async function fetchGroupDetailsData(req, groupName) {
 	const [groupData, posts] = await Promise.all([
 		groups.get(groupName, {
 			uid: req.uid,
@@ -106,10 +124,13 @@ groupsController.details = async function (req, res, next) {
 		}),
 		groups.getLatestMemberPosts(groupName, 10, req.uid),
 	]);
-	if (!groupData) {
-		return next();
-	}
 
+	return { groupData, posts };
+}
+
+function renderGroupDetails(res, options) {
+	const { groupData, posts, isAdmin, isGlobalMod, lowercaseSlug } = options;
+	
 	res.locals.linkTags = [
 		{
 			rel: 'canonical',
@@ -126,6 +147,36 @@ groupsController.details = async function (req, res, next) {
 		allowPrivateGroups: meta.config.allowPrivateGroups,
 		breadcrumbs: helpers.buildBreadcrumbs([{ text: '[[pages:groups]]', url: '/groups' }, { text: groupData.displayName }]),
 	});
+}
+
+groupsController.details = async function (req, res, next) {
+	// Handle slug validation and potential redirect
+	const validation = await validateSlugAndRedirect(req, res);
+	if (!validation) {
+		return; // Redirect happened
+	}
+
+	// Get group name from slug
+	const groupName = await groups.getGroupNameByGroupSlug(req.params.slug);
+	if (!groupName) {
+		return next();
+	}
+
+	// Validate group access permissions
+	const { hasAccess, isAdmin, isGlobalMod } = await validateGroupAccess(req, groupName);
+	if (!hasAccess) {
+		return next();
+	}
+
+	// Fetch group data and posts
+	const { groupData, posts } = await fetchGroupDetailsData(req, groupName);
+	if (!groupData) {
+		return next();
+	}
+
+	// Render the response
+	const lowercaseSlug = req.params.slug.toLowerCase();
+	renderGroupDetails(res, { groupData, posts, isAdmin, isGlobalMod, lowercaseSlug });
 };
 
 groupsController.members = async function (req, res, next) {
