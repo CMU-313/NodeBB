@@ -40,7 +40,13 @@ define('forum/topic/diffs', ['api', 'bootbox', 'alerts', 'forum/topic/images'], 
 				});
 
 				$deleteEl.on('click', function () {
-					Diffs.delete(pid, $selectEl.val(), $selectEl, $numberOfDiffCon);
+					//Diffs.delete(pid, $selectEl.val(), $selectEl, $numberOfDiffCon);
+					Diffs.delete({
+                        pid,
+                        timestamp: $selectEl.val(),
+                        $selectEl,
+                        $numberOfDiffCon,
+                    });
 				});
 
 				$modal.on('shown.bs.modal', function () {
