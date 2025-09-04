@@ -338,11 +338,13 @@ module.exports = function (User) {
 		}
 	}
 
+
+	
+	
+
+
 	User.changePassword = async function (uid, data) {
-		if (uid <= 0 || !data || !data.uid) {
-			throw new Error('[[error:invalid-uid]]');
-		}
-		User.isPasswordValid(data.newPassword);
+		validateInput(uid, data);
 		const [isAdmin, hasPassword] = await Promise.all([
 			User.isAdministrator(uid),
 			User.hasPassword(uid),
@@ -385,4 +387,11 @@ module.exports = function (User) {
 
 		plugins.hooks.fire('action:password.change', { uid: uid, targetUid: data.uid });
 	};
+
+	function validateInput(uid, data) {
+		if (uid <= 0 || !data || !data.uid) {
+			throw new Error('[[error:invalid-uid]]');
+		}
+		User.isPasswordValid(data.newPassword);
+	}
 };
