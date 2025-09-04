@@ -175,12 +175,20 @@ define('forum/post-queue', [
 		const id = parent.attr('data-id');
 		const listContainer = parent.get(0).parentNode;
 
+
+
 		if ((!['accept', 'reject', 'notify'].includes(action)) ||
 			(action === 'reject' && !await confirmReject(ajaxify.data.canAccept ? '[[post-queue:confirm-reject]]' : '[[post-queue:confirm-remove]]'))) {
 			return;
 		}
 
-		doAction(action, id).then(function () {
+		await processQueueAction({ action, id, parent, listContainer });
+		return false;
+	}
+
+	async function processQueueAction({ action, id, parent, listContainer }) {
+		try {
+			await doAction(action, id);
 			if (action === 'accept' || action === 'reject') {
 				parent.remove();
 			}
@@ -192,10 +200,12 @@ define('forum/post-queue', [
 					ajaxify.refresh();
 				}
 			}
-		}).catch(alerts.error);
-
-		return false;
+		} catch (err) {
+			alerts.error(err);
+		}
 	}
+
+
 
 	async function doAction(action, id) {
 		function getMessage() {
