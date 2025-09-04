@@ -14,6 +14,7 @@ const meta = require('../meta');
 const widgets = module.exports;
 
 widgets.render = async function (uid, options) {
+	
 	if (!options.template) {
 		throw new Error('[[error:invalid-data]]');
 	}
@@ -38,8 +39,9 @@ widgets.render = async function (uid, options) {
 
 	return returnData;
 };
-console.log('SKYLAR_ARCE');
+
 async function renderLocation(location, ctxOrData, ...rest) {
+	console.log('SKYLAR ARCE');
 	const ctx = (ctxOrData && typeof ctxOrData === 'object' &&
 		('data' in ctxOrData || 'uid' in ctxOrData || 'options' in ctxOrData || 'config' in ctxOrData)) ? ctxOrData : 
 		{ data: ctxOrData, uid: rest[0], options: rest[1], config: rest[2] };

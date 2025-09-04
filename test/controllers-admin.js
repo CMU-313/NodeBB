@@ -424,6 +424,8 @@ describe('Admin Controllers', () => {
 	});
 
 	it('should load /admin/extend/widgets', async () => {
+		console.log('Widget Test');
+		console.log('Skylar Arce');
 		const { response, body } = await request.get(`${nconf.get('url')}/api/admin/extend/widgets`, { jar });
 		assert.equal(response.statusCode, 200);
 		assert(body);
