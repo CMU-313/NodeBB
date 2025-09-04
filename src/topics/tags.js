@@ -470,8 +470,8 @@ module.exports = function (Topics) {
 		return tags;
 	}
 
-	async function findMatches(data) {
-		let { query } = data;
+	// get all viable tags
+	async function getTagMatches(data) {
 		let tagWhitelist = [];
 		if (parseInt(data.cid, 10)) {
 			tagWhitelist = await categories.getTagWhitelist([data.cid]);
@@ -490,9 +490,11 @@ module.exports = function (Topics) {
 		} else {
 			tags = await getAllTags();
 		}
+		return tags;
+	}
 
-		query = query.toLowerCase();
-
+	// get unsorted tags that start with user's input
+	function getMatches(tags, query) {
 		const matches = [];
 		for (let i = 0; i < tags.length; i += 1) {
 			if (tags[i].value && tags[i].value.toLowerCase().startsWith(query)) {
@@ -502,7 +504,14 @@ module.exports = function (Topics) {
 				}
 			}
 		}
+		return matches;
+	}
 
+	async function findMatches(data) {
+		let { query } = data;
+		query = query.toLowerCase();
+		const tags = await getTagMatches(data);
+		const matches = getMatches(tags, query);
 		matches.sort((a, b) => {
 			if (a.value < b.value) {
 				return -1;
