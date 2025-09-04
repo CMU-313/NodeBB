@@ -17,10 +17,7 @@ module.exports = function (Posts) {
 			return [];
 		}
 
-		options.stripTags = options.hasOwnProperty('stripTags') ? options.stripTags : false;
-		options.parse = options.hasOwnProperty('parse') ? options.parse : true;
-		options.escape = options.hasOwnProperty('escape') ? options.escape : false;
-		options.extraFields = options.hasOwnProperty('extraFields') ? options.extraFields : [];
+		initializeOptions(options);
 
 		const fields = ['pid', 'tid', 'toPid', 'url', 'content', 'sourceContent', 'uid', 'timestamp', 'deleted', 'upvotes', 'downvotes', 'replies', 'handle'].concat(options.extraFields);
 
@@ -71,6 +68,13 @@ module.exports = function (Posts) {
 		const result = await plugins.hooks.fire('filter:post.getPostSummaryByPids', { posts: posts, uid: uid });
 		return result.posts;
 	};
+
+	function initializeOptions(options) {
+		options.stripTags = options.hasOwnProperty('stripTags') ? options.stripTags : false;
+		options.parse = options.hasOwnProperty('parse') ? options.parse : true;
+		options.escape = options.hasOwnProperty('escape') ? options.escape : false;
+		options.extraFields = options.hasOwnProperty('extraFields') ? options.extraFields : [];
+	}
 
 	async function parsePosts(posts, options) {
 		return await Promise.all(posts.map(async (post) => {
