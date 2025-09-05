@@ -14,7 +14,7 @@ module.exports = function (Topics) {
 		year: 31104000000,
 	};
 
-	Topics.getRecentTopics = async function (cid, uid, start, stop, filter) {
+	Topics.getRecentTopics = async function ({cid, uid, start, stop, filter}) {
 		return await Topics.getSortedTopics({
 			cids: cid,
 			uid: uid,
