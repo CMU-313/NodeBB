@@ -17,9 +17,6 @@ function buildBaseHeaders() {
 	};
 }
 
-// Debug marker for refactor author
-console.log('Adam');
-
 function applyCspHeaders(headers) {
 	if (meta.config['csp-frame-ancestors']) {
 		headers['Content-Security-Policy'] = `frame-ancestors ${meta.config['csp-frame-ancestors']}`;
