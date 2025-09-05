@@ -39,10 +39,7 @@ module.exports = function (Groups) {
 
 	Groups.createGroupData = async function (data, timestamp) {
 		const isSystem = isSystemGroup(data);
-		let disableJoinRequests = parseInt(data.disableJoinRequests, 10) === 1 ? 1 : 0;
-		if (data.name === 'administrators') {
-			disableJoinRequests = 1;
-		}
+		const disableJoinRequests = parseInt(data.disableJoinRequests, 10) === 1 || data.name === 'administrators' ? 1 : 0;
 		const disableLeave = parseInt(data.disableLeave, 10) === 1 ? 1 : 0;
 		const isHidden = parseInt(data.hidden, 10) === 1;
 
