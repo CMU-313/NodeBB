@@ -103,70 +103,17 @@ module.exports = function (Topics) {
 		const userReadTimes = _.mapValues(_.keyBy(userTopics.userScores, 'value'), 'score');
 		
 		const isTopicsFollowed = await getUnreadFollowed(params, userTopics);
-		
-		let tids = await getUnreadTidList(userTopics, userReadTimes);
-		// const unreadTopics = _.unionWith(userTopics.categoryTids, userTopics.followedTids, (a, b) => a.value === b.value)
-		// 	.filter(t => !userTopics.ignoredTids.includes(t.value) && 
-		// 			(!userReadTimes[t.value] || t.score > userReadTimes[t.value]))
-		// 	.concat(userTopics.tids_unread.filter(t => !userTopics.ignoredTids.includes(t.value)))
-		// 	.sort((a, b) => b.score - a.score);
-
-		// let tids = _.uniq(unreadTopics.map(topic => topic.value)).slice(0, 200);
-
+		const tids = await getUnreadTidList(userTopics, userReadTimes);
 		if (!tids.length) {
 			return { counts, tids, tidsByFilter, unreadCids };
 		}
 
 		const blockedUids = await user.blocks.list(params.uid);
+		const topicData = await filterTopics(params, tids, userTopics, blockedUids);
 
-		tids = await filterTidsThatHaveBlockedPosts({
-			uid: params.uid,
-			tids: tids,
-			blockedUids: blockedUids,
-			recentTids: userTopics.categoryTids,
-		});
-
-		tids = await privileges.topics.filterTids('topics:read', tids, params.uid);
-		const topicData = (await Topics.getTopicsFields(tids, ['tid', 'cid', 'uid', 'postcount', 'deleted', 'scheduled', 'tags']))
-			.filter(t => t.scheduled || !t.deleted);
-		const topicCids = _.uniq(topicData.map(topic => topic.cid)).filter(Boolean);
-
-		const categoryWatchState = await categories.getWatchState(topicCids, params.uid);
-		const userCidState = _.zipObject(topicCids, categoryWatchState);
-
-		const filterCids = params.cid && params.cid.map(cid => utils.isNumber(cid) ? parseInt(cid, 10) : cid);
-		const filterTags = params.tag && params.tag.map(tag => String(tag));
-
-		topicData.forEach((topic) => {
-			if (topic && topic.cid &&
-				(!filterCids || filterCids.includes(topic.cid)) &&
-				(!filterTags || filterTags.every(tag => topic.tags.find(topicTag => topicTag.value === tag))) &&
-				!blockedUids.includes(topic.uid)) {
-				if (isTopicsFollowed[topic.tid] ||
-					[categories.watchStates.watching, categories.watchStates.tracking].includes(userCidState[topic.cid])) {
-					tidsByFilter[''].push(topic.tid);
-					unreadCids.push(topic.cid);
-				}
-
-				if (isTopicsFollowed[topic.tid]) {
-					tidsByFilter.watched.push(topic.tid);
-				}
-
-				if (topic.postcount <= 1) {
-					tidsByFilter.unreplied.push(topic.tid);
-				}
-
-				if (!userReadTimes[topic.tid]) {
-					tidsByFilter.new.push(topic.tid);
-				}
-			}
-		});
-
-		counts[''] = tidsByFilter[''].length;
-		counts.watched = tidsByFilter.watched.length;
-		counts.unreplied = tidsByFilter.unreplied.length;
-		counts.new = tidsByFilter.new.length;
-
+		const topicInfo = { isTopicsFollowed, tidsByFilter, topicData, unreadCids, counts, userReadTimes, blockedUids }
+		await categorizeTopics(params, topicInfo);
+		
 		return {
 			counts: counts,
 			tids: tidsByFilter[params.filter],
@@ -215,6 +162,65 @@ module.exports = function (Topics) {
 		const tids = _.uniq(unreadTopics.map(topic => topic.value)).slice(0, 200);
 
 		return tids;
+	}
+
+	async function filterTopics(params, tids, userTopics, blockedUids) {
+
+		tids = await filterTidsThatHaveBlockedPosts({
+			uid: params.uid,
+			tids: tids,
+			blockedUids: blockedUids,
+			recentTids: userTopics.categoryTids,
+		});
+
+		tids = await privileges.topics.filterTids('topics:read', tids, params.uid);
+		const topicData = (await Topics.getTopicsFields(tids, ['tid', 'cid', 'uid', 'postcount', 'deleted', 'scheduled', 'tags']))
+			.filter(t => t.scheduled || !t.deleted);
+
+		return topicData;
+	}
+
+	async function categorizeTopics(params, topicInfo) {
+		const topicCids = _.uniq(topicInfo.topicData.map(topic => topic.cid)).filter(Boolean);
+
+		const categoryWatchState = await categories.getWatchState(topicCids, params.uid);
+		const userCidState = _.zipObject(topicCids, categoryWatchState);
+
+		const filterCids = params.cid && params.cid.map(cid => utils.isNumber(cid) ? parseInt(cid, 10) : cid);
+		const filterTags = params.tag && params.tag.map(tag => String(tag));
+
+		topicInfo.topicData.forEach((topic) => {
+			if (topic && topic.cid &&
+				(!filterCids || filterCids.includes(topic.cid)) &&
+				(!filterTags || filterTags.every(tag => topic.tags.find(topicTag => topicTag.value === tag))) &&
+				!topicInfo.blockedUids.includes(topic.uid)) {
+				if (topicInfo.isTopicsFollowed[topic.tid] ||
+					[categories.watchStates.watching, categories.watchStates.tracking].includes(userCidState[topic.cid])) {
+					topicInfo.tidsByFilter[''].push(topic.tid);
+					topicInfo.unreadCids.push(topic.cid);
+				}
+
+				if (topicInfo.isTopicsFollowed[topic.tid]) {
+					topicInfo.tidsByFilter.watched.push(topic.tid);
+				}
+
+				if (topic.postcount <= 1) {
+					topicInfo.tidsByFilter.unreplied.push(topic.tid);
+				}
+
+				if (!topicInfo.userReadTimes[topic.tid]) {
+					topicInfo.tidsByFilter.new.push(topic.tid);
+				}
+			}
+		});
+
+		topicInfo.counts[''] = topicInfo.tidsByFilter[''].length;
+		topicInfo.counts.watched = topicInfo.tidsByFilter.watched.length;
+		topicInfo.counts.unreplied = topicInfo.tidsByFilter.unreplied.length;
+		topicInfo.counts.new = topicInfo.tidsByFilter.new.length;
+
+		return topicInfo.counts;
+
 	}
 	
 	async function getCategoryTids(params) {
