@@ -100,27 +100,18 @@ module.exports = function (Topics) {
 		console.log('Samhitha Duggirala');
 
 		const userTopics = await getUserTopics(params);
-
 		const userReadTimes = _.mapValues(_.keyBy(userTopics.userScores, 'value'), 'score');
-		const isTopicsFollowed = {};
-		userTopics.followedTids.forEach((t) => {
-			isTopicsFollowed[t.value] = true;
-		});
-		const unreadFollowed = await db.isSortedSetMembers(
-			`uid:${params.uid}:followed_tids`, userTopics.tids_unread.map(t => t.value)
-		);
+		
+		const isTopicsFollowed = await getUnreadFollowed(params, userTopics);
+		
+		let tids = await getUnreadTidList(userTopics, userReadTimes);
+		// const unreadTopics = _.unionWith(userTopics.categoryTids, userTopics.followedTids, (a, b) => a.value === b.value)
+		// 	.filter(t => !userTopics.ignoredTids.includes(t.value) && 
+		// 			(!userReadTimes[t.value] || t.score > userReadTimes[t.value]))
+		// 	.concat(userTopics.tids_unread.filter(t => !userTopics.ignoredTids.includes(t.value)))
+		// 	.sort((a, b) => b.score - a.score);
 
-		userTopics.tids_unread.forEach((t, i) => {
-			isTopicsFollowed[t.value] = unreadFollowed[i];
-		});
-
-		const unreadTopics = _.unionWith(userTopics.categoryTids, userTopics.followedTids, (a, b) => a.value === b.value)
-			.filter(t => !userTopics.ignoredTids.includes(t.value) && 
-					(!userReadTimes[t.value] || t.score > userReadTimes[t.value]))
-			.concat(userTopics.tids_unread.filter(t => !userTopics.ignoredTids.includes(t.value)))
-			.sort((a, b) => b.score - a.score);
-
-		let tids = _.uniq(unreadTopics.map(topic => topic.value)).slice(0, 200);
+		// let tids = _.uniq(unreadTopics.map(topic => topic.value)).slice(0, 200);
 
 		if (!tids.length) {
 			return { counts, tids, tidsByFilter, unreadCids };
@@ -195,7 +186,35 @@ module.exports = function (Topics) {
 			db.getSortedSetRevRangeWithScores(`uid:${params.uid}:tids_unread`, 0, -1),
 		]);
 
-		return {followedTids, ignoredTids, categoryTids, userScores, tids_unread};
+		return { followedTids, ignoredTids, categoryTids, userScores, tids_unread };
+	}
+
+	async function getUnreadFollowed(params, userTopics) {
+		const isTopicsFollowed = {};
+		userTopics.followedTids.forEach((t) => {
+			isTopicsFollowed[t.value] = true;
+		});
+		const unreadFollowed = await db.isSortedSetMembers(
+			`uid:${params.uid}:followed_tids`, userTopics.tids_unread.map(t => t.value)
+		);
+
+		userTopics.tids_unread.forEach((t, i) => {
+			isTopicsFollowed[t.value] = unreadFollowed[i];
+		});
+
+		return isTopicsFollowed;
+	}
+
+	async function getUnreadTidList(userTopics, userReadTimes) {
+		const unreadTopics = _.unionWith(userTopics.categoryTids, userTopics.followedTids, (a, b) => a.value === b.value)
+			.filter(t => !userTopics.ignoredTids.includes(t.value) && 
+					(!userReadTimes[t.value] || t.score > userReadTimes[t.value]))
+			.concat(userTopics.tids_unread.filter(t => !userTopics.ignoredTids.includes(t.value)))
+			.sort((a, b) => b.score - a.score);
+
+		const tids = _.uniq(unreadTopics.map(topic => topic.value)).slice(0, 200);
+
+		return tids;
 	}
 	
 	async function getCategoryTids(params) {
