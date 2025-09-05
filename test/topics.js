@@ -1219,22 +1219,34 @@ describe('Topic\'s', () => {
 			tid3 = topic3.topicData.tid;
 		});
 
+
+		// ChatGPT suggested test change
 		it('should return suggested topics', (done) => {
-			topics.getSuggestedTopics(tid1, adminUid, 0, -1, (err, topics) => {
-				assert.ifError(err);
-				assert(Array.isArray(topics));
+			const params = [tid1, adminUid, 0, -1];
+			const [tid, uid, start, stop] = params;
+
+			topics.getSuggestedTopics({ tid, uid, start, stop }).then((topicsList) => {
+				assert(Array.isArray(topicsList));
 				done();
+			}).catch((err) => { done(err);
 			});
 		});
 
+
+		// ChatGPT suggested test change
 		it('should return suggested topics', (done) => {
-			topics.getSuggestedTopics(tid3, adminUid, 0, 2, (err, topics) => {
-				assert.ifError(err);
-				assert(Array.isArray(topics));
+			const params = [tid3, adminUid, 0, 2];
+			const [tid, uid, start, stop] = params;
+
+			topics.getSuggestedTopics({ tid, uid, start, stop }).then((topicsList) => {
+				assert(Array.isArray(topicsList));
 				done();
+			}).catch((err) => { done(err);
 			});
 		});
+
 	});
+	// End of changes suggested by ChatGPT
 
 	describe('unread', () => {
 		const socketTopics = require('../src/socket.io/topics');
