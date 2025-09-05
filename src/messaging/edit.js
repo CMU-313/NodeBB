@@ -12,7 +12,10 @@ const sockets = require('../socket.io');
 
 
 module.exports = function (Messaging) {
-	Messaging.editMessage = async (uid, mid, roomId, content) => {
+	Messaging.editMessage = async (data) => {
+		
+		const { uid, mid, roomId, content } = data;
+
 		await Messaging.checkContent(content);
 		const isPublic = parseInt(await db.getObjectField(`chat:room:${roomId}`, 'public'), 10) === 1;
 		const raw = await Messaging.getMessageField(mid, 'content');
