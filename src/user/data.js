@@ -209,6 +209,96 @@ module.exports = function (User) {
 		return single ? users.pop() : users;
 	};
 
+	async function updateUserInfo(user, uidToSettings) {
+		if (user.hasOwnProperty('username')) {
+			parseDisplayName(user, uidToSettings);
+			user.username = validator.escape(user.username ? user.username.toString() : '');
+		}
+
+		// works around renderOverride supplying `url` to templates
+		if (user.url) {
+			user.remoteUrl = user.url;
+		} else {
+			delete user.url;
+		}
+
+		if (user.hasOwnProperty('email')) {
+			user.email = validator.escape(user.email ? user.email.toString() : '');
+		}
+	}
+
+	async function updateGuestAndGroup(user) {
+		if (!user.uid && !activitypub.helpers.isUri(user.uid)) {
+			for (const [key, value] of Object.entries(User.guestData)) {
+				user[key] = value;
+			}
+			user.picture = User.getDefaultAvatar();
+		}
+
+		if (user.hasOwnProperty('groupTitle')) {
+			parseGroupTitle(user);
+		}
+	}
+
+	async function updateAvatar(user) {
+		if (user.picture && user.picture === user.uploadedpicture) {
+			user.uploadedpicture = user.picture.startsWith('http') ? user.picture : relative_path + user.picture;
+			user.picture = user.uploadedpicture;
+		} else if (user.uploadedpicture) {
+			user.uploadedpicture = user.uploadedpicture.startsWith('http') ? user.uploadedpicture : relative_path + user.uploadedpicture;
+		}
+		if (meta.config.defaultAvatar && !user.picture) {
+			user.picture = User.getDefaultAvatar();
+		}
+
+		if (user.hasOwnProperty('status') && user.hasOwnProperty('lastonline')) {
+			user.status = User.getStatus(user);
+		}
+	}
+
+	async function updateFields(user, fieldsToRemove, requestedFields) {
+		for (let i = 0; i < fieldsToRemove.length; i += 1) {
+			user[fieldsToRemove[i]] = undefined;
+		}
+
+		// User Icons
+		if (requestedFields.includes('picture') && user.username && user.uid !== 0 && !meta.config.defaultAvatar) {
+			if (!iconBackgrounds.includes(user['icon:bgColor'])) {
+				const nameAsIndex = Array.from(user.username).reduce((cur, next) => cur + next.charCodeAt(), 0);
+				user['icon:bgColor'] = iconBackgrounds[nameAsIndex % iconBackgrounds.length];
+			}
+			user['icon:text'] = (user.username[0] || '').toUpperCase();
+		}
+	}
+
+	async function updateTimes(user) {
+		if (user.hasOwnProperty('joindate')) {
+			user.joindateISO = utils.toISOString(user.joindate);
+		}
+
+		if (user.hasOwnProperty('lastonline')) {
+			user.lastonlineISO = utils.toISOString(user.lastonline) || user.joindateISO;
+		}
+
+		if (user.hasOwnProperty('mutedUntil')) {
+			user.muted = user.mutedUntil > Date.now();
+		}
+	}
+
+	async function checkBanned(user, unbanUids) {
+		if (user.hasOwnProperty('banned') || user.hasOwnProperty('banned:expire')) {
+			const result = User.bans.calcExpiredFromUserData(user);
+			user.banned = result.banned;
+			const unban = result.banned && result.banExpired;
+			user.banned_until = unban ? 0 : user['banned:expire'];
+			user.banned_until_readable = user.banned_until && !unban ? utils.toISOString(user.banned_until) : 'Not Banned';
+			if (unban) {
+				unbanUids.push(user.uid);
+				user.banned = false;
+			}
+		}
+	}
+
 	async function modifyUserData(users, requestedFields, fieldsToRemove) {
 		let uidToSettings = {};
 		if (meta.config.showFullnameAsDisplayName) {
@@ -230,83 +320,17 @@ module.exports = function (User) {
 
 			db.parseIntFields(user, intFields, requestedFields);
 
-			if (user.hasOwnProperty('username')) {
-				parseDisplayName(user, uidToSettings);
-				user.username = validator.escape(user.username ? user.username.toString() : '');
-			}
+			updateUserInfo(user, uidToSettings);
 
-			// works around renderOverride supplying `url` to templates
-			if (user.url) {
-				user.remoteUrl = user.url;
-			} else {
-				delete user.url;
-			}
+			updateGuestAndGroup(user);
 
-			if (user.hasOwnProperty('email')) {
-				user.email = validator.escape(user.email ? user.email.toString() : '');
-			}
+			updateAvatar(user);
 
-			if (!user.uid && !activitypub.helpers.isUri(user.uid)) {
-				for (const [key, value] of Object.entries(User.guestData)) {
-					user[key] = value;
-				}
-				user.picture = User.getDefaultAvatar();
-			}
+			updateFields(user, fieldsToRemove, requestedFields);
 
-			if (user.hasOwnProperty('groupTitle')) {
-				parseGroupTitle(user);
-			}
+			updateTimes(user);
 
-			if (user.picture && user.picture === user.uploadedpicture) {
-				user.uploadedpicture = user.picture.startsWith('http') ? user.picture : relative_path + user.picture;
-				user.picture = user.uploadedpicture;
-			} else if (user.uploadedpicture) {
-				user.uploadedpicture = user.uploadedpicture.startsWith('http') ? user.uploadedpicture : relative_path + user.uploadedpicture;
-			}
-			if (meta.config.defaultAvatar && !user.picture) {
-				user.picture = User.getDefaultAvatar();
-			}
-
-			if (user.hasOwnProperty('status') && user.hasOwnProperty('lastonline')) {
-				user.status = User.getStatus(user);
-			}
-
-			for (let i = 0; i < fieldsToRemove.length; i += 1) {
-				user[fieldsToRemove[i]] = undefined;
-			}
-
-			// User Icons
-			if (requestedFields.includes('picture') && user.username && user.uid !== 0 && !meta.config.defaultAvatar) {
-				if (!iconBackgrounds.includes(user['icon:bgColor'])) {
-					const nameAsIndex = Array.from(user.username).reduce((cur, next) => cur + next.charCodeAt(), 0);
-					user['icon:bgColor'] = iconBackgrounds[nameAsIndex % iconBackgrounds.length];
-				}
-				user['icon:text'] = (user.username[0] || '').toUpperCase();
-			}
-
-			if (user.hasOwnProperty('joindate')) {
-				user.joindateISO = utils.toISOString(user.joindate);
-			}
-
-			if (user.hasOwnProperty('lastonline')) {
-				user.lastonlineISO = utils.toISOString(user.lastonline) || user.joindateISO;
-			}
-
-			if (user.hasOwnProperty('mutedUntil')) {
-				user.muted = user.mutedUntil > Date.now();
-			}
-
-			if (user.hasOwnProperty('banned') || user.hasOwnProperty('banned:expire')) {
-				const result = User.bans.calcExpiredFromUserData(user);
-				user.banned = result.banned;
-				const unban = result.banned && result.banExpired;
-				user.banned_until = unban ? 0 : user['banned:expire'];
-				user.banned_until_readable = user.banned_until && !unban ? utils.toISOString(user.banned_until) : 'Not Banned';
-				if (unban) {
-					unbanUids.push(user.uid);
-					user.banned = false;
-				}
-			}
+			checkBanned(user, unbanUids);
 
 			user.isLocal = utils.isNumber(user.uid);
 		});
