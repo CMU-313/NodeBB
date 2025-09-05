@@ -15,18 +15,17 @@ module.exports = {
 			const flagData = await db.getObjects(flagIds.map(id => `flag:${id}`));
 			for (const flagObj of flagData) {
 				/* eslint-disable no-await-in-loop */
-				if (flagObj) {
-					const { targetId } = flagObj;
-					if (targetId) {
-						if (flagObj.type === 'post') {
-							const targetUid = await posts.getPostField(targetId, 'uid');
-							if (targetUid) {
-								await db.setObjectField(`flag:${flagObj.flagId}`, 'targetUid', targetUid);
-							}
-						} else if (flagObj.type === 'user') {
-							await db.setObjectField(`flag:${flagObj.flagId}`, 'targetUid', targetId);
-						}
+				//Refactored to "continue" to reduce nested if statements
+				if (!flagObj) continue; 
+				const { targetId } = flagObj;
+				if (!targetId) continue;
+				if (flagObj.type === 'post') {
+					const targetUid = await posts.getPostField(targetId, 'uid');
+					if (targetUid) { // if targetUid is not NULL
+						await db.setObjectField(`flag:${flagObj.flagId}`, 'targetUid', targetUid);
 					}
+				} else if (flagObj.type === 'user') {
+					await db.setObjectField(`flag:${flagObj.flagId}`, 'targetUid', targetId);
 				}
 			}
 		}, {
