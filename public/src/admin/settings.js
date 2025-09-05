@@ -1,10 +1,76 @@
 'use strict';
 
+// codebase has been connected to Cursor to allow for AI assistance with source control and coding
+// ChatGPT employed to guide me with more in depth instructions for each step
 
 define('admin/settings', [
 	'uploader', 'mousetrap', 'hooks', 'alerts', 'settings', 'bootstrap',
 ], function (uploader, mousetrap, hooks, alerts, settings, bootstrap) {
 	const Settings = {};
+
+	// helper constant (no behavior change)
+	const DEFAULT_INPUT_TYPES = ['text', 'hidden', 'password', 'textarea', 'number'];
+
+	// mark app as having unsaved changes when any field changes
+	function bindUnsavedChange(fields) {
+		fields.on('change', function () {
+			app.flags = app.flags || {};
+			app.flags._unsaved = true;
+		});
+	}
+
+	// apply initial values from app.config into the DOM fields
+	function applyInitialValues(fields) {
+		const numFields = fields.length;
+		for (let x = 0; x < numFields; x += 1) {
+			const field = fields.eq(x);
+			const key = field.attr('data-field');
+			const inputType = field.attr('type');
+
+			if (!Object.prototype.hasOwnProperty.call(app.config, key)) {
+				continue;
+			}
+
+			if (field.is('input') && inputType === 'checkbox') {
+				const checked = parseInt(app.config[key], 10) === 1;
+				field.prop('checked', checked);
+			} else if (
+				field.is('textarea') ||
+				field.is('select') ||
+				(field.is('input') && DEFAULT_INPUT_TYPES.indexOf(inputType) !== -1)
+			) {
+				field.val(app.config[key]);
+			}
+		}
+	}
+
+	// wire up the Save button (validation + save + notifications)
+	function wireSaveButton(saveBtn, fields) {
+		saveBtn.off('click').on('click', function (e) {
+			e.preventDefault();
+
+			const ok = settings.check(document.querySelectorAll('#content [data-field]'));
+			if (!ok) {
+				return;
+			}
+
+			saveFields(fields, function onFieldsSaved(err) {
+				if (err) {
+					return alerts.alert({
+						alert_id: 'config_status',
+						timeout: 2500,
+						title: '[[admin/admin:changes-not-saved]]',
+						message: `[[admin/admin:changes-not-saved-message, ${err.message}]]`,
+						type: 'danger',
+					});
+				}
+
+				app.flags._unsaved = false;
+				Settings.toggleSaveSuccess(saveBtn);
+				hooks.fire('action:admin.settingsSaved');
+			});
+		});
+	}
 
 	Settings.populateTOC = function () {
 		const headers = $('.settings-header');
@@ -57,62 +123,18 @@ define('admin/settings', [
 	Settings.prepare = function (callback) {
 		// Populate the fields on the page from the config
 		const fields = $('#content [data-field]');
-		const numFields = fields.length;
 		const saveBtn = $('#save');
 		const revertBtn = $('#revert');
-		let x;
-		let key;
-		let inputType;
-		let field;
 
 		// Handle unsaved changes
-		fields.on('change', function () {
-			app.flags = app.flags || {};
-			app.flags._unsaved = true;
-		});
-		const defaultInputs = ['text', 'hidden', 'password', 'textarea', 'number'];
-		for (x = 0; x < numFields; x += 1) {
-			field = fields.eq(x);
-			key = field.attr('data-field');
-			inputType = field.attr('type');
-			if (app.config.hasOwnProperty(key)) {
-				if (field.is('input') && inputType === 'checkbox') {
-					const checked = parseInt(app.config[key], 10) === 1;
-					field.prop('checked', checked);
-				} else if (field.is('textarea') || field.is('select') || (field.is('input') && defaultInputs.indexOf(inputType) !== -1)) {
-					field.val(app.config[key]);
-				}
-			}
-		}
+		bindUnsavedChange(fields);
+		applyInitialValues(fields);
 
 		revertBtn.off('click').on('click', function () {
 			ajaxify.refresh();
 		});
 
-		saveBtn.off('click').on('click', function (e) {
-			e.preventDefault();
-
-			const ok = settings.check(document.querySelectorAll('#content [data-field]'));
-			if (!ok) {
-				return;
-			}
-
-			saveFields(fields, function onFieldsSaved(err) {
-				if (err) {
-					return alerts.alert({
-						alert_id: 'config_status',
-						timeout: 2500,
-						title: '[[admin/admin:changes-not-saved]]',
-						message: `[[admin/admin:changes-not-saved-message, ${err.message}]]`,
-						type: 'danger',
-					});
-				}
-
-				app.flags._unsaved = false;
-				Settings.toggleSaveSuccess(saveBtn);
-				hooks.fire('action:admin.settingsSaved');
-			});
-		});
+		wireSaveButton(saveBtn, fields);
 
 		mousetrap.bind('ctrl+s', function (ev) {
 			saveBtn.click();
