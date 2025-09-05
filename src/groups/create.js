@@ -63,9 +63,9 @@ module.exports = function (Groups) {
 			userTitleEnabled: parseInt(data.userTitleEnabled, 10) === 1 ? 1 : 0,
 			description: data.description || '',
 			memberCount: memberCount,
-			hidden: isHidden ? 1 : 0,
-			system: isSystem ? 1 : 0,
-			private: isPrivate ? 1 : 0,
+			hidden: + isHidden,
+			system: + isSystem,
+			private: + isPrivate,
 			disableJoinRequests: disableJoinRequests,
 			disableLeave: disableLeave,
 		};
