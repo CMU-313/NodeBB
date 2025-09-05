@@ -49,10 +49,9 @@ module.exports = function (Topics) {
 			} else {
 				const cids = await getCids(params.cids, params.uid);
 				tids = await Topics.getLatestTidsFromSet(
-					cids.map(cid => `cid:${cid}:tids:create`), 0, -1, params.term
+					cids.map(cid => `cid:${cid}:tids:create`), {start: 0, stop: -1}, params.term
 				);
 			}
-
 			if (params.filter === 'watched') {
 				tids = await Topics.filterWatchedTids(tids, params.uid);
 			}

@@ -28,7 +28,7 @@ module.exports = function (Topics) {
 	/* not an orphan method, used in widget-essentials */
 	Topics.getLatestTopics = async function (options) {
 		// uid, start, stop, term
-		const tids = await Topics.getLatestTidsFromSet('topics:recent', options.start, options.stop, options.term);
+		const tids = await Topics.getLatestTidsFromSet('topics:recent', {start: options.start, stop: options.stop}, options.term);
 		const topics = await Topics.getTopics(tids, options);
 		return { topics: topics, nextStart: options.stop + 1 };
 	};
@@ -40,7 +40,9 @@ module.exports = function (Topics) {
 		return terms.day;
 	};
 
-	Topics.getLatestTidsFromSet = async function (set, start, stop, term) {
+	// pagination object contains start & stop vals
+	Topics.getLatestTidsFromSet = async function (set, pagination, term) {
+		const{start, stop} = pagination; 
 		const since = Topics.getSinceFromTerm(term);
 		const count = parseInt(stop, 10) === -1 ? stop : stop - start + 1;
 		return await db.getSortedSetRevRangeByScore(set, start, count, '+inf', Date.now() - since);
