@@ -109,10 +109,9 @@ module.exports = function (Topics) {
 		}
 
 		const blockedUids = await user.blocks.list(params.uid);
-		const topicData = await filterTopics(params, tids, userTopics, blockedUids);
-
-		const topicInfo = { isTopicsFollowed, tidsByFilter, topicData, unreadCids, counts, userReadTimes, blockedUids }
-		await categorizeTopics(params, topicInfo);
+		const topicInfo = { isTopicsFollowed, tidsByFilter, userTopics, unreadCids, counts, userReadTimes, blockedUids };
+		const topicData = await filterTopics(params, tids, topicInfo);
+		await categorizeTopics(params, topicInfo, topicData);
 		
 		return {
 			counts: counts,
@@ -164,13 +163,13 @@ module.exports = function (Topics) {
 		return tids;
 	}
 
-	async function filterTopics(params, tids, userTopics, blockedUids) {
+	async function filterTopics(params, tids, topicInfo) {
 
 		tids = await filterTidsThatHaveBlockedPosts({
 			uid: params.uid,
 			tids: tids,
-			blockedUids: blockedUids,
-			recentTids: userTopics.categoryTids,
+			blockedUids: topicInfo.blockedUids,
+			recentTids: topicInfo.userTopics.categoryTids,
 		});
 
 		tids = await privileges.topics.filterTids('topics:read', tids, params.uid);
@@ -180,8 +179,8 @@ module.exports = function (Topics) {
 		return topicData;
 	}
 
-	async function categorizeTopics(params, topicInfo) {
-		const topicCids = _.uniq(topicInfo.topicData.map(topic => topic.cid)).filter(Boolean);
+	async function categorizeTopics(params, topicInfo, topicData) {
+		const topicCids = _.uniq(topicData.map(topic => topic.cid)).filter(Boolean);
 
 		const categoryWatchState = await categories.getWatchState(topicCids, params.uid);
 		const userCidState = _.zipObject(topicCids, categoryWatchState);
@@ -189,28 +188,12 @@ module.exports = function (Topics) {
 		const filterCids = params.cid && params.cid.map(cid => utils.isNumber(cid) ? parseInt(cid, 10) : cid);
 		const filterTags = params.tag && params.tag.map(tag => String(tag));
 
-		topicInfo.topicData.forEach((topic) => {
+		topicData.forEach((topic) => {
 			if (topic && topic.cid &&
-				(!filterCids || filterCids.includes(topic.cid)) &&
-				(!filterTags || filterTags.every(tag => topic.tags.find(topicTag => topicTag.value === tag))) &&
-				!topicInfo.blockedUids.includes(topic.uid)) {
-				if (topicInfo.isTopicsFollowed[topic.tid] ||
-					[categories.watchStates.watching, categories.watchStates.tracking].includes(userCidState[topic.cid])) {
-					topicInfo.tidsByFilter[''].push(topic.tid);
-					topicInfo.unreadCids.push(topic.cid);
-				}
-
-				if (topicInfo.isTopicsFollowed[topic.tid]) {
-					topicInfo.tidsByFilter.watched.push(topic.tid);
-				}
-
-				if (topic.postcount <= 1) {
-					topicInfo.tidsByFilter.unreplied.push(topic.tid);
-				}
-
-				if (!topicInfo.userReadTimes[topic.tid]) {
-					topicInfo.tidsByFilter.new.push(topic.tid);
-				}
+			(!filterCids || filterCids.includes(topic.cid)) &&
+			(!filterTags || filterTags.every(tag => topic.tags.find(topicTag => topicTag.value === tag))) &&
+			!topicInfo.blockedUids.includes(topic.uid)) {
+				pushToCategory(topic, topicInfo, userCidState);
 			}
 		});
 
@@ -221,6 +204,26 @@ module.exports = function (Topics) {
 
 		return topicInfo.counts;
 
+	}
+
+	async function pushToCategory(topic, topicInfo, userCidState) {
+		if (topicInfo.isTopicsFollowed[topic.tid] ||
+			[categories.watchStates.watching, categories.watchStates.tracking].includes(userCidState[topic.cid])) {
+			topicInfo.tidsByFilter[''].push(topic.tid);
+			topicInfo.unreadCids.push(topic.cid);
+		}
+
+		if (topicInfo.isTopicsFollowed[topic.tid]) {
+			topicInfo.tidsByFilter.watched.push(topic.tid);
+		}
+
+		if (topic.postcount <= 1) {
+			topicInfo.tidsByFilter.unreplied.push(topic.tid);
+		}
+
+		if (!topicInfo.userReadTimes[topic.tid]) {
+			topicInfo.tidsByFilter.new.push(topic.tid);
+		}
 	}
 	
 	async function getCategoryTids(params) {
