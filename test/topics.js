@@ -2306,6 +2306,39 @@ describe('Topic\'s', () => {
 		});
 	});
 
+	describe('recent topics', () => {
+		let category;
+		before(async () => {
+			category = await categories.create({ name: 'recent' });
+			// create a couple topics
+			await topics.post({
+				uid: topic.userId,
+				cid: category.cid,
+				title: 'first recent topic',
+				content: 'topic 1 OP',
+			});
+			await topics.post({
+				uid: topic.userId,
+				cid: category.cid,
+				title: 'second recent topic',
+				content: 'topic 2 OP',
+			});
+		});
+
+		it('should get topics ordered by most recent first', async () => {
+			const data = await topics.getRecentTopics({
+				cids: [category.cid],
+				uid: topic.userId,
+				start: 0,
+				stop: -1,
+			});
+			assert(data);
+			assert(Array.isArray(data.topics));
+			assert.strictEqual(data.topics[0].title, 'second recent topic');
+			assert.strictEqual(data.topics[1].title, 'first recent topic');
+		});
+	});
+
 	describe('scheduled topics', () => {
 		let categoryObj;
 		let topicData;
