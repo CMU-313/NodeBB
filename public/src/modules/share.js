@@ -6,8 +6,6 @@ define('share', ['hooks'], function (hooks) {
 
 	module.addShareHandlers = function (name) {
 		function openShare(opts) {
-			// console.log("NICOLE_RUNTIME_TRIGGER: openShare");
-
 			// Back-compatible, support either an options object or old positional args
 			let url, urlToPost, width, height, features;
 			if (opts && typeof opts === 'object') {
@@ -24,7 +22,7 @@ define('share', ['hooks'], function (hooks) {
 			window.open(url, '_blank', `width=${width},height=${height},${features}`);
 			hooks.fire('action:share.open', { 
 				url, 
-				urlToPost 
+				urlToPost,
 			});
 			return false;
 		}
@@ -91,5 +89,5 @@ define('share', ['hooks'], function (hooks) {
 		return baseUrl + config.relative_path + path;
 	}
 
-  	return module;
+	return module;
 });
