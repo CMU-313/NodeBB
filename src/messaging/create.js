@@ -36,9 +36,9 @@ module.exports = function (Messaging) {
 		}
 	};
 
-	Messaging.addMessage = async (data) => {
+	Messaging.addMsgErr = async (data,roomData) => {
+		console.log('andre');
 		const { uid, roomId } = data;
-		const roomData = await Messaging.getRoomData(roomId);
 		if (!roomData) {
 			throw new Error('[[error:no-room]]');
 		}
@@ -50,6 +50,13 @@ module.exports = function (Messaging) {
 				throw new Error('[[error:no-privileges]]');
 			}
 		}
+		console.log('andre');
+	};
+
+	Messaging.addMessage = async (data) => {
+		const { uid, roomId } = data;
+		const roomData = await Messaging.getRoomData(roomId);
+		await Messaging.addMsgErr(data, roomData);
 		const mid = data.mid || await db.incrObjectField('global', 'nextMid');
 		const timestamp = data.timestamp || Date.now();
 		let message = {
