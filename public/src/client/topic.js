@@ -150,12 +150,15 @@ define('forum/topic', [
 		const bookmark = ajaxify.data.bookmark || storage.getItem('topic:' + tid + ':bookmark');
 		const postIndex = ajaxify.data.postIndex;
 		updateUserBookmark(postIndex);
+
+		// ↓ Named booleans reduce conditional complexity without changing behavior
+		const hasBookmark = !!bookmark;
+		const onFirstPageOrNoPagination = !config.usePagination || ajaxify.data.pagination.currentPage === 1;
+		const exceedsBookmarkThreshold = ajaxify.data.postcount > ajaxify.data.bookmarkThreshold;
+
 		if (navigator.shouldScrollToPost(postIndex)) {
 			return navigator.scrollToPostIndex(postIndex - 1, true, 0);
-		} else if (bookmark && (
-			!config.usePagination ||
-			(config.usePagination && ajaxify.data.pagination.currentPage === 1)
-		) && ajaxify.data.postcount > ajaxify.data.bookmarkThreshold) {
+		} else if (hasBookmark && onFirstPageOrNoPagination && exceedsBookmarkThreshold) {
 			alerts.alert({
 				alert_id: 'bookmark',
 				message: '[[topic:bookmark-instructions]]',
@@ -169,6 +172,7 @@ define('forum/topic', [
 				},
 			});
 		}
+
 	}
 
 	function handleThumbs() {
