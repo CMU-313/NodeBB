@@ -97,8 +97,6 @@ module.exports = function (Topics) {
 			return { counts, tids: [], tidsByFilter, unreadCids };
 		}
 
-		console.log('Samhitha Duggirala');
-
 		const userTopics = await getUserTopics(params);
 		const userReadTimes = _.mapValues(_.keyBy(userTopics.userScores, 'value'), 'score');
 		
