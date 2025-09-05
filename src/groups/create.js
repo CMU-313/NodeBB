@@ -7,41 +7,8 @@ const db = require('../database');
 
 module.exports = function (Groups) {
 	Groups.create = async function (data) {
-		const isSystem = isSystemGroup(data);
 		const timestamp = data.timestamp || Date.now();
-		let disableJoinRequests = parseInt(data.disableJoinRequests, 10) === 1 ? 1 : 0;
-		if (data.name === 'administrators') {
-			disableJoinRequests = 1;
-		}
-		const disableLeave = parseInt(data.disableLeave, 10) === 1 ? 1 : 0;
-		const isHidden = parseInt(data.hidden, 10) === 1;
-
-		Groups.validateGroupName(data.name);
-
-		const [exists, privGroupExists] = await Promise.all([
-			meta.slugTaken(data.name),
-			privilegeGroupExists(data.name),
-		]);
-		if (exists || privGroupExists) {
-			throw new Error('[[error:group-already-exists]]');
-		}
-
-		const memberCount = data.hasOwnProperty('ownerUid') ? 1 : 0;
-		const isPrivate = data.hasOwnProperty('private') && data.private !== undefined ? parseInt(data.private, 10) === 1 : true;
-		let groupData = {
-			name: data.name,
-			slug: slugify(data.name),
-			createtime: timestamp,
-			userTitle: data.userTitle || data.name,
-			userTitleEnabled: parseInt(data.userTitleEnabled, 10) === 1 ? 1 : 0,
-			description: data.description || '',
-			memberCount: memberCount,
-			hidden: isHidden ? 1 : 0,
-			system: isSystem ? 1 : 0,
-			private: isPrivate ? 1 : 0,
-			disableJoinRequests: disableJoinRequests,
-			disableLeave: disableLeave,
-		};
+		const {groupData, isHidden, isSystem} = await Groups.createGroupData(data, timestamp);
 
 		await plugins.hooks.fire('filter:group.create', { group: groupData, data: data });
 
@@ -65,9 +32,44 @@ module.exports = function (Groups) {
 			await db.setObjectField('groupslug:groupname', groupData.slug, groupData.name);
 		}
 
-		groupData = await Groups.getGroupData(groupData.name);
-		plugins.hooks.fire('action:group.create', { group: groupData });
-		return groupData;
+		const newGroupData = await Groups.getGroupData(groupData.name);
+		plugins.hooks.fire('action:group.create', { group: newGroupData });
+		return newGroupData;
+	}; 
+
+	Groups.createGroupData = async function (data, timestamp) {
+		const isSystem = isSystemGroup(data);
+		const disableJoinRequests = parseInt(data.disableJoinRequests, 10) === 1 || data.name === 'administrators' ? 1 : 0;
+		const disableLeave = parseInt(data.disableLeave, 10) === 1 ? 1 : 0;
+		const isHidden = parseInt(data.hidden, 10) === 1;
+
+		Groups.validateGroupName(data.name);
+
+		const [exists, privGroupExists] = await Promise.all([
+			meta.slugTaken(data.name),
+			privilegeGroupExists(data.name),
+		]);
+		if (exists || privGroupExists) {
+			throw new Error('[[error:group-already-exists]]');
+		}
+
+		const memberCount = data.hasOwnProperty('ownerUid') ? 1 : 0;
+		const isPrivate = data.hasOwnProperty('private') && data.private !== undefined ? parseInt(data.private, 10) === 1 : true;
+		const groupData = {
+			name: data.name,
+			slug: slugify(data.name),
+			createtime: timestamp,
+			userTitle: data.userTitle || data.name,
+			userTitleEnabled: parseInt(data.userTitleEnabled, 10) === 1 ? 1 : 0,
+			description: data.description || '',
+			memberCount: memberCount,
+			hidden: + isHidden,
+			system: + isSystem,
+			private: + isPrivate,
+			disableJoinRequests: disableJoinRequests,
+			disableLeave: disableLeave,
+		};
+		return {groupData, isHidden, isSystem};
 	};
 
 	function isSystemGroup(data) {
