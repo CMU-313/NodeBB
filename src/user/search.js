@@ -121,7 +121,6 @@ module.exports = function (User) {
 		hardCap = hardCap || resultsPerPage * 10;
 
 		const data = await db.getSortedSetRangeByLex(`${searchBy}:sorted`, min, max, 0, hardCap);
-		// const uids = data.map(data => data.split(':').pop());
 		const uids = data.map((data) => {
 			if (data.includes(':https:')) {
 				return data.substring(data.indexOf(':https:') + 1);
@@ -132,7 +131,8 @@ module.exports = function (User) {
 		return uids;
 	}
 
-	// ── helpers to reduce complexity in filterAndSortUids ─────────────────────
+	//helpers to reduce complexity
+	//Used ChatGPT to name all my help functions
 	function normalizeFilters(filters) {
 		const list = filters || [];
 		return Array.isArray(list) ? list : [list];
