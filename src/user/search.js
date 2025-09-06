@@ -1,4 +1,3 @@
-
 'use strict';
 
 const _ = require('lodash');
@@ -24,7 +23,6 @@ module.exports = function (User) {
 		verified: ['email:confirmed'],
 		unverified: ['email:confirmed'],
 	};
-
 
 	User.search = async function (data) {
 		const query = data.query || '';
@@ -134,45 +132,67 @@ module.exports = function (User) {
 		return uids;
 	}
 
-	async function filterAndSortUids(uids, data) {
-		uids = uids.filter(uid => parseInt(uid, 10) || activitypub.helpers.isUri(uid));
-		let filters = data.filters || [];
-		filters = Array.isArray(filters) ? filters : [data.filters];
+	// ── helpers to reduce complexity in filterAndSortUids ─────────────────────
+	function normalizeFilters(filters) {
+		const list = filters || [];
+		return Array.isArray(list) ? list : [list];
+	}
+
+	function collectFields(sortBy, filters) {
 		const fields = [];
-
-		if (data.sortBy) {
-			fields.push(data.sortBy);
-		}
-
-		filters.forEach((filter) => {
-			if (filterFieldMap[filter]) {
-				fields.push(...filterFieldMap[filter]);
+		if (sortBy) fields.push(sortBy);
+		filters.forEach((f) => {
+			if (filterFieldMap[f]) {
+				fields.push(...filterFieldMap[f]);
 			}
 		});
+		return fields;
+	}
 
-		if (data.groupName) {
-			const isMembers = await groups.isMembers(uids, data.groupName);
-			uids = uids.filter((uid, index) => isMembers[index]);
-		}
+	async function applyGroupFilter(uids, groupName) {
+		if (!groupName) return uids;
+		const isMembers = await groups.isMembers(uids, groupName);
+		return uids.filter((uid, i) => isMembers[i]);
+	}
+
+	async function maybeApplyBannedFilter(uids, filters) {
+		const wantsBanned = filters.includes('banned') || filters.includes('notbanned');
+		if (!wantsBanned) return uids;
+
+		const isMembersOfBanned = await groups.isMembers(uids, groups.BANNED_USERS);
+		const checkBanned = filters.includes('banned');
+		return uids.filter((uid, i) => (checkBanned ? isMembersOfBanned[i] : !isMembersOfBanned[i]));
+	}
+
+	function applyFilterFns(userData, filters) {
+		let result = userData;
+		filters.forEach((f) => {
+			if (filterFnMap[f]) {
+				result = result.filter(filterFnMap[f]);
+			}
+		});
+		return result;
+	}
+
+	// function with helper methods included
+	async function filterAndSortUids(uids, data) {
+		let filteredUids = uids.filter(uid => parseInt(uid, 10) || activitypub.helpers.isUri(uid));
+
+		const filters = normalizeFilters(data.filters);
+		const fields = collectFields(data.sortBy, filters);
+
+		filteredUids = await applyGroupFilter(filteredUids, data.groupName);
 
 		if (!fields.length) {
-			return uids;
+			return filteredUids;
 		}
 
-		if (filters.includes('banned') || filters.includes('notbanned')) {
-			const isMembersOfBanned = await groups.isMembers(uids, groups.BANNED_USERS);
-			const checkBanned = filters.includes('banned');
-			uids = uids.filter((uid, index) => (checkBanned ? isMembersOfBanned[index] : !isMembersOfBanned[index]));
-		}
+		filteredUids = await maybeApplyBannedFilter(filteredUids, filters);
 
 		fields.push('uid');
-		let userData = await User.getUsersFields(uids, fields);
+		let userData = await User.getUsersFields(filteredUids, fields);
 
-		filters.forEach((filter) => {
-			if (filterFnMap[filter]) {
-				userData = userData.filter(filterFnMap[filter]);
-			}
-		});
+		userData = applyFilterFns(userData, filters);
 
 		if (data.sortBy) {
 			sortUsers(userData, data.sortBy, data.sortDirection);
