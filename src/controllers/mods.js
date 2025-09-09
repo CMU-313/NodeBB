@@ -130,7 +130,6 @@ modsController.flags.list = async function (req, res) {
 		title: '[[pages:flags]]',
 		pagination: pagination.create(flagsData.page, flagsData.pageCount, req.query),
 		breadcrumbs: helpers.buildBreadcrumbs([{ text: '[[pages:flags]]' }]),
-		done: adjustedFilters.state === 'done',
 	});
 };
 
