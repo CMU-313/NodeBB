@@ -1,4 +1,7 @@
-/* I used ChatGPT to help create an outline and guidance to refactor the code for the flags list function to get rid of the smell. The prompt i asked it was (copy and pasted the code here) please help me create an outline and give suggesions on how to refactor the code so that i don't have a smell for high complexity on line 22.
+/* I used ChatGPT to help create an outline and guidance to 
+refactor the code for the flags list function to get rid of the smell. 
+The prompt i asked it was (copy and pasted the code here) please help me create an outline 
+and give suggesions on how to refactor the code so that i don't have a smell for high complexity on line 22.
 */
 'use strict';
 
