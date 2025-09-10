@@ -84,15 +84,11 @@ Data.getActive = async function () {
 	return await Promise.all(pluginPaths.map(p => Data.loadPluginInfo(p)));
 };
 
-
+//ChatGPT produced reorganization of the code to minimize the number of return statments. 
 Data.getStaticDirectories = async function (pluginData) {
 	const validMappedPath = /^[\w\-_]+$/;
 
-	if (!pluginData.staticDirs) {
-		return;
-	}
-
-	const dirs = Object.keys(pluginData.staticDirs);
+	const dirs = Object.keys(pluginData.staticDirs ?? {});
 	if (!dirs.length) {
 		return;
 	}
@@ -100,33 +96,36 @@ Data.getStaticDirectories = async function (pluginData) {
 	const staticDirs = {};
 
 	async function processDir(route) {
-		if (!validMappedPath.test(route)) {
-			winston.warn(`[plugins/${pluginData.id}] Invalid mapped path specified: ${
-				route}. Path must adhere to: ${validMappedPath.toString()}`);
-			return;
-		}
-		const dirPath = await resolveModulePath(pluginData.path, pluginData.staticDirs[route]);
-		if (!dirPath) {
-			winston.warn(`[plugins/${pluginData.id}] Invalid mapped path specified: ${
-				route} => ${pluginData.staticDirs[route]}`);
-			return;
-		}
+		let dirPath;
 		try {
-			const stats = await fs.promises.stat(dirPath);
-			if (!stats.isDirectory()) {
-				winston.warn(`[plugins/${pluginData.id}] Mapped path '${
-					route} => ${dirPath}' is not a directory.`);
+			// guard 1
+			if (!validMappedPath.test(route)) {
+				winston.warn(`[plugins/${pluginData.id}] Invalid mapped path specified: ${
+					route}. Path must adhere to: ${validMappedPath}`);
 				return;
 			}
 
+			dirPath = await resolveModulePath(pluginData.path, pluginData.staticDirs[route]);
+			if (!dirPath) {
+				winston.warn(`[plugins/${pluginData.id}] Invalid mapped path specified: ${
+					route} => ${pluginData.staticDirs[route]}`);
+				return;
+			}
+
+			const stats = await fs.promises.stat(dirPath);
+			if (!stats.isDirectory()) {
+				winston.warn(`[plugins/${pluginData.id}] Mapped path '${route} => ${dirPath}' is not a directory.`);
+				return;
+			}
+
+			// success path
 			staticDirs[`${pluginData.id}/${route}`] = dirPath;
 		} catch (err) {
 			if (err.code === 'ENOENT') {
-				winston.warn(`[plugins/${pluginData.id}] Mapped path '${
-					route} => ${dirPath}' not found.`);
-				return;
+				winston.warn(`[plugins/${pluginData.id}] Mapped path '${route} => ${dirPath}' not found.`);
+			} else {
+				throw err;
 			}
-			throw err;
 		}
 	}
 
@@ -134,6 +133,7 @@ Data.getStaticDirectories = async function (pluginData) {
 	winston.verbose(`[plugins] found ${Object.keys(staticDirs).length} static directories for ${pluginData.id}`);
 	return staticDirs;
 };
+
 
 
 Data.getFiles = async function (pluginData, type) {
