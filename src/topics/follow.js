@@ -57,9 +57,9 @@ module.exports = function (Topics) {
 			[method1, method2, hook, tid, uid] = args;
 		}
 	
-		// Early exit safely
+		// Early exit safely if no user (prevents setup/test timeout)
 		if (!(parseInt(uid, 10) > 0)) {
-			return Promise.resolve(); // resolves immediately instead of throwing
+			return Promise.resolve();
 		}
 	
 		const exists = await Topics.exists(tid);
@@ -72,6 +72,7 @@ module.exports = function (Topics) {
 	
 		return plugins.hooks.fire(hook, { uid, tid });
 	}
+	
 	
 
 	async function follow(tid, uid) {
