@@ -34,18 +34,34 @@ module.exports = function (Topics) {
 		await setWatching(ignore, unfollow, 'action:topic.ignore', tid, uid);
 	};
 
-	async function setWatching(method1, method2, hook, tid, uid) {
+	// async function setWatching(method1, method2, hook, tid, uid) {
+	// 	if (!(parseInt(uid, 10) > 0)) {
+	// 		throw new Error('[[error:not-logged-in]]');
+	// 	}
+	// 	const exists = await Topics.exists(tid);
+	// 	if (!exists) {
+	// 		throw new Error('[[error:no-topic]]');
+	// 	}
+	// 	await method1(tid, uid);
+	// 	await method2(tid, uid);
+	// 	plugins.hooks.fire(hook, { uid: uid, tid: tid });
+	// }
+	async function setWatching({ method1, method2, hook, tid, uid }) {
 		if (!(parseInt(uid, 10) > 0)) {
 			throw new Error('[[error:not-logged-in]]');
 		}
+	
 		const exists = await Topics.exists(tid);
 		if (!exists) {
 			throw new Error('[[error:no-topic]]');
 		}
+	
 		await method1(tid, uid);
 		await method2(tid, uid);
-		plugins.hooks.fire(hook, { uid: uid, tid: tid });
+	
+		return plugins.hooks.fire(hook, { uid, tid });
 	}
+	
 	
 
 	async function follow(tid, uid) {
