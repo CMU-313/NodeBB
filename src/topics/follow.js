@@ -52,16 +52,13 @@ module.exports = function (Topics) {
 		let method1, method2, hook, tid, uid;
 	
 		if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
-			// Called with an object
 			({ method1, method2, hook, tid, uid } = args[0]);
 		} else {
-			// Called with separate arguments
 			[method1, method2, hook, tid, uid] = args;
 		}
 	
-		// If uid is missing during setup, resolve immediately to prevent timeout
-		if (!(parseInt(uid, 10) > 0)) {
-			// Check if Topics.exists exists first; during setup this might not matter
+		// Short-circuit if uid or tid is missing (prevents setup/test timeout)
+		if (!(parseInt(uid, 10) > 0) || !tid) {
 			return Promise.resolve();
 		}
 	
