@@ -46,6 +46,35 @@ module.exports = function (Topics) {
 		await method2(tid, uid);
 		plugins.hooks.fire(hook, { uid: uid, tid: tid });
 	}
+    
+    
+	// async function setWatching(...args) {
+	//     let method1, method2, hook, tid, uid;
+    
+	//     if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
+	//         ({ method1, method2, hook, tid, uid } = args[0]);
+	//     } else {
+	//         [method1, method2, hook, tid, uid] = args;
+	//     }
+
+	//     if (!(parseInt(uid, 10) > 0) || !tid || typeof method1 !== 'function' || typeof method2 !== 'function') {
+	//         return Promise.resolve();
+	//     }
+    
+	//     const exists = await Topics.exists(tid);
+	//     if (!exists) {
+	//         throw new Error('[[error:no-topic]]');
+	//     }
+    
+	//     await method1(tid, uid);
+	//     await method2(tid, uid);
+    
+	//     return plugins.hooks.fire(hook, { uid, tid });
+	// }
+    
+    
+    
+    
 
 	async function follow(tid, uid) {
 		await db.setAdd(`tid:${tid}:followers`, uid);
