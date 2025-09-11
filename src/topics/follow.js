@@ -48,18 +48,9 @@ module.exports = function (Topics) {
 	// }
 	
     
-	async function setWatching(...args) {
-		let method1, method2, hook, tid, uid;
-	
-		if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
-			({ method1, method2, hook, tid, uid } = args[0]);
-		} else {
-			[method1, method2, hook, tid, uid] = args;
-		}
-	
-		// Early exit safely if no user (prevents setup/test timeout)
+	async function setWatching({ method1, method2, hook, tid, uid }) {
 		if (!(parseInt(uid, 10) > 0)) {
-			return Promise.resolve();
+			throw new Error('[[error:not-logged-in]]');
 		}
 	
 		const exists = await Topics.exists(tid);
