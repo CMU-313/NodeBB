@@ -35,20 +35,20 @@ module.exports = function (Topics) {
 	};
 
 	// async function setWatching(method1, method2, hook, tid, uid) {
-	// 	if (!(parseInt(uid, 10) > 0)) {
-	// 		throw new Error('[[error:not-logged-in]]');
-	// 	}
-	// 	const exists = await Topics.exists(tid);
-	// 	if (!exists) {
-	// 		throw new Error('[[error:no-topic]]');
-	// 	}
-	// 	await method1(tid, uid);
-	// 	await method2(tid, uid);
-	// 	plugins.hooks.fire(hook, { uid: uid, tid: tid });
+	//     if (!(parseInt(uid, 10) > 0)) {
+	//         throw new Error('[[error:not-logged-in]]');
+	//     }
+	//     const exists = await Topics.exists(tid);
+	//     if (!exists) {
+	//         throw new Error('[[error:no-topic]]');
+	//     }
+	//     await method1(tid, uid);
+	//     await method2(tid, uid);
+	//     plugins.hooks.fire(hook, { uid: uid, tid: tid });
 	// }
 	async function setWatching(...args) {
 		let method1, method2, hook, tid, uid;
-	
+    
 		if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
 			// New usage: setWatching({ method1, method2, hook, tid, uid })
 			({ method1, method2, hook, tid, uid } = args[0]);
@@ -56,24 +56,25 @@ module.exports = function (Topics) {
 			// Legacy usage: setWatching(method1, method2, hook, tid, uid)
 			[method1, method2, hook, tid, uid] = args;
 		}
-	
+    
 		if (!(parseInt(uid, 10) > 0)) {
 			throw new Error('[[error:not-logged-in]]');
 		}
-	
+    
 		const exists = await Topics.exists(tid);
 		if (!exists) {
 			throw new Error('[[error:no-topic]]');
 		}
-	
+    
 		await method1(tid, uid);
 		await method2(tid, uid);
-	
+    
 		return plugins.hooks.fire(hook, { uid, tid });
 	}
-	
-	
-	
+    
+    
+    
+    
 
 	async function follow(tid, uid) {
 		await db.setAdd(`tid:${tid}:followers`, uid);
