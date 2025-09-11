@@ -56,9 +56,8 @@ module.exports = function (Topics) {
 		} else {
 			[method1, method2, hook, tid, uid] = args;
 		}
-	
-		// Short-circuit if uid or tid is missing (prevents setup/test timeout)
-		if (!(parseInt(uid, 10) > 0) || !tid) {
+
+		if (!(parseInt(uid, 10) > 0) || !tid || typeof method1 !== 'function' || typeof method2 !== 'function') {
 			return Promise.resolve();
 		}
 	
@@ -72,6 +71,7 @@ module.exports = function (Topics) {
 	
 		return plugins.hooks.fire(hook, { uid, tid });
 	}
+	
 	
 	
 	
