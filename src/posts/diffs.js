@@ -72,7 +72,7 @@ module.exports = function (Posts) {
 	Diffs.restore = async function ({ pid, since, uid, req }) {
 		since = getValidatedTimestamp(since);
 		const post = await postDiffLoad(pid, since, uid);
-
+		
 		return await Posts.edit({
 			uid,
 			pid,
