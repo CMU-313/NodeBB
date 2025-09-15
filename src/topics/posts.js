@@ -109,55 +109,129 @@ module.exports = function (Topics) {
 		if (!Array.isArray(postData) || !postData.length) {
 			return [];
 		}
-		const pids = postData.map(post => post && post.pid);
 
-		async function getPostUserData(field, method) {
-			const uids = _.uniq(postData
-				.filter(p => p && (activitypub.helpers.isUri(p[field]) || parseInt(p[field], 10) >= 0))
-				.map(p => p[field]));
-			const userData = await method(uids);
-			return _.zipObject(uids, userData);
-		}
-		const [
-			bookmarks,
-			voteData,
-			userData,
-			editors,
-			replies,
-		] = await Promise.all([
-			posts.hasBookmarked(pids, uid),
-			posts.getVoteStatusByPostIDs(pids, uid),
-			getPostUserData('uid', async uids => await posts.getUserInfoForPosts(uids, uid)),
-			getPostUserData('editor', async uids => await user.getUsersFields(uids, ['uid', 'username', 'userslug'])),
-			getPostReplies(postData, uid),
-			Topics.addParentPosts(postData, uid),
-		]);
+		const context = await getPostEnhancements(postData, uid);
 
 		postData.forEach((postObj, i) => {
-			if (postObj) {
-				postObj.user = postObj.uid ? userData[postObj.uid] : { ...userData[postObj.uid] };
-				postObj.editor = postObj.editor ? editors[postObj.editor] : null;
-				postObj.bookmarked = bookmarks[i];
-				postObj.upvoted = voteData.upvotes[i];
-				postObj.downvoted = voteData.downvotes[i];
-				postObj.votes = postObj.votes || 0;
-				postObj.replies = replies[i];
-				postObj.selfPost = parseInt(uid, 10) > 0 && parseInt(uid, 10) === postObj.uid;
-
-				// Username override for guests, if enabled
-				if (meta.config.allowGuestHandles && postObj.uid === 0 && postObj.handle) {
-					postObj.user.username = validator.escape(String(postObj.handle));
-					postObj.user.displayname = postObj.user.username;
-				}
-			}
+			changePost(postObj, i, context);
 		});
 
 		const result = await plugins.hooks.fire('filter:topics.addPostData', {
 			posts: postData,
 			uid: uid,
 		});
+
 		return result.posts;
 	};
+
+	function changePost(postObj, i, context) {
+		if (!postObj) return;
+
+		userFunc(postObj, context.userData);
+		editorFunc(postObj, context.editors);
+		bookmarkFunc(postObj, context.bookmarks, i);
+		votesFunc(postObj, context.voteData, i);
+		repliesFunc(postObj, context.replies, i);
+		selfPostFunc(postObj, context.uid);
+
+		guestHandleFunc(postObj);
+	}
+
+	function userFunc(postObj, userData) {
+		if (postObj.uid && userData[postObj.uid]) {
+			postObj.user = userData[postObj.uid];
+		} else {
+			postObj.user = { 
+				uid: postObj.uid || 0, 
+				username: postObj.handle || 'Guest', 
+				userslug: postObj.handle ? String(postObj.handle).toLowerCase() : 'guest', 
+				isLocal: true,
+				displayname: postObj.handle || 'Guest',
+				reputation: 0,
+				postcount: 0,
+				topiccount: 0,
+				picture: '',
+				signature: '',
+				status: '',
+				banned: 0,
+				'banned:expire': 0,
+				lastonline: 0,
+				groupTitle: '',
+				groupTitleArray: [],
+				muted: false,
+				mutedUntil: 0,
+				'icon:text': '',
+				'icon:bgColor': '',
+				lastonlineISO: '',
+				banned_until: 0,
+				banned_until_readable: '',
+				selectedGroups: [],
+				custom_profile_info: [],
+			};
+		}
+	}
+
+	function editorFunc(postObj, editors) {
+		postObj.editor = postObj.editor ? editors[postObj.editor] : null;
+	}
+
+	function bookmarkFunc(postObj, bookmarks, i) {
+		postObj.bookmarked = bookmarks[i];
+	}
+
+	function votesFunc(postObj, voteData, i) {
+		postObj.upvoted = voteData.upvotes[i];
+		postObj.downvoted = voteData.downvotes[i];
+		postObj.votes = postObj.votes || 0;
+	}
+
+	function repliesFunc(postObj, replies, i) {
+		postObj.replies = replies[i];
+	}
+
+	function selfPostFunc(postObj, uid) {
+		postObj.selfPost = parseInt(uid, 10) > 0 && parseInt(uid, 10) === postObj.uid;
+	}
+
+	function guestHandleFunc(postObj) {
+		if (meta.config.allowGuestHandles && postObj.uid === 0 && postObj.handle) {
+			postObj.user.username = validator.escape(String(postObj.handle));
+			postObj.user.displayname = postObj.user.username;
+		}
+	}
+
+	async function getPostEnhancements(postData, uid) {
+		const pids = postData.map(post => post && post.pid);
+			
+		const bookmarks = await posts.hasBookmarked(pids, uid);
+		const voteData = await posts.getVoteStatusByPostIDs(pids, uid);
+		const userData = await getPostUserData('uid', async uids => await posts.getUserInfoForPosts(uids, uid));
+		const editors = await getPostUserData('editor', async uids => await user.getUsersFields(uids, ['uid', 'username', 'userslug']));
+		const replies = await getPostReplies(postData, uid);
+		Topics.addParentPosts(postData, uid);
+
+		return { bookmarks, voteData, userData, editors, replies, uid};
+	}
+
+	async function getPostUserData(postData, field, method) {
+		if (!Array.isArray(postData)) {
+			postData = postData ? [postData] : [];
+		}
+
+		if(!postData.length) {
+			return {};
+		}
+		const uids = _.uniq(
+			postData
+				.filter(p => p && (activitypub.helpers.isUri(p[field]) || parseInt(p[field], 10) >= 0))
+				.map(p => p[field])
+		);
+
+		if (!uids.length) return {};
+
+		const userData = await method(uids);
+		return _.zipObject(uids, userData);
+	}
 
 	Topics.modifyPostsByPrivilege = function (topicData, topicPrivileges) {
 		const loggedIn = parseInt(topicPrivileges.uid, 10) > 0;
