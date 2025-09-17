@@ -36,7 +36,7 @@ define('forum/topic/diffs', ['api', 'bootbox', 'alerts', 'forum/topic/images'], 
 				});
 
 				$revertEl.on('click', function () {
-					Diffs.restore(pid, $selectEl.val(), $modal);
+					Diffs.restore({pid, since: $selectEl.val(), uid: $modal});
 				});
 
 				$deleteEl.on('click', function () {

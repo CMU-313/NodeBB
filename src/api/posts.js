@@ -539,7 +539,12 @@ postsAPI.restoreDiff = async (caller, data) => {
 		throw new Error('[[error:no-privileges]]');
 	}
 
-	const edit = await posts.diffs.restore(data.pid, data.since, caller.uid, apiHelpers.buildReqObject(caller));
+	const edit = await posts.diffs.restore({
+		pid:data.pid, 
+		since: data.since, 
+		uid: caller.uid, 
+		req: apiHelpers.buildReqObject(caller),
+	});
 	websockets.in(`topic_${edit.topic.tid}`).emit('event:post_edited', edit);
 };
 

@@ -69,20 +69,21 @@ module.exports = function (Posts) {
 		return result.postData;
 	};
 
-	Diffs.restore = async function (pid, since, uid, req) {
+	Diffs.restore = async function ({ pid, since, uid, req }) {
 		since = getValidatedTimestamp(since);
 		const post = await postDiffLoad(pid, since, uid);
-
+		
 		return await Posts.edit({
-			uid: uid,
-			pid: pid,
+			uid,
+			pid,
 			content: post.content,
-			req: req,
+			req,
 			timestamp: since,
 			title: post.topic.title,
 			tags: post.topic.tags.map(tag => tag.value),
 		});
 	};
+
 
 	Diffs.delete = async function (pid, timestamp, uid) {
 		getValidatedTimestamp(timestamp);
