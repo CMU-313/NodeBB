@@ -3,10 +3,11 @@
 {
     "name": "NodeBB",
     "build": {
-        "dockerfile": "Dockerfile"
+        "dockerfile": "Dockerfile",
+        "context": ".."
     },
-    "postCreateCommand": "redis-server --daemonize yes",
-    "postStartCommand": "redis-server --daemonize yes || true",
+    "postCreateCommand": "./nodebb setup && npm install",
+    "postStartCommand": "redis-server --daemonize yes",
 
     "forwardPorts": [4567],
     "portsAttributes": {
