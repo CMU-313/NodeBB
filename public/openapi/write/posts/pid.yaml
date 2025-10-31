@@ -35,6 +35,10 @@ get:
                         description: A topic identifier
                       content:
                         type: string
+                      isEnglish:
+                        type: boolean
+                      translatedContent:
+                        type: string
                       timestamp:
                         type: number
                       flagId:
