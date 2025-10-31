@@ -165,9 +165,13 @@ privsTopics.canDelete = async function (tid, uid) {
 			'[[error:cant-delete-topic-has-reply]]';
 		throw new Error(langKey);
 	}
-
+	
 	const { deleterUid } = topicData;
-	return allowedTo[0] && ((isOwner && (deleterUid === 0 || deleterUid === topicData.uid)) || isModerator);
+
+	const MiddleExpression = (isOwner && (deleterUid === 0 || deleterUid === topicData.uid));
+	const roleCheck = MiddleExpression || isModerator;
+
+	return allowedTo[0] && roleCheck;
 };
 
 privsTopics.canEdit = async function (tid, uid) {
