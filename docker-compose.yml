@@ -1,6 +1,5 @@
 services:
   nodebb:
-    user: "0"
     build: .
     # image: ghcr.io/nodebb/nodebb:latest
     restart: unless-stopped
@@ -24,9 +23,6 @@ services:
     volumes:
       - mongo-data:/data/db
       - ./install/docker/mongodb-user-init.js:/docker-entrypoint-initdb.d/user-init.js
-    profiles:
-      - mongo
-
   redis:
     image: redis:8.0.1-alpine
     restart: unless-stopped
