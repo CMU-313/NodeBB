@@ -50,7 +50,7 @@
 					</span>
 					{{{each ./icons}}}<span class="lh-1">{@value}</span>{{{end}}}
 
-					{{{ if !template.category }}}
+					{{{ if (!template.category || (cid != ./cid)) }}}
 					{buildCategoryLabel(./category, "a", "border")}
 					{{{ end }}}
 
@@ -86,7 +86,7 @@
 		</div>
 
 		<div class="d-flex p-0 col-lg-5 col-12 align-content-stretch">
-			<div class="meta stats d-none d-lg-grid col-6 gap-1 pe-2 text-muted" style="grid-template-columns: 1fr 1fr 1fr;">
+			<div class="meta stats d-none d-lg-grid col-6 gap-1 pe-2 text-muted" style="grid-template-columns: {{{ if !reputation:disabled }}}1fr{{{ end }}} 1fr 1fr;">
 				{{{ if !reputation:disabled }}}
 				<div class="stats-votes card card-header border-0 p-2 overflow-hidden rounded-1 d-flex flex-column align-items-center">
 					<span class="fs-5 ff-secondary lh-1" title="{./votes}">{humanReadableNumber(./votes, 0)}</span>
