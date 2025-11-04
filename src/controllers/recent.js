@@ -1,4 +1,3 @@
-
 'use strict';
 
 const nconf = require('nconf');
@@ -18,22 +17,11 @@ recentController.get = async function (req, res, next) {
 	if (!data) {
 		return next();
 	}
-
 	res.render('recent', data);
 };
 
-recentController.getData = async function (req, url, sort) {
-	const page = parseInt(req.query.page, 10) || 1;
-	let term = helpers.terms[req.query.term];
-	const { cid, tag } = req.query;
-	const filter = req.query.filter || '';
-
-	if (!term && req.query.term) {
-		return null;
-	}
-	term = term || 'alltime';
-
-	const [settings, categoryData, tagData, rssToken, canPost, isPrivileged] = await Promise.all([
+async function getUserContext(req, cid, tag) {
+	return Promise.all([
 		user.getSettings(req.uid),
 		helpers.getSelectedCategory(cid),
 		helpers.getSelectedTag(tag),
@@ -41,66 +29,135 @@ recentController.getData = async function (req, url, sort) {
 		privileges.categories.canPostTopic(req.uid),
 		user.isPrivileged(req.uid),
 	]);
+}
 
+function buildTopicQuery({ settings, req, cid, tag, filter, term, sort }) {
+	const page = parseInt(req.query.page, 10) || 1;
 	const start = Math.max(0, (page - 1) * settings.topicsPerPage);
 	const stop = start + settings.topicsPerPage - 1;
-
-	const data = await topics.getSortedTopics({
+	return {
 		cids: cid,
 		tags: tag,
 		uid: req.uid,
-		start: start,
-		stop: stop,
-		filter: filter,
-		term: term,
-		sort: sort,
+		start,
+		stop,
+		filter,
+		term,
+		sort,
 		floatPinned: req.query.pinned,
 		query: req.query,
-	});
+	};
+}
 
+function buildPageMeta(req, url, data) {
 	const isDisplayedAsHome = !(req.originalUrl.startsWith(`${relative_path}/api/${url}`) || req.originalUrl.startsWith(`${relative_path}/${url}`));
-	const baseUrl = isDisplayedAsHome ? '' : url;
-
 	if (isDisplayedAsHome) {
 		data.title = meta.config.homePageTitle || '[[pages:home]]';
-	} else {
-		data.title = `[[pages:${url}]]`;
-		data.breadcrumbs = helpers.buildBreadcrumbs([{ text: `[[${url}:title]]` }]);
+		return '';
 	}
+	data.title = `[[pages:${url}]]`;
+	data.breadcrumbs = helpers.buildBreadcrumbs([{ text: `[[${url}:title]]` }]);
+	return url;
+}
+
+function sanitizeTerm(rawTermKey) {
+	const resolved = helpers.terms[rawTermKey];
+	if (!resolved && rawTermKey) {
+		return { invalid: true };
+	}
+	return { term: resolved || 'alltime' };
+}
+
+function applyPermissions(data, ctx) {
+	data.canPost = ctx.canPost;
+	data.showSelect = ctx.isPrivileged;
+	data.showTopicTools = ctx.isPrivileged;
+}
+
+function applyRss(data, ctx) {
+	data['feeds:disableRSS'] = meta.config['feeds:disableRSS'] || 0;
+	if (meta.config['feeds:disableRSS']) {
+		return;
+	}
+	data.rssFeedUrl = `${relative_path}/${ctx.url}.rss`;
+	if (ctx.req.loggedIn) {
+		data.rssFeedUrl += `?uid=${ctx.req.uid}&token=${ctx.rssToken}`;
+	}
+}
+
+function applyFiltersAndTerms(data, ctx) {
+	data.filters = helpers.buildFilters(ctx.baseUrl, ctx.filter, ctx.query);
+	data.selectedFilter = data.filters.find(f => f && f.selected);
+	data.terms = helpers.buildTerms(ctx.baseUrl, ctx.term, ctx.query);
+	data.selectedTerm = data.terms.find(t => t && t.selected);
+}
+
+function applyPagination(data, ctx) {
+	const page = parseInt(ctx.req.query.page, 10) || 1;
+	const pageCount = Math.max(1, Math.ceil(data.topicCount / ctx.settings.topicsPerPage));
+	data.pagination = pagination.create(page, pageCount, ctx.req.query);
+	helpers.addLinkTags({
+		url: ctx.url,
+		res: ctx.req.res,
+		tags: data.pagination.rel,
+		page,
+	});
+}
+
+recentController.getData = async function (req, url, sort) {
+	const { cid, tag } = req.query;
+	const filter = req.query.filter || '';
+	const { invalid, term } = sanitizeTerm(req.query.term);
+	if (invalid) {
+		return null;
+	}
+
+	const [
+		settings, categoryData, tagData, rssToken, canPost, isPrivileged,
+	] = await getUserContext(req, cid, tag);
+
+	const topicQuery = buildTopicQuery({
+		settings,
+		req,
+		cid,
+		tag,
+		filter,
+		term,
+		sort,
+	});
+	const data = await topics.getSortedTopics(topicQuery);
+
+	const baseUrl = buildPageMeta(req, url, data);
 
 	const query = { ...req.query };
 	delete query.page;
-	data.canPost = canPost;
-	data.showSelect = isPrivileged;
-	data.showTopicTools = isPrivileged;
+
+	const ctx = {
+		req,
+		url,
+		filter,
+		term,
+		query,
+		baseUrl,
+		rssToken,
+		settings,
+		canPost,
+		isPrivileged,
+	};
+
+	applyPermissions(data, ctx);
+
 	data.allCategoriesUrl = baseUrl + helpers.buildQueryString(query, 'cid', '');
 	data.selectedCategory = categoryData.selectedCategory;
 	data.selectedCids = categoryData.selectedCids;
 	data.selectedTag = tagData.selectedTag;
 	data.selectedTags = tagData.selectedTags;
-	data['feeds:disableRSS'] = meta.config['feeds:disableRSS'] || 0;
-	if (!meta.config['feeds:disableRSS']) {
-		data.rssFeedUrl = `${relative_path}/${url}.rss`;
-		if (req.loggedIn) {
-			data.rssFeedUrl += `?uid=${req.uid}&token=${rssToken}`;
-		}
-	}
 
-	data.filters = helpers.buildFilters(baseUrl, filter, query);
-	data.selectedFilter = data.filters.find(filter => filter && filter.selected);
-	data.terms = helpers.buildTerms(baseUrl, term, query);
-	data.selectedTerm = data.terms.find(term => term && term.selected);
+	applyRss(data, ctx);
+	applyFiltersAndTerms(data, ctx);
+	applyPagination(data, ctx);
 
-	const pageCount = Math.max(1, Math.ceil(data.topicCount / settings.topicsPerPage));
-	data.pagination = pagination.create(page, pageCount, req.query);
-	helpers.addLinkTags({
-		url: url,
-		res: req.res,
-		tags: data.pagination.rel,
-		page: page,
-	});
 	return data;
 };
-
 
 require('../promisify')(recentController, ['get']);
