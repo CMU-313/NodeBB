@@ -1,16 +1,28 @@
 'use strict';
 
-
 define('share', ['hooks'], function (hooks) {
 	const module = {};
 	const baseUrl = window.location.protocol + '//' + window.location.host;
 
 	module.addShareHandlers = function (name) {
-		function openShare(url, urlToPost, width, height) {
-			window.open(url, '_blank', 'width=' + width + ',height=' + height + ',scrollbars=no,status=no');
-			hooks.fire('action:share.open', {
-				url: url,
-				urlToPost: urlToPost,
+		function openShare(opts) {
+			// Back-compatible, support either an options object or old positional args
+			let url, urlToPost, width, height, features;
+			if (opts && typeof opts === 'object') {
+				({ url, urlToPost, width = 626, height = 436, features = 'scrollbars=no,status=no' } = opts);
+			} else {
+			// old signature: openShare(url, urlToPost, width, height)
+				url = opts || '';
+				urlToPost = arguments[1] || '';
+				width = Number(arguments[2]) || 626;
+				height = Number(arguments[3]) || 436;
+				features = 'scrollbars=no,status=no';
+			}
+
+			window.open(url, '_blank', `width=${width},height=${height},${features}`);
+			hooks.fire('action:share.open', { 
+				url, 
+				urlToPost,
 			});
 			return false;
 		}
@@ -24,6 +36,7 @@ define('share', ['hooks'], function (hooks) {
 				postLink.putCursorAtEnd().select();
 			}, 50);
 		});
+	  
 
 		addHandler('.post-link', function (e) {
 			e.preventDefault();
@@ -33,13 +46,13 @@ define('share', ['hooks'], function (hooks) {
 		addHandler('[component="share/twitter"]', function () {
 			const postUrl = getPostUrl($(this));
 			const twitter_url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(name)}&url=${encodeURIComponent(postUrl)}`;
-			return openShare(twitter_url, postUrl, 550, 420);
+			return openShare({ url: twitter_url, urlToPost: postUrl, width: 550, height: 420 });
 		});
 
 		addHandler('[component="share/facebook"]', function () {
 			const postUrl = getPostUrl($(this));
 			const facebook_url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`;
-			return openShare(facebook_url, postUrl, 626, 436);
+			return openShare({ url: facebook_url, urlToPost: postUrl, width: 626, height: 436 });
 		});
 
 		addHandler('[component="share/whatsapp"]', function () {
@@ -48,19 +61,19 @@ define('share', ['hooks'], function (hooks) {
 			const whatsapp_url = config.useragent.isMobile ?
 				`whatsapp://send?text=${message}` :
 				`https://wa.me/?text=${message}`;
-			return openShare(whatsapp_url, postUrl, 626, 436);
+			return openShare({ url: whatsapp_url, urlToPost: postUrl, width: 626, height: 436 });
 		});
 
 		addHandler('[component="share/telegram"]', function () {
 			const postUrl = getPostUrl($(this));
 			const telegram_url = `https://t.me/share/url?text=${encodeURIComponent(name)}&url=${encodeURIComponent(postUrl)}`;
-			return openShare(telegram_url, postUrl, 626, 436);
+			return openShare({ url: telegram_url, urlToPost: postUrl, width: 626, height: 436 });
 		});
 
 		addHandler('[component="share/linkedin"]', function () {
 			const postUrl = getPostUrl($(this));
 			const linkedin_url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(postUrl)}`;
-			return openShare(linkedin_url, postUrl, 626, 436);
+			return openShare({ url: linkedin_url, urlToPost: postUrl, width: 626, height: 436 });
 		});
 
 		hooks.fire('action:share.addHandlers', { openShare: openShare });
@@ -72,7 +85,7 @@ define('share', ['hooks'], function (hooks) {
 
 	function getPostUrl(clickedElement) {
 		const pid = parseInt(clickedElement.parents('[data-pid]').attr('data-pid'), 10);
-		const path = '/post' + (pid ? '/' + (pid) : '');
+		const path = '/post' + (pid ? '/' + pid : '');
 		return baseUrl + config.relative_path + path;
 	}
 
