@@ -133,12 +133,14 @@ privsPosts.canEdit = async function (pid, uid) {
 		return { flag: true };
 	}
 
+	let errorMessage = null;
+
 	if (
 		!isRemote && !results.isMod &&
 		meta.config.postEditDuration &&
 		(Date.now() - results.postData.timestamp > meta.config.postEditDuration * 1000)
 	) {
-		return { flag: false, message: `[[error:post-edit-duration-expired, ${meta.config.postEditDuration}]]` };
+		errorMessage = `[[error:post-edit-duration-expired, ${meta.config.postEditDuration}]]`;
 	}
 	if (
 		!isRemote && !results.isMod &&
@@ -146,22 +148,27 @@ privsPosts.canEdit = async function (pid, uid) {
 		meta.config.newbieReputationThreshold > results.userData.reputation &&
 		Date.now() - results.postData.timestamp > meta.config.newbiePostEditDuration * 1000
 	) {
-		return { flag: false, message: `[[error:post-edit-duration-expired, ${meta.config.newbiePostEditDuration}]]` };
+		errorMessage = `[[error:post-edit-duration-expired, ${meta.config.newbiePostEditDuration}]]`;
 	}
 
 	const isLocked = await topics.isLocked(results.postData.tid);
 	if (!results.isMod && isLocked) {
-		return { flag: false, message: '[[error:topic-locked]]' };
+		errorMessage = '[[error:topic-locked]]';
 	}
 
 	if (!results.isMod && results.postData.deleted && parseInt(uid, 10) !== parseInt(results.postData.deleterUid, 10)) {
-		return { flag: false, message: '[[error:post-deleted]]' };
+		errorMessage = '[[error:post-deleted]]';
+	}
+
+	if (errorMessage) {
+		return { flag: false, message: errorMessage };
 	}
 
 	results.pid = utils.isNumber(pid) ? parseInt(pid, 10) : pid;
 	results.uid = uid;
 
 	const result = await plugins.hooks.fire('filter:privileges.posts.edit', results);
+
 	return {
 		flag: result.edit && (result.isOwner || result.isEditor || result.isMod),
 		message: '[[error:no-privileges]]',
