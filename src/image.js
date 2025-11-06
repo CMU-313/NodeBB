@@ -32,48 +32,67 @@ image.isFileTypeAllowed = async function (path) {
 	}).metadata();
 };
 
+async function resizeWithListeners(data) {
+	return await plugins.hooks.fire('filter:image.resize', {
+		path: data.path,
+		target: data.target,
+		width: data.width,
+		height: data.height,
+		quality: data.quality,
+	});
+}
+
+function changeQuality(sharpImage, metadata, quality) {
+	if (!quality) return;
+	
+	switch (metadata.format) {
+		case 'jpeg':
+			sharpImage.jpeg({
+				quality: quality,
+				mozjpeg: true,
+			});
+			break;
+		case 'png':
+			sharpImage.png({
+				quality: quality,
+				compressionLevel: 9,
+			});
+			break;
+	}
+}
+
+async function configureSharpImage(buffer, data) {
+	const sharp = requireSharp();
+	const sharpImage = sharp(buffer, {
+		failOnError: true,
+		animated: data.path.endsWith('gif'),
+	});
+	
+	const metadata = await sharpImage.metadata();
+
+	// auto-orients based on exif data
+	sharpImage.rotate();
+	const width = data.hasOwnProperty('width') ? data.width : null;
+	const height = data.hasOwnProperty('height') ? data.height : null;
+
+	sharpImage.resize(width, height);
+	
+	changeQuality(sharpImage, metadata, data.quality);
+	
+	return sharpImage;
+}
+
+async function resizeWithSharp(data) {
+	const buffer = await fs.promises.readFile(data.path);
+	const sharpImage = await configureSharpImage(buffer, data);
+	await sharpImage.toFile(data.target || data.path);
+}
+
 image.resizeImage = async function (data) {
 	if (plugins.hooks.hasListeners('filter:image.resize')) {
-		await plugins.hooks.fire('filter:image.resize', {
-			path: data.path,
-			target: data.target,
-			width: data.width,
-			height: data.height,
-			quality: data.quality,
-		});
+		await resizeWithListeners(data);
 	} else {
-		const sharp = requireSharp();
-		const buffer = await fs.promises.readFile(data.path);
-		const sharpImage = sharp(buffer, {
-			failOnError: true,
-			animated: data.path.endsWith('gif'),
-		});
-		const metadata = await sharpImage.metadata();
-
-		sharpImage.rotate(); // auto-orients based on exif data
-		sharpImage.resize(data.hasOwnProperty('width') ? data.width : null, data.hasOwnProperty('height') ? data.height : null);
-
-		if (data.quality) {
-			switch (metadata.format) {
-				case 'jpeg': {
-					sharpImage.jpeg({
-						quality: data.quality,
-						mozjpeg: true,
-					});
-					break;
-				}
-
-				case 'png': {
-					sharpImage.png({
-						quality: data.quality,
-						compressionLevel: 9,
-					});
-					break;
-				}
-			}
-		}
-
-		await sharpImage.toFile(data.target || data.path);
+		await resizeWithSharp(data);
 	}
 };
 
