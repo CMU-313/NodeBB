@@ -1,6 +1,36 @@
 version: '3.8'
 
 services:
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama  # persists ollama data
+    restart: unless-stopped
+
+  # this provides your translator microservice
+  translator:
+
+    ###########################################################################
+    # NOTE: you will need to update the build path to point to your translator service code
+    # you will also need to manually rebuild the image when you make changes to your code
+    #
+    # docker compose -f docker-compose-redis.yml build translator
+    ###########################################################################
+
+    build: ../translator-service
+    command: flask run --host=0.0.0.0
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+    ports:
+      - "5000:5000"
+    working_dir: /app
+    restart: unless-stopped
+
   nodebb:
     build: .
     # image: ghcr.io/nodebb/nodebb:latest
@@ -22,6 +52,8 @@ services:
       - redis-data:/data
 
 volumes:
+  ollama_data:
+
   redis-data:
     driver: local
     driver_opts:
