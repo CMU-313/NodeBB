@@ -8,10 +8,9 @@ const db = require('../database');
 const groups = require('../groups');
 const privileges = require('../privileges');
 
-module.exports = function (User) {
-	User.bans = {};
-
-	User.bans.ban = async function (uid, until, reason) {
+// Factory functions to reduce complexity of the export wrapper
+function createBan(User) {
+	return async function ban(uid, until, reason) {
 		// "until" (optional) is unix timestamp in milliseconds
 		// "reason" (optional) is a string
 		until = until || 0;
@@ -63,8 +62,10 @@ module.exports = function (User) {
 
 		return banData;
 	};
+}
 
-	User.bans.unban = async function (uids, reason = '') {
+function createUnban(User) {
+	return async function unban(uids, reason = '') {
 		const isArray = Array.isArray(uids);
 		uids = isArray ? uids : [uids];
 		const userData = await User.getUsersFields(uids, ['email:confirmed']);
@@ -98,15 +99,19 @@ module.exports = function (User) {
 		await db.sortedSetRemove(['users:banned', 'users:banned:expire'], uids);
 		return isArray ? unbanDataArray : unbanDataArray[0];
 	};
+}
 
-	User.bans.isBanned = async function (uids) {
+function createIsBanned(User) {
+	return async function isBanned(uids) {
 		const isArray = Array.isArray(uids);
 		uids = isArray ? uids : [uids];
 		const result = await User.bans.unbanIfExpired(uids);
 		return isArray ? result.map(r => r.banned) : result[0].banned;
 	};
+}
 
-	User.bans.canLoginIfBanned = async function (uid) {
+function createCanLoginIfBanned(User) {
+	return async function canLoginIfBanned(uid) {
 		let canLogin = true;
 
 		const { banned } = (await User.bans.unbanIfExpired([uid]))[0];
@@ -121,14 +126,18 @@ module.exports = function (User) {
 
 		return canLogin;
 	};
+}
 
-	User.bans.unbanIfExpired = async function (uids) {
+function createUnbanIfExpired(User) {
+	return async function unbanIfExpired(uids) {
 		// loading user data will unban if it has expired -barisu
 		const userData = await User.getUsersFields(uids, ['banned', 'banned:expire']);
 		return User.bans.calcExpiredFromUserData(userData);
 	};
+}
 
-	User.bans.calcExpiredFromUserData = function (userData) {
+function createCalcExpiredFromUserData() {
+	return function calcExpiredFromUserData(userData) {
 		const isArray = Array.isArray(userData);
 		userData = isArray ? userData : [userData];
 		userData = userData.map(userData => ({
@@ -138,13 +147,17 @@ module.exports = function (User) {
 		}));
 		return isArray ? userData : userData[0];
 	};
+}
 
-	User.bans.filterBanned = async function (uids) {
+function createFilterBanned(User) {
+	return async function filterBanned(uids) {
 		const isBanned = await User.bans.isBanned(uids);
 		return uids.filter((uid, index) => !isBanned[index]);
 	};
+}
 
-	User.bans.getReason = async function (uid) {
+function createGetReason() {
+	return async function getReason(uid) {
 		if (parseInt(uid, 10) <= 0) {
 			return '';
 		}
@@ -155,4 +168,17 @@ module.exports = function (User) {
 		const banObj = await db.getObject(keys[0]);
 		return banObj && banObj.reason ? banObj.reason : '';
 	};
+}
+
+module.exports = function (User) {
+	User.bans = {};
+
+	User.bans.ban = createBan(User);
+	User.bans.unban = createUnban(User);
+	User.bans.isBanned = createIsBanned(User);
+	User.bans.canLoginIfBanned = createCanLoginIfBanned(User);
+	User.bans.unbanIfExpired = createUnbanIfExpired(User);
+	User.bans.calcExpiredFromUserData = createCalcExpiredFromUserData();
+	User.bans.filterBanned = createFilterBanned(User);
+	User.bans.getReason = createGetReason();
 };
