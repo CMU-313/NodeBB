@@ -327,29 +327,18 @@ if (document.readyState === 'loading') {
 		});
 	};
 
-	app.parseAndTranslate = function (template, blockName, data, callback) {
-		if (typeof blockName !== 'string') {
-			callback = data;
-			data = blockName;
-			blockName = undefined;
-		}
-
+	app.parseAndTranslate = function (template, data = {}) {
 		return new Promise((resolve, reject) => {
-			require(['translator', 'benchpress'], function (translator, Benchpress) {
-				Benchpress.render(template, data, blockName)
-					.then(rendered => translator.translate(rendered))
-					.then(translated => translator.unescape(translated))
-					.then(resolve, reject);
-			});
-		}).then((html) => {
-			html = $(html);
-			if (callback && typeof callback === 'function') {
-				setTimeout(callback, 0, html);
-			}
+            require(['translator', 'benchpress'], function (translator, Benchpress) {
+                Benchpress.render(template, data)
+                    .then(rendered => translator.translate(rendered))
+                    .then(translated => translator.unescape(translated))
+                    .then(resolve, reject);
+            });
+        }).then((html) => $(html));
+    };
 
-			return html;
-		});
-	};
+
 
 	function registerServiceWorker() {
 		// Do not register for Safari browsers
