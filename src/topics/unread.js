@@ -150,7 +150,6 @@ module.exports = function (Topics) {
 
 		const filterCids = params.cid && params.cid.map(cid => utils.isNumber(cid) ? parseInt(cid, 10) : cid);
 		const filterTags = params.tag && params.tag.map(tag => String(tag));
-		console.log("Eric Xu")
 		// update `unreadCids` and `tidsByFilter` based on topicData
 		topicData
 			.filter(topic => !!topic?.cid)
