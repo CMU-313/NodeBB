@@ -154,10 +154,10 @@ module.exports = function (Topics) {
 		topicData
 			.filter(topic => !!topic?.cid)
 			.filter(topic => !filterCids || filterCids.includes(topic.cid))
-			.filter(topic => {
+			.filter((topic) => {
 				const topicContainsAllFilterTags = (filterTags ?? [])
 					.every(tag => topic.tags.find(topicTag => topicTag.value === tag));
-				return topicContainsAllFilterTags
+				return topicContainsAllFilterTags;
 			})
 			.filter(topic => !blockedUids.includes(topic.uid))
 			.forEach((topic) => {
