@@ -150,13 +150,14 @@ module.exports = function (Topics) {
 
 		const filterCids = params.cid && params.cid.map(cid => utils.isNumber(cid) ? parseInt(cid, 10) : cid);
 		const filterTags = params.tag && params.tag.map(tag => String(tag));
-
+		console.log("Eric Xu")
 		// update `unreadCids` and `tidsByFilter` based on topicData
 		topicData
 			.filter(topic => !!topic?.cid)
 			.filter(topic => !filterCids || filterCids.includes(topic.cid))
 			.filter(topic => {
-				const topicContainsAllFilterTags = (filterTags ?? []).every(tag => topic.tags.find(topicTag => topicTag.value === tag));
+				const topicContainsAllFilterTags = (filterTags ?? [])
+					.every(tag => topic.tags.find(topicTag => topicTag.value === tag));
 				return topicContainsAllFilterTags
 			})
 			.filter(topic => !blockedUids.includes(topic.uid))
