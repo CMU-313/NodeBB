@@ -1,3 +1,5 @@
+// playtest commit
+
 'use strict';
 
 const _ = require('lodash');
@@ -29,8 +31,8 @@ modsController.flags.list = async function (req, res) {
 		plugins.hooks.fire('filter:flags.validateFilters', { filters: validFilters }),
 		plugins.hooks.fire('filter:flags.validateSort', { sorts: validSorts }),
 	]);
-	const [isAdminOrGlobalMod, moderatedCids,, { sorts }] = results;
-	let [,, { filters }] = results;
+	const [isAdminOrGlobalMod, moderatedCids, , { sorts }] = results;
+	let [, , { filters }] = results;
 
 	if (!(isAdminOrGlobalMod || !!moderatedCids.length)) {
 		return helpers.notAllowed(req, res);
