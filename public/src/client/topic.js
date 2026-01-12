@@ -138,37 +138,62 @@ define('forum/topic', [
 			navigator.scrollBottom(postCount - 1);
 		});
 	};
-
-	function handleBookmark(tid) {
+	function tryScrollToHash() {
 		if (window.location.hash) {
 			const el = $(utils.escapeHTML(window.location.hash));
 			if (el.length) {
 				const postEl = el.parents('[data-pid]');
-				return navigator.scrollToElement(postEl, true, 0);
+				navigator.scrollToElement(postEl, true, 0);
+				return true;
 			}
 		}
+		return false;
+	}
+	function getBookmarkData(tid) {
 		const bookmark = ajaxify.data.bookmark || storage.getItem('topic:' + tid + ':bookmark');
 		const postIndex = ajaxify.data.postIndex;
-		updateUserBookmark(postIndex);
-		if (navigator.shouldScrollToPost(postIndex)) {
-			return navigator.scrollToPostIndex(postIndex - 1, true, 0);
-		} else if (bookmark && (
+		return { bookmark, postIndex };
+	}
+	function shouldScrollToPost(postIndex) {
+		return navigator.shouldScrollToPost(postIndex);
+	}
+	function maybeShowBookmarkAlert(bookmark, tid) {
+		if (!bookmark) {
+			return;
+		}
+
+		if (
 			!config.usePagination ||
 			(config.usePagination && ajaxify.data.pagination.currentPage === 1)
-		) && ajaxify.data.postcount > ajaxify.data.bookmarkThreshold) {
-			alerts.alert({
-				alert_id: 'bookmark',
-				message: '[[topic:bookmark-instructions]]',
-				timeout: 15000,
-				type: 'info',
-				clickfn: function () {
-					navigator.scrollToIndex(Math.max(0, parseInt(bookmark, 10) - 1), true);
-				},
-				closefn: function () {
-					storage.removeItem('topic:' + tid + ':bookmark');
-				},
-			});
+		) {
+			if (ajaxify.data.postcount > ajaxify.data.bookmarkThreshold) {
+				alerts.alert({
+					alert_id: 'bookmark',
+					message: '[[topic:bookmark-instructions]]',
+					timeout: 15000,
+					type: 'info',
+					clickfn: function () {
+						navigator.scrollToIndex(Math.max(0, parseInt(bookmark, 10) - 1), true);
+					},
+					closefn: function () {
+						storage.removeItem('topic:' + tid + ':bookmark');
+					},
+				});
+			}
 		}
+	}
+	function handleBookmark(tid) {
+		if (tryScrollToHash()) {
+			return;
+		}
+		const { bookmark, postIndex } = getBookmarkData(tid);
+		updateUserBookmark(postIndex);
+		if (shouldScrollToPost(postIndex)) {
+			navigator.scrollToPostIndex(postIndex - 1, true, 0);
+			return;
+		}
+
+		maybeShowBookmarkAlert(bookmark, tid);
 	}
 
 	function handleThumbs() {
