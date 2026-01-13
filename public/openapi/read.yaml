@@ -152,8 +152,8 @@ paths:
     $ref: 'read/admin/appearance/skins.yaml'
   "/api/admin/appearance/customise":
     $ref: 'read/admin/appearance/customise.yaml'
-  # /api/admin/extend/plugins:
-  #   $ref: 'read/admin/extend/plugins.yaml'
+  /api/admin/extend/plugins:
+    $ref: 'read/admin/extend/plugins.yaml'
   /api/admin/extend/widgets:
     $ref: 'read/admin/extend/widgets.yaml'
   /api/admin/extend/rewards:
