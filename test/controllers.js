@@ -6,8 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const util = require('util');
 
-const request = require('../src/request');
 const db = require('./mocks/databasemock');
+const request = require('../src/request');
 const api = require('../src/api');
 const categories = require('../src/categories');
 const topics = require('../src/topics');
@@ -180,7 +180,7 @@ describe('Controllers', () => {
 	describe('routes that should 200/404 etc.', () => {
 		const baseUrl = nconf.get('url');
 		const testRoutes = [
-			{ it: 'should load /reset without code', url: '/reset' },
+						{ it: 'should load /reset without code', url: '/reset' },
 			{ it: 'should load /reset with invalid code', url: '/reset/123123' },
 			{ it: 'should load /login', url: '/login' },
 			{ it: 'should load /register', url: '/register' },
@@ -691,6 +691,16 @@ describe('Controllers', () => {
 		assert.equal(response.statusCode, 404);
 		assert(body);
 	});
+
+	// it('should 404 if brand:touchIcon is not valid', async () => {
+	// 	const oldValue = meta.config['brand:touchIcon'];
+	// 	meta.config['brand:touchIcon'] = '../../not/valid';
+
+	// 	const { response, body } = await request.get(`${nconf.get('url')}/apple-touch-icon`);
+	// 	assert.strictEqual(response.statusCode, 404);
+	// 	assert.strictEqual(body, 'Not found');
+	// 	meta.config['brand:touchIcon'] = oldValue;
+	// });
 
 
 	it('should error if guests do not have search privilege', async () => {
