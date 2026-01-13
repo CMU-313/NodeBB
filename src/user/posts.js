@@ -129,7 +129,7 @@ module.exports = function (User) {
 		return await incrementUserFieldAndSetBy(uid, 'flags', 'users:flags', value);
 	};
 
-	async function incrementUserFieldAndSetBy(uid, field, set, value) {
+	async function incrementUserFieldAndSetBy(uid, field, value) {
 		value = parseInt(value, 10);
 		if (!value || !field || !(parseInt(uid, 10) > 0)) {
 			return;
@@ -139,7 +139,7 @@ module.exports = function (User) {
 			return;
 		}
 		const newValue = await User.incrementUserFieldBy(uid, field, value);
-		await db.sortedSetAdd(set, newValue, uid);
+		await db.sortedSetAdd(`users:${field}`, newValue, uid);
 		return newValue;
 	}
 
