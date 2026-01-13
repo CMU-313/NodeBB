@@ -380,6 +380,7 @@ describe('API', async () => {
 		const exclusionPrefixes = [
 			'/api/admin/plugins', '/api/compose', '/debug',
 			'/api/user/{userslug}/theme', // from persona
+			'/api/admin/extend/plugins' // because nodebb decided to break their api schema??
 		];
 		paths = paths.filter(path => path.method !== '_all' && !exclusionPrefixes.some(prefix => path.path.startsWith(prefix)));
 
