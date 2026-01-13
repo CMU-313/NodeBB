@@ -14,7 +14,7 @@
 	</div>
 	{{{ end }}}
 	{{{ if ./handleFull }}}
-	<p class="text-secondary text-sm fst-italic">
+	<p class="text-secondary text-sm fst-italic {{{ if config.theme.centerHeaderElements }}}text-center{{{ end }}}">
 		[[category:handle.description, {handleFull}]]
 		<a href="#" class="link-secondary" data-action="copy" data-clipboard-text="{handleFull}"><i class="fa fa-fw fa-copy" aria-hidden="true"></i></a>
 	</p>
@@ -28,6 +28,12 @@
 			<span title="{totalPostCount}" class="fw-bold">{humanReadableNumber(totalPostCount)}</span>
 			<span class="text-lowercase fw-normal">[[global:posts]]</span>
 		</span>
+		{{{ if !isNumber(cid) }}}
+		<a href="{./url}" class="badge text-body border border-gray-300 text-xs" data-ajaxify="false">
+			<span class="fw-normal">View Original</span>
+			<i class="fa fa-external-link"></i>
+		</a>
+		{{{ end }}}
 	</div>
 </div>
 
