@@ -118,15 +118,15 @@ module.exports = function (User) {
 	};
 
 	User.incrementUserPostCountBy = async function (uid, value) {
-		return await incrementUserFieldAndSetBy(uid, 'postcount', 'users:postcount', value);
+		return await incrementUserFieldAndSetBy(uid, 'postcount', value);
 	};
 
 	User.incrementUserReputationBy = async function (uid, value) {
-		return await incrementUserFieldAndSetBy(uid, 'reputation', 'users:reputation', value);
+		return await incrementUserFieldAndSetBy(uid, 'reputation', value);
 	};
 
 	User.incrementUserFlagsBy = async function (uid, value) {
-		return await incrementUserFieldAndSetBy(uid, 'flags', 'users:flags', value);
+		return await incrementUserFieldAndSetBy(uid, 'flags', value);
 	};
 
 	async function incrementUserFieldAndSetBy(uid, field, value) {
