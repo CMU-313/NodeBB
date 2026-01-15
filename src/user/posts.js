@@ -118,18 +118,18 @@ module.exports = function (User) {
 	};
 
 	User.incrementUserPostCountBy = async function (uid, value) {
-		return await incrementUserFieldAndSetBy(uid, 'postcount', 'users:postcount', value);
+		return await incrementUserFieldAndSetBy(uid, 'postcount', value);
 	};
 
 	User.incrementUserReputationBy = async function (uid, value) {
-		return await incrementUserFieldAndSetBy(uid, 'reputation', 'users:reputation', value);
+		return await incrementUserFieldAndSetBy(uid, 'reputation', value);
 	};
 
 	User.incrementUserFlagsBy = async function (uid, value) {
-		return await incrementUserFieldAndSetBy(uid, 'flags', 'users:flags', value);
+		return await incrementUserFieldAndSetBy(uid, 'flags', value);
 	};
 
-	async function incrementUserFieldAndSetBy(uid, field, set, value) {
+	async function incrementUserFieldAndSetBy(uid, field, value) {
 		value = parseInt(value, 10);
 		if (!value || !field || !(parseInt(uid, 10) > 0)) {
 			return;
@@ -139,7 +139,7 @@ module.exports = function (User) {
 			return;
 		}
 		const newValue = await User.incrementUserFieldBy(uid, field, value);
-		await db.sortedSetAdd(set, newValue, uid);
+		await db.sortedSetAdd(`users:${field}`, newValue, uid);
 		return newValue;
 	}
 
