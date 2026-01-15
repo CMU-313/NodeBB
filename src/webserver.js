@@ -258,6 +258,30 @@ function setupCookie() {
 }
 
 async function listen() {
+	const { port, isSocket, socketPath } = normalizePort();
+	setupTrustProxy(port);
+	warnAboutPrivilegedPorts(port);
+
+	const bind_address = getBindAddress();
+	const args = isSocket ? [socketPath] : [port, bind_address];
+	let oldUmask;
+
+	if (isSocket) {
+		oldUmask = await setupSocket(socketPath);
+	}
+
+	const serverConfig = {
+		args,
+		bind_address,
+		port,
+		isSocket,
+		socketPath,
+		oldUmask,
+	};
+	return startServerListener(serverConfig);
+}
+
+function normalizePort() {
 	let port = nconf.get('port');
 	const isSocket = isNaN(port) && !Array.isArray(port);
 	const socketPath = isSocket ? nconf.get('port') : '';
@@ -276,29 +300,42 @@ async function listen() {
 			process.exit();
 		}
 	}
+
 	port = parseInt(port, 10);
+	return { port, isSocket, socketPath };
+}
+
+function setupTrustProxy(port) {
 	if ((port !== 80 && port !== 443) || nconf.get('trust_proxy') === true) {
 		winston.info('🤝 Enabling \'trust proxy\'');
 		app.enable('trust proxy');
 	}
+}
 
+function warnAboutPrivilegedPorts(port) {
 	if ((port === 80 || port === 443) && process.env.NODE_ENV !== 'development') {
 		winston.info('Using ports 80 and 443 is not recommend; use a proxy instead. See README.md');
 	}
+}
 
-	const bind_address = ((nconf.get('bind_address') === '0.0.0.0' || !nconf.get('bind_address')) ? '0.0.0.0' : nconf.get('bind_address'));
-	const args = isSocket ? [socketPath] : [port, bind_address];
-	let oldUmask;
+function getBindAddress() {
+	const configuredAddress = nconf.get('bind_address');
+	return (configuredAddress === '0.0.0.0' || !configuredAddress) ? '0.0.0.0' : configuredAddress;
+}
 
-	if (isSocket) {
-		oldUmask = process.umask('0000');
-		try {
-			await exports.testSocket(socketPath);
-		} catch (err) {
-			winston.error(`[startup] NodeBB was unable to secure domain socket access (${socketPath})\n${err.stack}`);
-			throw err;
-		}
+async function setupSocket(socketPath) {
+	const oldUmask = process.umask('0000');
+	try {
+		await exports.testSocket(socketPath);
+	} catch (err) {
+		winston.error(`[startup] NodeBB was unable to secure domain socket access (${socketPath})\n${err.stack}`);
+		throw err;
 	}
+	return oldUmask;
+}
+
+function startServerListener(config) {
+	const { args, bind_address, port, isSocket, socketPath, oldUmask } = config;
 
 	return new Promise((resolve, reject) => {
 		server.listen(...args.concat([function (err) {
