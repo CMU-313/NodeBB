@@ -20,10 +20,18 @@
 		<meta itemprop="name" content="{author.username}">
 		{{{ if author.userslug }}}<meta itemprop="url" content="{config.relative_path}/user/{author.userslug}">{{{ end }}}
 	</div>
+	<div itemprop="interactionStatistic" itemscope itemtype="https://schema.org/InteractionCounter">
+		<meta itemprop="interactionType" content="https://schema.org/CommentAction">
+		<meta itemprop="userInteractionCount" content="{increment(postcount, "-1")}">
+	</div>
+	<div itemprop="interactionStatistic" itemscope itemtype="https://schema.org/InteractionCounter">
+		<meta itemprop="interactionType" content="https://schema.org/LikeAction">
+		<meta itemprop="userInteractionCount" content="{upvotes}">
+	</div>
 
 	<div class="d-flex flex-column gap-3">
-		<div class="d-flex gap-2 flex-wrap">
-			<div class="d-flex flex-column gap-3 flex-1">
+		<div class="d-flex gap-2 flex-wrap flex-column flex-md-row {{{ if config.theme.centerHeaderElements }}}justify-content-center{{{ else }}}justify-content-between{{{ end }}}">
+			<div class="d-flex flex-column gap-3">
 				<h1 component="post/header" class="tracking-tight fw-semibold fs-3 mb-0 text-break {{{ if config.theme.centerHeaderElements }}}text-center{{{ end }}}">
 					<span class="topic-title" component="topic/title">{title}</span>
 				</h1>
@@ -46,7 +54,7 @@
 					</span>
 					{buildCategoryLabel(category, "a", "border")}
 					<div data-tid="{./tid}" component="topic/tags" class="lh-1 tags tag-list d-flex flex-wrap hidden-xs hidden-empty gap-2"><!-- IMPORT partials/topic/tags.tpl --></div>
-					<div class="d-flex gap-2"><!-- IMPORT partials/topic/stats.tpl --></div>
+					<div class="d-flex gap-2" component="topic/stats"><!-- IMPORT partials/topic/stats.tpl --></div>
 				</div>
 			</div>
 			<div class="d-flex flex-wrap gap-2 align-items-start mt-2 hidden-empty {{{ if greaterthan(thumbs.length, "4") }}}thumbs-collapsed{{{ end }}}" component="topic/thumb/list"><!-- IMPORT partials/topic/thumbs.tpl --></div>
@@ -102,6 +110,12 @@
 									<!-- IMPORT partials/topic/mark-unread.tpl -->
 									<!-- IMPORT partials/topic/watch.tpl -->
 									<!-- IMPORT partials/topic/sort.tpl -->
+									 {{{ if loggedIn }}}
+									<button component="topic/crosspost" class="btn btn-ghost btn-sm ff-secondary d-flex gap-2 align-items-center text-truncate">
+										<i class="fa fa-fw fa-square-arrow-up-right text-primary"></i>
+										<span class="d-none d-md-inline fw-semibold text-truncate text-nowrap">[[topic:thread-tools.crosspost]]</span>
+									</button>
+									{{{ end }}}
 									<!-- IMPORT partials/topic/tools.tpl -->
 								</div>
 								{{{ end }}}

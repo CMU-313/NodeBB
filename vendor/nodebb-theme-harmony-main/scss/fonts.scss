@@ -1,6 +1,6 @@
-@use "./fonts/fontsource-utils/src/mixins.scss" as fontsource;
-@use "./fonts/inter/mixins.scss" as inter;
-@use "./fonts/poppins/mixins.scss" as poppins;
+@use "pkg:@fontsource-utils/scss" as fontsource;
+@use "pkg:@fontsource/inter/scss" as inter;
+@use "pkg:@fontsource/poppins/scss" as poppins;
 
 $weights: $font-weight-light, $font-weight-normal, $font-weight-semibold, $font-weight-bold;
 $subsets: (latin, latin-ext);

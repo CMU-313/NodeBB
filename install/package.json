@@ -108,7 +108,7 @@
         "nodebb-plugin-spam-be-gone": "2.3.2",
         "nodebb-plugin-web-push": "0.7.4",
         "nodebb-rewards-essentials": "1.0.2",
-        "nodebb-theme-harmony": "file:vendor/nodebb-theme-harmony-2.1.23",
+        "nodebb-theme-harmony": "file:vendor/nodebb-theme-harmony-main",
         "nodebb-theme-lavender": "7.1.19",
         "nodebb-theme-peace": "2.2.43",
         "nodebb-theme-persona": "14.1.12",
