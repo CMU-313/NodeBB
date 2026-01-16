@@ -180,7 +180,7 @@ usersController.getUsersAndCount = async function (set, uid, start, stop) {
 			});
 			return userData;
 		}
-		return await user.getUsersFromSet(set, uid, start, stop);
+		return await user.getUsersFromSet(set, uid, {start, stop});
 	}
 	const [usersData, count] = await Promise.all([
 		getUsers(),
