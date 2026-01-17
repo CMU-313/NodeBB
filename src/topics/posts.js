@@ -360,13 +360,12 @@ module.exports = function (Topics) {
 		const pids = postData.map(p => p && p.pid);
 
 		const replyContext = await fetchReplyContext(pids, callerUid);
-		const postDataMap = _.zipObject(pids, postData);
+		replyContext.postDataMap = _.zipObject(pids, postData);
 		return await Promise.all(replyContext.arrayOfReplyPids.map((replyPids, idx) =>
 			buildReplyMetadataForPost(
 				replyPids,
 				postData[idx],
-				replyContext,
-				postDataMap
+				replyContext
 			)));
 	}
 
@@ -401,8 +400,8 @@ module.exports = function (Topics) {
 		};
 	}
 
-	async function buildReplyMetadataForPost(replyPids, currentPost, replyContext, postDataMap) {
-		const { pidMap, uidMap, userSettings } = replyContext;
+	async function buildReplyMetadataForPost(replyPids, currentPost, replyContext) {
+		const { pidMap, uidMap } = replyContext;
 
 		const validPids = replyPids
 			.filter(pid => pidMap[pid])
@@ -427,8 +426,7 @@ module.exports = function (Topics) {
 			metadata.hasSingleImmediateReply = await checkIsImmediateReply(
 				currentPost,
 				validPids[0],
-				postDataMap,
-				userSettings
+				replyContext
 			);
 		}
 
@@ -455,7 +453,9 @@ module.exports = function (Topics) {
 		return { users, hasMore };
 	}
 
-	async function checkIsImmediateReply(currentPost, replyPid, postDataMap, userSettings) {
+	async function checkIsImmediateReply(currentPost, replyPid, replyContext) {
+		const { postDataMap, userSettings } = replyContext;
+
 		if (!currentPost || currentPost.index == null) {
 			return false;
 		}
