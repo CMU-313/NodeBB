@@ -36,7 +36,7 @@ pluginsController.get = async function (req, res) {
 		.map((p) => {
 			p.url = p.url || '';
 			return p;
-	});
+		});
 
 	res.render('admin/extend/plugins', {
 		installed: installedPlugins,
