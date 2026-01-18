@@ -53,6 +53,14 @@ async function list(User, uids) {
 	return isArray ? result.slice() : result[0];
 }
 
+async function add(User, targetUid, uid) {
+	await User.blocks.applyChecks('block', targetUid, uid);
+	await db.sortedSetAdd(`uid:${uid}:blocked_uids`, Date.now(), targetUid);
+	await User.incrementUserFieldBy(uid, 'blocksCount', 1);
+	User.blocks._cache.del(String(uid));
+	plugins.hooks.fire('action:user.blocks.add', { uid: uid, targetUid: targetUid });
+}
+
 module.exports = function (User) {
 	User.blocks = {
 		_cache: cacheCreate({
@@ -74,13 +82,9 @@ module.exports = function (User) {
 		return await list(User, uids);
 	};
 
+
 	User.blocks.add = async function (targetUid, uid) {
-		console.log('Kevin Dai');
-		await User.blocks.applyChecks('block', targetUid, uid);
-		await db.sortedSetAdd(`uid:${uid}:blocked_uids`, Date.now(), targetUid);
-		await User.incrementUserFieldBy(uid, 'blocksCount', 1);
-		User.blocks._cache.del(String(uid));
-		plugins.hooks.fire('action:user.blocks.add', { uid: uid, targetUid: targetUid });
+		return await add(User, targetUid, uid);
 	};
 
 	User.blocks.remove = async function (targetUid, uid) {
