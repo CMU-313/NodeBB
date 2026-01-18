@@ -188,7 +188,7 @@ define('topicList', [
 	}
 
 	function onTopicsLoaded(templateName, topics, showSelect, direction, callback) {
-		if (!topics || !topics.length) {
+		if (!topics?.length) {
 			$('#load-more-btn').hide();
 			return callback();
 		}
