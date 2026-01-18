@@ -5,7 +5,9 @@ const plugins = require('../plugins');
 const utils = require('../utils');
 const cacheCreate = require('../cache/lru');
 
-async function is(User, targetUid, uids) {
+let User;
+
+async function is(targetUid, uids) {
 	const isArray = Array.isArray(uids);
 	uids = isArray ? uids : [uids];
 	const blocks = await User.blocks.list(uids);
@@ -15,7 +17,7 @@ async function is(User, targetUid, uids) {
 	return isArray ? isBlocked : isBlocked[0];
 }
 
-async function can(User, callerUid, blockerUid, blockeeUid, type) {
+async function can(callerUid, blockerUid, blockeeUid, type) {
 	// Guests can't block
 	if (blockerUid === 0 || blockeeUid === 0) {
 		throw new Error('[[error:cannot-block-guest]]');
@@ -37,7 +39,7 @@ async function can(User, callerUid, blockerUid, blockeeUid, type) {
 	}
 }
 
-async function list(User, uids) {
+async function list(uids) {
 	const isArray = Array.isArray(uids);
 	uids = (isArray ? uids : [uids]).map(uid => String(uid));
 	const cachedData = {};
@@ -53,7 +55,8 @@ async function list(User, uids) {
 	return isArray ? result.slice() : result[0];
 }
 
-async function add(User, targetUid, uid) {
+async function add(targetUid, uid) {
+	console.log('Kevin Dai');
 	await User.blocks.applyChecks('block', targetUid, uid);
 	await db.sortedSetAdd(`uid:${uid}:blocked_uids`, Date.now(), targetUid);
 	await User.incrementUserFieldBy(uid, 'blocksCount', 1);
@@ -61,7 +64,7 @@ async function add(User, targetUid, uid) {
 	plugins.hooks.fire('action:user.blocks.add', { uid: uid, targetUid: targetUid });
 }
 
-async function remove(User, targetUid, uid) {
+async function remove(targetUid, uid) {
 	await User.blocks.applyChecks('unblock', targetUid, uid);
 	await db.sortedSetRemove(`uid:${uid}:blocked_uids`, targetUid);
 	await User.decrementUserFieldBy(uid, 'blocksCount', 1);
@@ -69,7 +72,7 @@ async function remove(User, targetUid, uid) {
 	plugins.hooks.fire('action:user.blocks.remove', { uid: uid, targetUid: targetUid });
 }
 
-async function applyChecks(User, type, targetUid, uid) {
+async function applyChecks(type, targetUid, uid) {
 	await User.blocks.can(uid, uid, targetUid);
 	const isBlock = type === 'block';
 	const is = await User.blocks.is(targetUid, uid);
@@ -78,12 +81,12 @@ async function applyChecks(User, type, targetUid, uid) {
 	}
 }
 
-async function filterUids(User, targetUid, uids) {
+async function filterUids(targetUid, uids) {
 	const isBlocked = await User.blocks.is(targetUid, uids);
 	return uids.filter((uid, index) => !isBlocked[index]);
 }
 
-async function filter(User, uid, property, set) {
+async function filter(uid, property, set) {
 	// Given whatever is passed in, iterates through it, and removes entries made by blocked uids
 	// property is optional
 	if (Array.isArray(property) && typeof set === 'undefined') {
@@ -109,7 +112,8 @@ async function filter(User, uid, property, set) {
 	return data.set;
 }
 
-module.exports = function (User) {
+module.exports = function (moduleUser) {
+	User = moduleUser;
 	User.blocks = {
 		_cache: cacheCreate({
 			name: 'user:blocks',
@@ -118,40 +122,12 @@ module.exports = function (User) {
 		}),
 	};
 
-	User.blocks.is = async function (targetUid, uids) {
-		return await is(User, targetUid, uids);
-	};
-
-	User.blocks.can = async function (callerUid, blockerUid, blockeeUid, type) {
-		return await can(User, callerUid, blockerUid, blockeeUid, type);
-	};
-
-	User.blocks.list = async function (uids) {
-		return await list(User, uids);
-	};
-
-
-	User.blocks.add = async function (targetUid, uid) {
-		return await add(User, targetUid, uid);
-	};
-
-
-	User.blocks.remove = async function (targetUid, uid) {
-		return await remove(User, targetUid, uid);
-	};
-
-
-	User.blocks.applyChecks = async function (type, targetUid, uid) {
-		return await applyChecks(User, type, targetUid, uid);
-	};
-
-
-	User.blocks.filterUids = async function (targetUid, uids) {
-		return await filterUids(User, targetUid, uids);
-	};
-
-
-	User.blocks.filter = async function (uid, property, set) {
-		return await filter(User, uid, property, set);
-	};
+	User.blocks.is = is;
+	User.blocks.can = can;
+	User.blocks.list = list;
+	User.blocks.add = add;
+	User.blocks.remove = remove;
+	User.blocks.applyChecks = applyChecks;
+	User.blocks.filterUids = filterUids;
+	User.blocks.filter = filter;
 };
