@@ -61,6 +61,14 @@ async function add(User, targetUid, uid) {
 	plugins.hooks.fire('action:user.blocks.add', { uid: uid, targetUid: targetUid });
 }
 
+async function remove(User, targetUid, uid) {
+	await User.blocks.applyChecks('unblock', targetUid, uid);
+	await db.sortedSetRemove(`uid:${uid}:blocked_uids`, targetUid);
+	await User.decrementUserFieldBy(uid, 'blocksCount', 1);
+	User.blocks._cache.del(String(uid));
+	plugins.hooks.fire('action:user.blocks.remove', { uid: uid, targetUid: targetUid });
+}
+
 module.exports = function (User) {
 	User.blocks = {
 		_cache: cacheCreate({
@@ -87,12 +95,9 @@ module.exports = function (User) {
 		return await add(User, targetUid, uid);
 	};
 
+
 	User.blocks.remove = async function (targetUid, uid) {
-		await User.blocks.applyChecks('unblock', targetUid, uid);
-		await db.sortedSetRemove(`uid:${uid}:blocked_uids`, targetUid);
-		await User.decrementUserFieldBy(uid, 'blocksCount', 1);
-		User.blocks._cache.del(String(uid));
-		plugins.hooks.fire('action:user.blocks.remove', { uid: uid, targetUid: targetUid });
+		return await remove(User, targetUid, uid);
 	};
 
 	User.blocks.applyChecks = async function (type, targetUid, uid) {
