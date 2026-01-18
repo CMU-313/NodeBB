@@ -15,6 +15,28 @@ async function is(User, targetUid, uids) {
 	return isArray ? isBlocked : isBlocked[0];
 }
 
+async function can(User, callerUid, blockerUid, blockeeUid, type) {
+	// Guests can't block
+	if (blockerUid === 0 || blockeeUid === 0) {
+		throw new Error('[[error:cannot-block-guest]]');
+	} else if (blockerUid === blockeeUid) {
+		throw new Error('[[error:cannot-block-self]]');
+	}
+
+	// Administrators and global moderators cannot be blocked
+	// Only admins/mods can block users as another user
+	const [isCallerAdminOrMod, isBlockeeAdminOrMod] = await Promise.all([
+		User.isAdminOrGlobalMod(callerUid),
+		User.isAdminOrGlobalMod(blockeeUid),
+	]);
+	if (isBlockeeAdminOrMod && type === 'block') {
+		throw new Error('[[error:cannot-block-privileged]]');
+	}
+	if (parseInt(callerUid, 10) !== parseInt(blockerUid, 10) && !isCallerAdminOrMod) {
+		throw new Error('[[error:no-privileges]]');
+	}
+}
+
 module.exports = function (User) {
 	User.blocks = {
 		_cache: cacheCreate({
@@ -24,31 +46,12 @@ module.exports = function (User) {
 		}),
 	};
 
-
 	User.blocks.is = async function (targetUid, uids) {
 		return await is(User, targetUid, uids);
 	};
 
 	User.blocks.can = async function (callerUid, blockerUid, blockeeUid, type) {
-		// Guests can't block
-		if (blockerUid === 0 || blockeeUid === 0) {
-			throw new Error('[[error:cannot-block-guest]]');
-		} else if (blockerUid === blockeeUid) {
-			throw new Error('[[error:cannot-block-self]]');
-		}
-
-		// Administrators and global moderators cannot be blocked
-		// Only admins/mods can block users as another user
-		const [isCallerAdminOrMod, isBlockeeAdminOrMod] = await Promise.all([
-			User.isAdminOrGlobalMod(callerUid),
-			User.isAdminOrGlobalMod(blockeeUid),
-		]);
-		if (isBlockeeAdminOrMod && type === 'block') {
-			throw new Error('[[error:cannot-block-privileged]]');
-		}
-		if (parseInt(callerUid, 10) !== parseInt(blockerUid, 10) && !isCallerAdminOrMod) {
-			throw new Error('[[error:no-privileges]]');
-		}
+		return await can(User, callerUid, blockerUid, blockeeUid, type);
 	};
 
 	User.blocks.list = async function (uids) {
