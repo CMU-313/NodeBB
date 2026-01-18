@@ -83,6 +83,32 @@ async function filterUids(User, targetUid, uids) {
 	return uids.filter((uid, index) => !isBlocked[index]);
 }
 
+async function filter(User, uid, property, set) {
+	// Given whatever is passed in, iterates through it, and removes entries made by blocked uids
+	// property is optional
+	if (Array.isArray(property) && typeof set === 'undefined') {
+		set = property;
+		property = 'uid';
+	}
+
+	if (!Array.isArray(set) || !set.length) {
+		return set;
+	}
+
+	const isPlain = typeof set[0] !== 'object';
+	const blocked_uids = await User.blocks.list(uid);
+	const blockedSet = new Set(blocked_uids);
+
+	set = set.filter((item) => {
+		let uid = isPlain ? item : (item && item[property]);
+		uid = utils.isNumber(uid) ? parseInt(uid, 10) : uid;
+		return !blockedSet.has(uid);
+	});
+	const data = await plugins.hooks.fire('filter:user.blocks.filter', { set: set, property: property, uid: uid, blockedSet: blockedSet });
+
+	return data.set;
+}
+
 module.exports = function (User) {
 	User.blocks = {
 		_cache: cacheCreate({
@@ -124,29 +150,8 @@ module.exports = function (User) {
 		return await filterUids(User, targetUid, uids);
 	};
 
+
 	User.blocks.filter = async function (uid, property, set) {
-		// Given whatever is passed in, iterates through it, and removes entries made by blocked uids
-		// property is optional
-		if (Array.isArray(property) && typeof set === 'undefined') {
-			set = property;
-			property = 'uid';
-		}
-
-		if (!Array.isArray(set) || !set.length) {
-			return set;
-		}
-
-		const isPlain = typeof set[0] !== 'object';
-		const blocked_uids = await User.blocks.list(uid);
-		const blockedSet = new Set(blocked_uids);
-
-		set = set.filter((item) => {
-			let uid = isPlain ? item : (item && item[property]);
-			uid = utils.isNumber(uid) ? parseInt(uid, 10) : uid;
-			return !blockedSet.has(uid);
-		});
-		const data = await plugins.hooks.fire('filter:user.blocks.filter', { set: set, property: property, uid: uid, blockedSet: blockedSet });
-
-		return data.set;
+		return await filter(User, uid, property, set);
 	};
 };
