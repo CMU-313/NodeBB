@@ -5,6 +5,16 @@ const plugins = require('../plugins');
 const utils = require('../utils');
 const cacheCreate = require('../cache/lru');
 
+async function is(User, targetUid, uids) {
+	const isArray = Array.isArray(uids);
+	uids = isArray ? uids : [uids];
+	const blocks = await User.blocks.list(uids);
+	const isBlocked = uids.map((uid, index) => blocks[index] && blocks[index].includes(
+		utils.isNumber(targetUid) ? parseInt(targetUid, 10) : targetUid
+	));
+	return isArray ? isBlocked : isBlocked[0];
+}
+
 module.exports = function (User) {
 	User.blocks = {
 		_cache: cacheCreate({
@@ -14,14 +24,9 @@ module.exports = function (User) {
 		}),
 	};
 
+
 	User.blocks.is = async function (targetUid, uids) {
-		const isArray = Array.isArray(uids);
-		uids = isArray ? uids : [uids];
-		const blocks = await User.blocks.list(uids);
-		const isBlocked = uids.map((uid, index) => blocks[index] && blocks[index].includes(
-			utils.isNumber(targetUid) ? parseInt(targetUid, 10) : targetUid
-		));
-		return isArray ? isBlocked : isBlocked[0];
+		return await is(User, targetUid, uids);
 	};
 
 	User.blocks.can = async function (callerUid, blockerUid, blockeeUid, type) {
@@ -63,6 +68,7 @@ module.exports = function (User) {
 	};
 
 	User.blocks.add = async function (targetUid, uid) {
+		console.log('Kevin Dai');
 		await User.blocks.applyChecks('block', targetUid, uid);
 		await db.sortedSetAdd(`uid:${uid}:blocked_uids`, Date.now(), targetUid);
 		await User.incrementUserFieldBy(uid, 'blocksCount', 1);
