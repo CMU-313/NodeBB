@@ -340,7 +340,6 @@ module.exports = function (User) {
 
 
 	function parseGroupTitle(user) {
-		console.log('KATIE!!!');
 		const raw = user.groupTitle;
 
 		user.groupTitleArray = normalizeToArray(parseMaybeJson(raw));
@@ -351,7 +350,6 @@ module.exports = function (User) {
 	}
 
 	function parseMaybeJson(value) {
-		console.log('KATIE!!!');
 		if (!value) return null;
 		if (typeof value !== 'string') return value;
 		try {
@@ -362,7 +360,6 @@ module.exports = function (User) {
 	}
 
 	function normalizeToArray(value) {
-		console.log('KATIE!!!');
 		if (value == null) return [];
 		return Array.isArray(value) ? value : [value];
 	}
