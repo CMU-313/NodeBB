@@ -78,6 +78,11 @@ async function applyChecks(User, type, targetUid, uid) {
 	}
 }
 
+async function filterUids(User, targetUid, uids) {
+	const isBlocked = await User.blocks.is(targetUid, uids);
+	return uids.filter((uid, index) => !isBlocked[index]);
+}
+
 module.exports = function (User) {
 	User.blocks = {
 		_cache: cacheCreate({
@@ -114,9 +119,9 @@ module.exports = function (User) {
 		return await applyChecks(User, type, targetUid, uid);
 	};
 
+
 	User.blocks.filterUids = async function (targetUid, uids) {
-		const isBlocked = await User.blocks.is(targetUid, uids);
-		return uids.filter((uid, index) => !isBlocked[index]);
+		return await filterUids(User, targetUid, uids);
 	};
 
 	User.blocks.filter = async function (uid, property, set) {
