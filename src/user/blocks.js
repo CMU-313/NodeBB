@@ -69,6 +69,15 @@ async function remove(User, targetUid, uid) {
 	plugins.hooks.fire('action:user.blocks.remove', { uid: uid, targetUid: targetUid });
 }
 
+async function applyChecks(User, type, targetUid, uid) {
+	await User.blocks.can(uid, uid, targetUid);
+	const isBlock = type === 'block';
+	const is = await User.blocks.is(targetUid, uid);
+	if (is === isBlock) {
+		throw new Error(`[[error:already-${isBlock ? 'blocked' : 'unblocked'}]]`);
+	}
+}
+
 module.exports = function (User) {
 	User.blocks = {
 		_cache: cacheCreate({
@@ -100,13 +109,9 @@ module.exports = function (User) {
 		return await remove(User, targetUid, uid);
 	};
 
+
 	User.blocks.applyChecks = async function (type, targetUid, uid) {
-		await User.blocks.can(uid, uid, targetUid);
-		const isBlock = type === 'block';
-		const is = await User.blocks.is(targetUid, uid);
-		if (is === isBlock) {
-			throw new Error(`[[error:already-${isBlock ? 'blocked' : 'unblocked'}]]`);
-		}
+		return await applyChecks(User, type, targetUid, uid);
 	};
 
 	User.blocks.filterUids = async function (targetUid, uids) {
