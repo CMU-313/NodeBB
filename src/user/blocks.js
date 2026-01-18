@@ -56,7 +56,6 @@ async function list(uids) {
 }
 
 async function add(targetUid, uid) {
-	console.log('Kevin Dai');
 	await User.blocks.applyChecks('block', targetUid, uid);
 	await db.sortedSetAdd(`uid:${uid}:blocked_uids`, Date.now(), targetUid);
 	await User.incrementUserFieldBy(uid, 'blocksCount', 1);
