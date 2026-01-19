@@ -182,8 +182,18 @@ module.exports = function (Topics) {
 			postData: postData,
 		};
 	};
+	
+	//if data is not from internal queue and user is not an admin, check if valid post
+	async function isValidPost(data, uid) {
+		await user.isReadyToPost(uid, data.cid);
+		Topics.checkContent(data.sourceContent || data.content);
+		if (!await posts.canUserPostContentWithLinks(uid, data.content)) {
+			throw new Error(`[[error:not-enough-reputation-to-post-links, ${meta.config['min:rep:post-links']}]]`);
+		}
+	}
 
 	Topics.reply = async function (data) {
+		console.log('Andrew Hua');
 		data = await plugins.hooks.fire('filter:topic.reply', data);
 		const { tid, uid } = data;
 
@@ -200,12 +210,17 @@ module.exports = function (Topics) {
 		data.content = String(data.content || '').trimEnd();
 
 		if (!data.fromQueue && !isAdmin) {
-			await user.isReadyToPost(uid, data.cid);
-			Topics.checkContent(data.sourceContent || data.content);
-			if (!await posts.canUserPostContentWithLinks(uid, data.content)) {
-				throw new Error(`[[error:not-enough-reputation-to-post-links, ${meta.config['min:rep:post-links']}]]`);
-			}
+			//check if user ready to post, content is valid, and user has enough rep to post links
+			await isValidPost(data, uid);
 		}
+
+		// if (!data.fromQueue && !isAdmin) {
+		// 	await user.isReadyToPost(uid, data.cid);
+		// 	Topics.checkContent(data.sourceContent || data.content);
+		// 	if (!await posts.canUserPostContentWithLinks(uid, data.content)) {
+		// 		throw new Error(`[[error:not-enough-reputation-to-post-links, ${meta.config['min:rep:post-links']}]]`);
+		// 	}
+		// }
 
 		// For replies to scheduled topics, don't have a timestamp older than topic's itself
 		if (topicData.scheduled) {
