@@ -25,6 +25,8 @@ module.exports = function (utils, Benchpress, relative_path) {
 		userAgentIcons,
 		buildAvatar,
 		increment,
+		lessthan,
+		greaterthan,
 		generateWroteReplied,
 		generateRepliedTo,
 		generateWrote,
@@ -33,7 +35,9 @@ module.exports = function (utils, Benchpress, relative_path) {
 		shouldHideReplyContainer,
 		humanReadableNumber,
 		formattedNumber,
+		isNumber,
 		txEscape,
+		uploadBasename,
 		generatePlaceholderWave,
 		register,
 		__escape: identity,
@@ -73,10 +77,12 @@ module.exports = function (utils, Benchpress, relative_path) {
 	}
 
 	function buildLinkTag(tag) {
-		const attributes = ['link', 'rel', 'as', 'type', 'href', 'sizes', 'title', 'crossorigin'];
-		const [link, rel, as, type, href, sizes, title, crossorigin] = attributes.map(attr => (tag[attr] ? `${attr}="${tag[attr]}" ` : ''));
+		const attributes = [
+			'link', 'rel', 'as', 'type', 'href', 'hreflang', 'sizes', 'title', 'crossorigin',
+		];
+		const [link, rel, as, type, href, hreflang, sizes, title, crossorigin] = attributes.map(attr => (tag[attr] ? `${attr}="${tag[attr]}" ` : ''));
 
-		return '<link ' + link + rel + as + type + sizes + title + href + crossorigin + '/>\n\t';
+		return '<link ' + link + rel + as + type + sizes + title + href + hreflang + crossorigin + '/>\n\t';
 	}
 
 	function stringify(obj) {
@@ -107,7 +113,7 @@ module.exports = function (utils, Benchpress, relative_path) {
 		}
 
 		const href = tag === 'a' ? `href="${relative_path}/category/${category.slug}"` : '';
-		return `<${tag} ${href} class="badge px-1 text-truncate text-decoration-none ${className}" style="color: ${category.color};background-color: ${category.bgColor};border-color: ${category.bgColor}!important; max-width: 70vw;">
+		return `<${tag} component="topic/category" ${href} class="badge px-1 text-truncate text-decoration-none ${className}" style="color: ${category.color};background-color: ${category.bgColor};border-color: ${category.bgColor}!important; max-width: 70vw;">
 			${category.icon && category.icon !== 'fa-nbb-none' ? `<i class="fa fa-fw ${category.icon}"></i>` : ''}
 			${category.name}
 		</${tag}>`;
@@ -327,6 +333,14 @@ module.exports = function (utils, Benchpress, relative_path) {
 		return String(value + parseInt(inc, 10));
 	}
 
+	function lessthan(a, b) {
+		return parseInt(a, 10) < parseInt(b, 10);
+	}
+
+	function greaterthan(a, b) {
+		return parseInt(a, 10) > parseInt(b, 10);
+	}
+
 	function generateWroteReplied(post, timeagoCutoff) {
 		if (post.toPid) {
 			return generateRepliedTo(post, timeagoCutoff);
@@ -375,8 +389,18 @@ module.exports = function (utils, Benchpress, relative_path) {
 		return utils.addCommas(number);
 	}
 
+	function isNumber(value) {
+		return utils.isNumber(value);
+	}
+
 	function txEscape(text) {
 		return String(text).replace(/%/g, '&#37;').replace(/,/g, '&#44;');
+	}
+
+	function uploadBasename(str, sep = '/') {
+		const hasTimestampPrefix = /^\d+-/;
+		const name = str.substr(str.lastIndexOf(sep) + 1);
+		return hasTimestampPrefix.test(name) ? name.slice(14) : name;
 	}
 
 	function generatePlaceholderWave(items) {
