@@ -2,7 +2,7 @@
 
 const categories = require('../../categories');
 const meta = require('../../meta');
-const activitypub = require('../../activitypub');
+//const activitypub = require('../../activitypub');
 const api = require('../../api');
 
 const helpers = require('../helpers');
