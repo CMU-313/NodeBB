@@ -156,6 +156,23 @@ module.exports = function (User) {
 		}
 	}
 
+	function validateUsernameFormat(username) {
+		if (username.length < meta.config.minimumUsernameLength) {
+			throw new Error('[[error:username-too-short]]');
+		}
+
+		if (username.length > meta.config.maximumUsernameLength) {
+			throw new Error('[[error:username-too-long]]');
+		}
+
+		const userslug = slugify(username);
+		if (!utils.isUserNameValid(username) || !userslug) {
+			throw new Error('[[error:invalid-username]]');
+		}
+
+		return userslug;
+	}
+
 	async function isUsernameAvailable(data, uid) {
 		if (!data.username) {
 			return;
@@ -170,18 +187,7 @@ module.exports = function (User) {
 			}
 		}
 
-		if (data.username.length < meta.config.minimumUsernameLength) {
-			throw new Error('[[error:username-too-short]]');
-		}
-
-		if (data.username.length > meta.config.maximumUsernameLength) {
-			throw new Error('[[error:username-too-long]]');
-		}
-
-		const userslug = slugify(data.username);
-		if (!utils.isUserNameValid(data.username) || !userslug) {
-			throw new Error('[[error:invalid-username]]');
-		}
+		const userslug = validateUsernameFormat(data.username);
 
 		if (uid && userslug === userData.userslug) {
 			return;
