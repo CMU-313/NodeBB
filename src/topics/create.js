@@ -182,7 +182,7 @@ module.exports = function (Topics) {
 			postData: postData,
 		};
 	};
-	
+
 	//if data is not from internal queue and user is not an admin, check if valid post
 	async function isValidPost(data, uid) {
 		await user.isReadyToPost(uid, data.cid);
@@ -190,6 +190,21 @@ module.exports = function (Topics) {
 		if (!await posts.canUserPostContentWithLinks(uid, data.content)) {
 			throw new Error(`[[error:not-enough-reputation-to-post-links, ${meta.config['min:rep:post-links']}]]`);
 		}
+	}
+
+	async function notifyFollowers(postData, uid) {
+		setImmediate(async () => {
+				try {
+					await Topics.notifyFollowers(postData, uid, {
+						type: 'new-reply',
+						bodyShort: translator.compile('notifications:user-posted-to', postData.user.displayname, postData.topic.title),
+						nid: `new_post:tid:${postData.topic.tid}:pid:${postData.pid}:uid:${uid}`,
+						mergeId: `notifications:user-posted-to|${postData.topic.tid}`,
+					});
+				} catch (err) {
+					winston.error(err.stack);
+				}
+			});
 	}
 
 	Topics.reply = async function (data) {
@@ -214,14 +229,6 @@ module.exports = function (Topics) {
 			await isValidPost(data, uid);
 		}
 
-		// if (!data.fromQueue && !isAdmin) {
-		// 	await user.isReadyToPost(uid, data.cid);
-		// 	Topics.checkContent(data.sourceContent || data.content);
-		// 	if (!await posts.canUserPostContentWithLinks(uid, data.content)) {
-		// 		throw new Error(`[[error:not-enough-reputation-to-post-links, ${meta.config['min:rep:post-links']}]]`);
-		// 	}
-		// }
-
 		// For replies to scheduled topics, don't have a timestamp older than topic's itself
 		if (topicData.scheduled) {
 			data.timestamp = topicData.lastposttime + 1;
@@ -231,28 +238,20 @@ module.exports = function (Topics) {
 		let postData = await posts.create(data);
 		postData = await onNewPost(postData, data);
 
+		// auto follow post (if enabled)
 		const settings = await user.getSettings(uid);
 		if (uid > 0 && settings.followTopicsOnReply) {
 			await Topics.follow(postData.tid, uid);
 		}
 
+		// update last online time
 		if (parseInt(uid, 10) || activitypub.helpers.isUri(uid)) {
 			user.setUserField(uid, 'lastonline', Date.now());
 		}
 
+		// notify followers
 		if (parseInt(uid, 10) || activitypub.helpers.isUri(uid) || meta.config.allowGuestReplyNotifications) {
-			setImmediate(async () => {
-				try {
-					await Topics.notifyFollowers(postData, uid, {
-						type: 'new-reply',
-						bodyShort: translator.compile('notifications:user-posted-to', postData.user.displayname, postData.topic.title),
-						nid: `new_post:tid:${postData.topic.tid}:pid:${postData.pid}:uid:${uid}`,
-						mergeId: `notifications:user-posted-to|${postData.topic.tid}`,
-					});
-				} catch (err) {
-					winston.error(err.stack);
-				}
-			});
+			await notifyFollowers(postData, uid);
 		}
 
 		analytics.increment(['posts', `posts:byCid:${data.cid}`]);
