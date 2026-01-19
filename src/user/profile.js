@@ -173,6 +173,21 @@ module.exports = function (User) {
 		return userslug;
 	}
 
+	async function checkUsernameUniqueness(userslug, username) {
+		const exists = await User.existsBySlug(userslug);
+		if (exists) {
+			throw new Error('[[error:username-taken]]');
+		}
+
+		const { error } = await plugins.hooks.fire('filter:username.check', {
+			username: username,
+			error: undefined,
+		});
+		if (error) {
+			throw error;
+		}
+	}
+
 	async function isUsernameAvailable(data, uid) {
 		if (!data.username) {
 			return;
@@ -192,19 +207,10 @@ module.exports = function (User) {
 		if (uid && userslug === userData.userslug) {
 			return;
 		}
-		const exists = await User.existsBySlug(userslug);
-		if (exists) {
-			throw new Error('[[error:username-taken]]');
-		}
 
-		const { error } = await plugins.hooks.fire('filter:username.check', {
-			username: data.username,
-			error: undefined,
-		});
-		if (error) {
-			throw error;
-		}
+		await checkUsernameUniqueness(userslug, data.username);
 	}
+
 	User.checkUsername = async username => isUsernameAvailable({ username });
 
 	async function isAboutMeValid(callerUid, data) {
