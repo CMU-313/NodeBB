@@ -245,7 +245,7 @@ describe.skip('Notes', () => {
 					const { tid } = await api.topics.create({ uid }, {
 						cid,
 						title: utils.generateUUID(),
-						content: utils.generateUUID(),
+						content: 'Guaranteed to be more than 500 characters.\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. In vel convallis felis. Phasellus porta erat a elit dignissim efficitur. Sed at sollicitudin erat, finibus sodales ante. Nunc ullamcorper, urna a pulvinar tempor, nunc risus venenatis nunc, id aliquam purus dui ut ante. Nulla sit amet risus sem. Praesent sit amet justo finibus, laoreet odio nec, varius diam. Nullam congue rhoncus lorem, eu accumsan leo aliquam sit amet. Suspendisse fringilla nec libero a tincidunt. Phasellus sapien justo, lacinia ac enim sit amet, pellentesque fermentum neque. Proin sit amet felis vitae libero aliquam pharetra at id nisi. Donec vitae mauris est. Sed hendrerit nisi et nibh auctor hendrerit. Praesent feugiat tortor a dignissim sagittis. Cras sit amet ante justo. Cras consectetur magna vitae volutpat placerat. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae',
 					});
 
 					assert(tid);
@@ -255,26 +255,26 @@ describe.skip('Notes', () => {
 				});
 
 				it('should federate out a Create activity', () => {
-					assert(activity && activity.to);
-					assert.strictEqual(activity.type, 'Create');
+					assert(activity && activity.payload && activity.payload.to);
+					assert.strictEqual(activity.payload.type, 'Create');
 				});
 
 				it('should have the local category addressed', () => {
 					const addressees = new Set([
-						...(activity.to || []),
-						...(activity.cc || []),
-						...(activity.bcc || []),
-						...(activity.object.to || []),
-						...(activity.object.cc || []),
-						...(activity.object.bcc || []),
+						...(activity.payload.to || []),
+						...(activity.payload.cc || []),
+						...(activity.payload.bcc || []),
+						...(activity.payload.object.to || []),
+						...(activity.payload.object.cc || []),
+						...(activity.payload.object.bcc || []),
 					]);
 
 					assert(addressees.has(`${nconf.get('url')}/category/${cid}`));
 				});
 
 				it('should federate out an activity with object of type "Article"', () => {
-					assert(activity.object && activity.object.type);
-					assert.strictEqual(activity.object.type, 'Article');
+					assert(activity.payload.object && activity.payload.object.type);
+					assert.strictEqual(activity.payload.object.type, 'Article');
 				});
 			});
 
@@ -299,8 +299,8 @@ describe.skip('Notes', () => {
 				});
 
 				it('should federate out an activity with object of type "Note"', () => {
-					assert(activity.object && activity.object.type);
-					assert.strictEqual(activity.object.type, 'Note');
+					assert(activity.payload && activity.payload.object && activity.payload.object.type);
+					assert.strictEqual(activity.payload.object.type, 'Note');
 				});
 			});
 		});
@@ -330,16 +330,16 @@ describe.skip('Notes', () => {
 
 					const key = Array.from(activitypub._sent.keys())[0];
 					const activity = activitypub._sent.get(key);
-					assert(activity && activity.to);
-					assert.strictEqual(activity.type, 'Create');
+					assert(activity && activity.payload && activity.payload.to);
+					assert.strictEqual(activity.payload.type, 'Create');
 
 					const addressees = new Set([
-						...(activity.to || []),
-						...(activity.cc || []),
-						...(activity.bcc || []),
-						...(activity.object.to || []),
-						...(activity.object.cc || []),
-						...(activity.object.bcc || []),
+						...(activity.payload.to || []),
+						...(activity.payload.cc || []),
+						...(activity.payload.bcc || []),
+						...(activity.payload.object.to || []),
+						...(activity.payload.object.cc || []),
+						...(activity.payload.object.bcc || []),
 					]);
 
 					assert(addressees.has(cid));
@@ -366,16 +366,16 @@ describe.skip('Notes', () => {
 
 					const key = Array.from(activitypub._sent.keys())[0];
 					const activity = activitypub._sent.get(key);
-					assert(activity && activity.to);
-					assert.strictEqual(activity.type, 'Create');
+					assert(activity && activity.payload && activity.payload.to);
+					assert.strictEqual(activity.payload.type, 'Create');
 
 					const addressees = new Set([
-						...(activity.to || []),
-						...(activity.cc || []),
-						...(activity.bcc || []),
-						...(activity.object.to || []),
-						...(activity.object.cc || []),
-						...(activity.object.bcc || []),
+						...(activity.payload.to || []),
+						...(activity.payload.cc || []),
+						...(activity.payload.bcc || []),
+						...(activity.payload.object.to || []),
+						...(activity.payload.object.cc || []),
+						...(activity.payload.object.bcc || []),
 					]);
 
 					assert(addressees.has(cid));
@@ -432,6 +432,7 @@ describe.skip('Notes', () => {
 
 		describe('Create', () => {
 			let uid;
+			let cid;
 
 			before(async () => {
 				uid = await user.create({ username: utils.generateUUID() });
@@ -451,6 +452,17 @@ describe.skip('Notes', () => {
 					assert.strictEqual(cid, -1);
 				});
 
+				it('should not append to the tids_read sorted set', async () => {
+					const { note, id } = helpers.mocks.note();
+					const { activity } = helpers.mocks.create(note);
+
+					await db.sortedSetAdd(`followersRemote:${note.attributedTo}`, Date.now(), uid);
+					await activitypub.inbox.create({ body: activity });
+
+					const exists = await db.exists(`uid:${note.attributedTo}:tids_read`);
+					assert(!exists);
+				});
+
 				it('should create a new topic in a remote category if addressed (category same-origin)', async () => {
 					const { id: remoteCid } = helpers.mocks.group();
 					const { note, id } = helpers.mocks.note({
@@ -467,7 +479,6 @@ describe.skip('Notes', () => {
 				});
 
 				it('should create a new topic in cid -1 if a non-same origin remote category is addressed', async function () {
-					this.timeout(60000);
 					const { id: remoteCid } = helpers.mocks.group({
 						id: `https://example.com/${utils.generateUUID()}`,
 					});
@@ -475,13 +486,47 @@ describe.skip('Notes', () => {
 						audience: [remoteCid],
 					});
 					const { activity } = helpers.mocks.create(note);
-
-					await activitypub.inbox.create({ body: activity });
+					try {
+						await activitypub.inbox.create({ body: activity });
+					} catch (err) {
+						assert(false);
+					}
 
 					assert(await posts.exists(id));
-
 					const cid = await posts.getCidByPid(id);
 					assert.strictEqual(cid, -1);
+				});
+			});
+
+			describe('(Like)', () => {
+				let pid;
+				let voterUid;
+
+				before(async () => {
+					({ cid } = await categories.create({ name: utils.generateUUID() }));
+					const { postData } = await topics.post({
+						uid,
+						cid,
+						title: utils.generateUUID(),
+						content: utils.generateUUID(),
+					});
+					pid = postData.pid;
+					const object = await activitypub.mocks.notes.public(postData);
+					const { activity } = helpers.mocks.like({ object });
+					voterUid = activity.actor;
+					await activitypub.inbox.like({ body: activity });
+				});
+
+				it('should increment a like for the post', async () => {
+					const voted = await posts.hasVoted(pid, voterUid);
+					const count = await posts.getPostField(pid, 'upvotes');
+					assert(voted);
+					assert.strictEqual(count, 1);
+				});
+
+				it('should not append to the uid upvotes zset', async () => {
+					const exists = await db.exists(`uid:${voterUid}:upvote`);
+					assert(!exists);
 				});
 			});
 		});
@@ -490,7 +535,7 @@ describe.skip('Notes', () => {
 			let cid;
 
 			before(async () => {
-				({ cid } = await categories.create({ name: utils.generateUUID().slice(0, 8) }));
+				({ cid } = await categories.create({ name: utils.generateUUID() }));
 			});
 
 			describe('(Create)', () => {
@@ -651,7 +696,7 @@ describe.skip('Notes', () => {
 
 				it('should upvote an asserted remote post', async () => {
 					const { id } = helpers.mocks.note();
-					await activitypub.notes.assert(0, [id], { skipChecks: true });
+					await activitypub.notes.assert(0, id, { skipChecks: true });
 					const { activity: like } = helpers.mocks.like({
 						object: id,
 					});
@@ -673,7 +718,7 @@ describe.skip('Notes', () => {
 				it('should update a note\'s content', async () => {
 					const { id: actor } = helpers.mocks.person();
 					const { id, note } = helpers.mocks.note({ attributedTo: actor });
-					await activitypub.notes.assert(0, [id], { skipChecks: true });
+					await activitypub.notes.assert(0, id, { skipChecks: true });
 					note.content = utils.generateUUID();
 					const { activity: update } = helpers.mocks.update({ object: note });
 					const { activity } = helpers.mocks.announce({ object: update });
