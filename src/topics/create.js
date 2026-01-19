@@ -194,17 +194,17 @@ module.exports = function (Topics) {
 
 	async function notifyFollowers(postData, uid) {
 		setImmediate(async () => {
-				try {
-					await Topics.notifyFollowers(postData, uid, {
-						type: 'new-reply',
-						bodyShort: translator.compile('notifications:user-posted-to', postData.user.displayname, postData.topic.title),
-						nid: `new_post:tid:${postData.topic.tid}:pid:${postData.pid}:uid:${uid}`,
-						mergeId: `notifications:user-posted-to|${postData.topic.tid}`,
-					});
-				} catch (err) {
-					winston.error(err.stack);
-				}
-			});
+			try {
+				await Topics.notifyFollowers(postData, uid, {
+					type: 'new-reply',
+					bodyShort: translator.compile('notifications:user-posted-to', postData.user.displayname, postData.topic.title),
+					nid: `new_post:tid:${postData.topic.tid}:pid:${postData.pid}:uid:${uid}`,
+					mergeId: `notifications:user-posted-to|${postData.topic.tid}`,
+				});
+			} catch (err) {
+				winston.error(err.stack);
+			}
+		});
 	}
 
 	Topics.reply = async function (data) {
