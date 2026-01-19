@@ -69,6 +69,7 @@ define('forum/topic', [
 		setupQuickReply();
 		handleBookmark(tid);
 		handleThumbs();
+		addCrosspostsHandler();
 
 		$(window).on('scroll', utils.debounce(updateTopicTitle, 250));
 
@@ -202,9 +203,15 @@ define('forum/topic', [
 					$('[component="topic/thumb/select"]').removeClass('border-primary');
 					$(this).addClass('border-primary');
 					$('[component="topic/thumb/current"]')
-						.attr('src', $(this).attr('src'));
+						.attr('src', $(this).find('img').attr('src'));
 				});
 			}
+		});
+
+		$('[component="topic/thumb/list/expand"]').on('click', function () {
+			const btn = $(this);
+			btn.parents('[component="topic/thumb/list"]').removeClass('thumbs-collapsed');
+			btn.remove();
 		});
 	}
 
@@ -358,7 +365,6 @@ define('forum/topic', [
 						const postContent = link.parents('[component="topic"]').find('[component="post/content"]').first();
 						const postRect = postContent.offset();
 						const postWidth = postContent.width();
-						const linkRect = link.offset();
 						const { top } = link.get(0).getBoundingClientRect();
 						const dropup = top > window.innerHeight / 2;
 						tooltip.on('mouseenter', function () {
@@ -366,11 +372,16 @@ define('forum/topic', [
 						});
 						tooltip.one('mouseleave', destroyTooltip);
 						$(window).off('click', onClickOutside).one('click', onClickOutside);
-						tooltip.css({
-							top: dropup ? linkRect.top - tooltip.outerHeight() : linkRect.top + 30,
+						const css = {
 							left: postRect.left,
 							width: postWidth,
-						});
+						};
+						if (dropup) {
+							css.bottom = window.innerHeight - top - window.scrollY + 5;
+						} else {
+							css.top = top + window.scrollY + 30;
+						}
+						tooltip.css(css);
 					}
 				}
 
@@ -394,6 +405,22 @@ define('forum/topic', [
 				}
 			}, 300);
 		});
+	}
+
+	function addCrosspostsHandler() {
+		const anchorEl = document.getElementById('show-crossposts');
+		if (anchorEl) {
+			anchorEl.addEventListener('click', async () => {
+				const { crossposts } = ajaxify.data;
+				const html = await app.parseAndTranslate('modals/crossposts', { crossposts });
+				bootbox.dialog({
+					onEscape: true,
+					backdrop: true,
+					title: '[[global:crossposts]]',
+					message: html,
+				});
+			});
+		}
 	}
 
 	function setupQuickReply() {

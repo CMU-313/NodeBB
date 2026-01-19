@@ -14,8 +14,9 @@ const util = require('util');
 
 process.env.NODE_ENV = process.env.TEST_ENV || 'production';
 global.env = process.env.NODE_ENV || 'production';
-
-
+if (!process.env.hasOwnProperty('CI')) {
+	process.env.CI = 'true';
+}
 const winston = require('winston');
 const packageInfo = require('../../package.json');
 
@@ -171,7 +172,6 @@ before(async function () {
 	require('../../src/user').startJobs();
 
 	await webserver.listen();
-
 	// Iterate over all of the test suites/contexts
 	this.test.parent.suites.forEach((suite) => {
 		// Attach an afterAll listener that resets the defaults
@@ -193,6 +193,8 @@ async function setupMockDefaults() {
 	meta.config.initialPostDelay = 0;
 	meta.config.newbiePostDelay = 0;
 	meta.config.autoDetectLang = 0;
+	meta.config.activitypubProbeTimeout = 30000;
+	meta.config.postQueue = 0;
 
 	require('../../src/groups').cache.reset();
 	require('../../src/posts/cache').getOrCreate().reset();
