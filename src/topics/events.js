@@ -88,7 +88,11 @@ async function translateEventArgs({event, language, prefix, args = []}) {
 }
 
 async function translateSimple(event, language, prefix) {
-	return await translateEventArgs({event:event, language:language, prefix:prefix, args:[renderUser(event), renderTimeago(event)]});
+	return await translateEventArgs({
+		event:event, 
+		language:language, prefix:prefix, 
+		args:[renderUser(event), renderTimeago(event)],
+	});
 }
 
 Events.translateSimple = translateSimple; // so plugins can perform translate
