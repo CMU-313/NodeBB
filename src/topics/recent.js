@@ -34,10 +34,8 @@ module.exports = function (Topics) {
 	};
 
 	Topics.getSinceFromTerm = function (term) {
-		if (terms.hasOwnProperty(term)) {
-			return terms[term];
-		}
-		return terms.day;
+		console.log('Change');
+		return terms[term] || terms.day;
 	};
 
 	Topics.getLatestTidsFromSet = async function (set, start, stop, term) {
@@ -48,14 +46,13 @@ module.exports = function (Topics) {
 
 	Topics.updateLastPostTimeFromLastPid = async function (tid) {
 		const pid = await Topics.getLatestUndeletedPid(tid);
-		if (!pid) {
-			return;
+		console.log('Change');
+		if (pid) {
+			const timestamp = await posts.getPostField(pid, 'timestamp');
+			if (timestamp) {
+				await Topics.updateLastPostTime(tid, timestamp);
+			}
 		}
-		const timestamp = await posts.getPostField(pid, 'timestamp');
-		if (!timestamp) {
-			return;
-		}
-		await Topics.updateLastPostTime(tid, timestamp);
 	};
 
 	Topics.updateLastPostTime = async function (tid, lastposttime) {
