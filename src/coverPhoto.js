@@ -16,25 +16,33 @@ coverPhoto.getDefaultProfileCover = function (uid) {
 	return getCover('profile', parseInt(uid, 10));
 };
 
+function calculateCoverIndex(id, coversLength) {
+	if (typeof id === 'string') {
+		return (id.charCodeAt(0) + id.charCodeAt(1)) % coversLength;
+	}
+	return id % coversLength;
+}
+
 function getCover(type, id) {
 	const defaultCover = `${relative_path}/assets/images/cover-default.png`;
-	if (meta.config[`${type}:defaultCovers`]) {
-		const covers = String(meta.config[`${type}:defaultCovers`]).trim().split(/[\s,]+/g);
-		let coverPhoto = defaultCover;
-		if (!covers.length) {
-			return coverPhoto;
-		}
+	const configCovers = meta.config[`${type}:defaultCovers`];
 
-		if (typeof id === 'string') {
-			id = (id.charCodeAt(0) + id.charCodeAt(1)) % covers.length;
-		} else {
-			id %= covers.length;
-		}
-		if (covers[id]) {
-			coverPhoto = covers[id].startsWith('http') ? covers[id] : (relative_path + covers[id]);
-		}
-		return coverPhoto;
+	if (!configCovers) {
+		return defaultCover;
 	}
 
-	return defaultCover;
+	const covers = String(configCovers).trim().split(/[\s,]+/g);
+
+	if (!covers.length) {
+		return defaultCover;
+	}
+
+	const index = calculateCoverIndex(id, covers.length);
+
+	if (!covers[index]) {
+		return defaultCover;
+	}
+
+	const cover = covers[index];
+	return cover.startsWith('http') ? cover : relative_path + cover;
 }
