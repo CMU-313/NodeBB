@@ -123,10 +123,7 @@ Categories.follow = async (req, res, next) => {
 
 // --- Calling Functions ---
 
-Categories.follow = async (req, res, next) => {
-	// We wrap req, res, and next into one object
-	await performCategoryAction({ req, res, next }, api.activitypub.follow);
-};
+
 
 Categories.unfollow = async (req, res, next) => {
 	const { actor } = req.body;
