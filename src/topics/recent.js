@@ -34,7 +34,6 @@ module.exports = function (Topics) {
 	};
 
 	Topics.getSinceFromTerm = function (term) {
-		console.log('Change');
 		return terms[term] || terms.day;
 	};
 
@@ -46,7 +45,6 @@ module.exports = function (Topics) {
 
 	Topics.updateLastPostTimeFromLastPid = async function (tid) {
 		const pid = await Topics.getLatestUndeletedPid(tid);
-		console.log('Change');
 		if (pid) {
 			const timestamp = await posts.getPostField(pid, 'timestamp');
 			if (timestamp) {
