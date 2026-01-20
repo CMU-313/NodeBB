@@ -2,7 +2,7 @@
 
 const categories = require('../../categories');
 const meta = require('../../meta');
-//const activitypub = require('../../activitypub');
+const activitypub = require('../../activitypub');
 const api = require('../../api');
 
 const helpers = require('../helpers');
@@ -107,15 +107,8 @@ Categories.setModerator = async (req, res) => {
 	helpers.formatApiResponse(200, res, privilegeSet);
 };
 
-/**
- * Helper function with reduced parameters (2 instead of 4).
- * We group { req, res, next } into a single 'context' object.
- */
-const performCategoryAction = async (context, apiMethod) => {
-	console.log('Oliver Graham');
-
-	// Destructure the context object to get the Express variables
-	const { req, res, next } = context;
+Categories.follow = async (req, res, next) => {
+	// Priv check done in route middleware
 	const { actor } = req.body;
 	const id = parseInt(req.params.cid, 10);
 
@@ -123,11 +116,7 @@ const performCategoryAction = async (context, apiMethod) => {
 		return next();
 	}
 
-	await apiMethod(req, {
-		type: 'cid',
-		id,
-		actor,
-	});
+	await activitypub.out.follow('cid', id, actor);
 
 	helpers.formatApiResponse(200, res, {});
 };
@@ -140,6 +129,13 @@ Categories.follow = async (req, res, next) => {
 };
 
 Categories.unfollow = async (req, res, next) => {
-	// We wrap req, res, and next into one object
-	await performCategoryAction({ req, res, next }, api.activitypub.unfollow);
+	const { actor } = req.body;
+	const id = parseInt(req.params.cid, 10);
+
+	if (!id) { // disallow cid 0
+		return next();
+	}
+
+	await activitypub.out.undo.follow('cid', id, actor);
+	helpers.formatApiResponse(200, res, {});
 };
