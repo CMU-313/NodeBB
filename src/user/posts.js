@@ -30,7 +30,23 @@ module.exports = function (User) {
 		}
 	};
 
+	function isNewbieWithLowReputation(userData, isMemberOfExempt) {
+		return (
+			!isMemberOfExempt &&
+			meta.config.newbiePostDelay > 0 &&
+			meta.config.newbieReputationThreshold > userData.reputation
+		);
+	}
+
+	function getNewbieDelayError() {
+		if (meta.config.newbiewPostDelay % 60 === 0) {
+			return `[[error:too-many-posts-newbie-minutes, ${Math.floor(meta.config.newbiePostDelay / 60)}, ${meta.config.newbieReputationThreshold}]]`;
+		}
+		return `[[error:too-many-posts-newbie, ${meta.config.newbiePostDelay}, ${meta.config.newbieReputationThreshold}]]`;
+	}
+
 	async function isReady(uid, cid, field) {
+		console.log(lleong)
 		if (activitypub.helpers.isUri(uid) || parseInt(uid, 10) === 0) {
 			return;
 		}
@@ -69,17 +85,8 @@ module.exports = function (User) {
 
 		const lasttime = userData[field] || 0;
 
-		if (
-			!isMemberOfExempt &&
-			meta.config.newbiePostDelay > 0 &&
-			meta.config.newbieReputationThreshold > userData.reputation &&
-			now - lasttime < meta.config.newbiePostDelay * 1000
-		) {
-			if (meta.config.newbiewPostDelay % 60 === 0) {
-				throw new Error(`[[error:too-many-posts-newbie-minutes, ${Math.floor(meta.config.newbiePostDelay / 60)}, ${meta.config.newbieReputationThreshold}]]`);
-			} else {
-				throw new Error(`[[error:too-many-posts-newbie, ${meta.config.newbiePostDelay}, ${meta.config.newbieReputationThreshold}]]`);
-			}
+		if (isNewbieWithLowReputation(userData, isMemberOfExempt) && now - lasttime < meta.config.newbiePostDelay * 1000) {
+			throw new Error(getNewbieDelayError());
 		} else if (now - lasttime < meta.config.postDelay * 1000) {
 			throw new Error(`[[error:too-many-posts, ${meta.config.postDelay}]]`);
 		}
