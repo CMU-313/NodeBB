@@ -104,7 +104,10 @@ privsPosts.filter = async function (privilege, pids, uid) {
 		(privsTopics.canViewDeletedScheduled({
 			deleted: post.topic.deleted || post.deleted,
 			scheduled: post.topic.scheduled,
-		}, {}, canViewDeleted[post.topic.cid], canViewScheduled[post.topic.cid]) || results.isAdmin)
+		}, { 
+			view_deleted: canViewDeleted[post.topic.cid], 
+			view_scheduled: canViewScheduled[post.topic.cid],
+		}) || results.isAdmin)
 	)).map(post => post.pid);
 
 	const data = await plugins.hooks.fire('filter:privileges.posts.filter', {
