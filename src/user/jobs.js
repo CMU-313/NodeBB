@@ -4,7 +4,6 @@ const winston = require('winston');
 const cronJob = require('cron').CronJob;
 const db = require('../database');
 const meta = require('../meta');
-const { get } = require('grunt');
 
 const jobs = {};
 
