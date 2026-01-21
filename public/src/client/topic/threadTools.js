@@ -25,40 +25,44 @@ define('forum/topic/threadTools', [
 
 		ThreadTools.observeTopicLabels($('[component="topic/labels"]'));
 
-		// function topicCommand(method, path, command, onComplete) {
-		topicContainer.on('click', '[component="topic/delete"]', function () {
+		function stop(e) {
+			e.preventDefault();
+			e.stopPropagation();
+		}
+
+		topicContainer.on('click', '[component="topic/delete"]', function (e) {
+			stop(e);
 			topicCommand('del', '/state', 'delete');
-			return false;
 		});
 
-		topicContainer.on('click', '[component="topic/restore"]', function () {
+		topicContainer.on('click', '[component="topic/restore"]', function (e) {
+			stop(e);
 			topicCommand('put', '/state', 'restore');
-			return false;
 		});
 
-		topicContainer.on('click', '[component="topic/purge"]', function () {
+		topicContainer.on('click', '[component="topic/purge"]', function (e) {
+			stop(e);
 			topicCommand('del', '', 'purge');
-			return false;
 		});
 
-		topicContainer.on('click', '[component="topic/lock"]', function () {
+		topicContainer.on('click', '[component="topic/lock"]', function (e) {
+			stop(e);
 			topicCommand('put', '/lock', 'lock');
-			return false;
 		});
 
-		topicContainer.on('click', '[component="topic/unlock"]', function () {
+		topicContainer.on('click', '[component="topic/unlock"]', function (e) {
+			stop(e);
 			topicCommand('del', '/lock', 'unlock');
-			return false;
 		});
 
-		topicContainer.on('click', '[component="topic/pin"]', function () {
+		topicContainer.on('click', '[component="topic/pin"]', function (e) {
+			stop(e);
 			topicCommand('put', '/pin', 'pin');
-			return false;
 		});
 
-		topicContainer.on('click', '[component="topic/unpin"]', function () {
+		topicContainer.on('click', '[component="topic/unpin"]', function (e) {
+			stop(e);
 			topicCommand('del', '/pin', 'unpin');
-			return false;
 		});
 
 		topicContainer.on('click', '[component="topic/mark-unread"]', function () {
@@ -109,11 +113,11 @@ define('forum/topic/threadTools', [
 			});
 		});
 
-		topicContainer.on('click', '[component="topic/move"]', function () {
+		topicContainer.on('click', '[component="topic/move"]', function (e) {
+			stop(e);
 			require(['forum/topic/move'], function (move) {
 				move.init([tid], ajaxify.data.cid);
 			});
-			return false;
 		});
 
 		topicContainer.on('click', '[component="topic/delete/posts"]', function () {
@@ -148,13 +152,18 @@ define('forum/topic/threadTools', [
 			});
 		});
 
-		topicContainer.on('click', '[component="topic/following"]', function () {
+		topicContainer.on('click', '[component="topic/following"]', function (e) {
+			stop(e);
 			changeWatching('follow');
 		});
-		topicContainer.on('click', '[component="topic/not-following"]', function () {
+
+		topicContainer.on('click', '[component="topic/not-following"]', function (e) {
+			stop(e);
 			changeWatching('follow', 0);
 		});
-		topicContainer.on('click', '[component="topic/ignoring"]', function () {
+
+		topicContainer.on('click', '[component="topic/ignoring"]', function (e) {
+			stop(e);
 			changeWatching('ignore');
 		});
 
@@ -168,7 +177,6 @@ define('forum/topic/threadTools', [
 					message = state ? '[[topic:ignoring-topic.message]]' : '[[topic:not-following-topic.message]]';
 				}
 
-				// From here on out, type changes to 'unfollow' if state is falsy
 				if (!state) {
 					type = 'unfollow';
 				}
@@ -192,8 +200,6 @@ define('forum/topic/threadTools', [
 					timeout: 5000,
 				});
 			});
-
-			return false;
 		}
 	};
 
