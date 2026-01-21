@@ -110,7 +110,7 @@ module.exports = function (Messaging) {
 		let message = buildMessage(data, mid, timestamp);
 
 		// print after refactored code
-		console.log('Jessica');
+		// console.log('Jessica');
 
 		message = await plugins.hooks.fire('filter:messaging.save', message);
 		await db.setObject(`message:${mid}`, message);
@@ -127,7 +127,7 @@ module.exports = function (Messaging) {
 		);
 
 		// print after refactored code
-		console.log('Jessica');
+		// console.log('Jessica');
 
 		await Promise.all(tasks);
 
