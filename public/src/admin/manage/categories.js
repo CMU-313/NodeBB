@@ -200,6 +200,13 @@ define('admin/manage/categories', [
 		newCategoryId = e.to.dataset.cid;
 	}
 
+	function updateCategoryToggleVisibility(parentCid, isVisible) {
+		const toggle = document.querySelector(`.categories li[data-cid="${parentCid}"] .toggle`);
+		if (toggle) {
+			toggle.classList.toggle('invisible', !isVisible);
+		}
+	}
+
 	function itemDragDidEnd(e) {
 		const isCategoryUpdate = parseInt(newCategoryId, 10) !== -1;
 
@@ -221,17 +228,11 @@ define('admin/manage/categories', [
 				const oldParentCid = parseInt(e.from.getAttribute('data-cid'), 10);
 				const newParentCid = parseInt(e.to.getAttribute('data-cid'), 10);
 				if (oldParentCid !== newParentCid) {
-					const toggle = document.querySelector(`.categories li[data-cid="${newParentCid}"] .toggle`);
-					if (toggle) {
-						toggle.classList.toggle('invisible', false);
-					}
+					updateCategoryToggleVisibility(newParentCid, true);
 
 					const children = document.querySelectorAll(`.categories li[data-cid="${oldParentCid}"] ul[data-cid] li[data-cid]`);
 					if (!children.length) {
-						const toggle = document.querySelector(`.categories li[data-cid="${oldParentCid}"] .toggle`);
-						if (toggle) {
-							toggle.classList.toggle('invisible', true);
-						}
+						updateCategoryToggleVisibility(oldParentCid, false);
 					}
 
 					e.item.dataset.parentCid = newParentCid;
