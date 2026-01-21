@@ -339,7 +339,6 @@ module.exports = function (User) {
 	}
 
 	async function validateNewPassword(uid, data) {
-		console.log('MATT CADENA');
 		User.isPasswordValid(data.newPassword);
 		const [isAdmin, hasPassword] = await Promise.all([
 			User.isAdministrator(uid),
