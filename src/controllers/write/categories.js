@@ -107,27 +107,30 @@ Categories.setModerator = async (req, res) => {
 	helpers.formatApiResponse(200, res, privilegeSet);
 };
 const helper = (req) => {
-    const { actor } = req.body;
+    // 1. Try to get actor from the logged-in session (req.uid) first (Security Best Practice).
+    // 2. Fallback to req.body.actor (for your tests or specific API calls).
+    const actor = req.uid || req.body.actor;
+
     const id = parseInt(req.params.cid, 10);
 
-    if (!id) {
+    // Check if ID is invalid OR if we failed to find an actor
+    if (!id || !actor) {
         return false;
     }
+
     return { id, actor };
 };
 
 Categories.follow = async (req, res, next) => {
-    // 1. Get data from helper
     const data = helper(req);
 
-    // 2. Check if data is strictly false
     if (data === false) {
         return next();
     } else {
-        console.log('Oliver Graham');
+        // console.log('Oliver Graham'); 
 
-        // 3. Pass data.id and req.uid (fallback for safety)
- 		await activitypub.out.follow('cid', data.id, data.actor);
+        // data.actor is now guaranteed to be defined
+        await activitypub.out.follow('cid', data.id, data.actor);
 
         helpers.formatApiResponse(200, res, {});
     }
@@ -139,9 +142,9 @@ Categories.unfollow = async (req, res, next) => {
     if (data === false) {
         return next();
     } else {
-        console.log('Oliver Graham');
+        // console.log('Oliver Graham');
 
-		await activitypub.out.undo.follow('cid', data.id, data.actor);
+        await activitypub.out.undo.follow('cid', data.id, data.actor);
 
         helpers.formatApiResponse(200, res, {});
     }
