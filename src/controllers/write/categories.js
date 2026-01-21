@@ -109,6 +109,7 @@ Categories.setModerator = async (req, res) => {
 const helper = (req) => {
     // 1. Try to get actor from the logged-in session (req.uid) first (Security Best Practice).
     // 2. Fallback to req.body.actor (for your tests or specific API calls).
+	console.log('Oliver Graham'); 
     const actor = req.uid || req.body.actor;
 
     const id = parseInt(req.params.cid, 10);
