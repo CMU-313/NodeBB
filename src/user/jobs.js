@@ -4,6 +4,7 @@ const winston = require('winston');
 const cronJob = require('cron').CronJob;
 const db = require('../database');
 const meta = require('../meta');
+const { get } = require('grunt');
 
 const jobs = {};
 
@@ -11,13 +12,15 @@ module.exports = function (User) {
 	User.startJobs = function () {
 		winston.verbose('[user/jobs] (Re-)starting jobs...');
 
-		let { digestHour } = meta.config;
-
-		// Fix digest hour if invalid
-		if (isNaN(digestHour)) {
-			digestHour = 17;
-		} else if (digestHour > 23 || digestHour < 0) {
-			digestHour = 0;
+		const digestHour = getDigesthour(meta.config.digestHour);
+		function getDigesthour(dhour) {
+			// Fix digest hour if invalid
+			if (isNaN(dhour)) {
+				return 17;
+			} else if (dhour > 23 || dhour < 0) {
+				return 0;
+			}
+			return dhour;
 		}
 
 		User.stopJobs();
