@@ -2,6 +2,7 @@
 
 const categories = require('../../categories');
 const meta = require('../../meta');
+const activitypub = require('../../activitypub');
 const api = require('../../api');
 
 const helpers = require('../helpers');
@@ -105,40 +106,43 @@ Categories.setModerator = async (req, res) => {
 	const privilegeSet = await api.categories.getPrivileges(req, { cid: req.params.cid });
 	helpers.formatApiResponse(200, res, privilegeSet);
 };
+const helper = (req) => {
+    const { actor } = req.body;
+    const id = parseInt(req.params.cid, 10);
 
-/**
- * Helper function with reduced parameters (2 instead of 4).
- * We group { req, res, next } into a single 'context' object.
- */
-const performCategoryAction = async (context, apiMethod) => {
-	console.log('Oliver Graham');
-
-	// Destructure the context object to get the Express variables
-	const { req, res, next } = context;
-	const { actor } = req.body;
-	const id = parseInt(req.params.cid, 10);
-
-	if (!id) {
-		return next();
-	}
-
-	await apiMethod(req, {
-		type: 'cid',
-		id,
-		actor,
-	});
-
-	helpers.formatApiResponse(200, res, {});
+    if (!id) {
+        return false;
+    }
+    return { id, actor };
 };
 
-// --- Calling Functions ---
-
 Categories.follow = async (req, res, next) => {
-	// We wrap req, res, and next into one object
-	await performCategoryAction({ req, res, next }, api.activitypub.follow);
+    // 1. Get data from helper
+    const data = helper(req);
+
+    // 2. Check if data is strictly false
+    if (data === false) {
+        return next();
+    } else {
+        console.log('Oliver Graham');
+
+        // 3. Pass data.id and req.uid (fallback for safety)
+ 		await activitypub.out.follow('cid', data.id, data.actor);
+
+        helpers.formatApiResponse(200, res, {});
+    }
 };
 
 Categories.unfollow = async (req, res, next) => {
-	// We wrap req, res, and next into one object
-	await performCategoryAction({ req, res, next }, api.activitypub.unfollow);
+    const data = helper(req);
+
+    if (data === false) {
+        return next();
+    } else {
+        console.log('Oliver Graham');
+
+		await activitypub.out.undo.follow('cid', data.id, data.actor);
+
+        helpers.formatApiResponse(200, res, {});
+    }
 };
