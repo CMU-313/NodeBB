@@ -16,13 +16,13 @@ describe('User Posts', () => {
 			testUid = await user.create({ 
 				username: 'posttestuser', 
 				password: 'barbar', 
-				gdpr_consent: 1 
+				gdpr_consent: 1, 
 			});
 		}
 		
 		({ cid: testCid } = await categories.create({ 
 			name: 'Test Category Posts',
-			description: 'Test'
+			description: 'Test',
 		}));
 
 		meta.config.initialPostDelay = 0;
