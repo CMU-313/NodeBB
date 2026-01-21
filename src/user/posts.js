@@ -85,12 +85,7 @@ module.exports = function (User) {
 		}
 
 		const lasttime = userData[field] || 0;
-
-		if (isNewbieWithLowReputation(userData, isMemberOfExempt) && now - lasttime < meta.config.newbiePostDelay * 1000) {
-			throw new Error(getNewbieDelayError());
-		} else if (now - lasttime < meta.config.postDelay * 1000) {
-			throw new Error(`[[error:too-many-posts, ${meta.config.postDelay}]]`);
-		}
+		checkPostDelays(userData, lasttime, isMemberOfExempt);
 	}
 
 	User.onNewPostMade = async function (postData) {
