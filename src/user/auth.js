@@ -42,7 +42,6 @@ async function revokeSessionsAboveThreshold(activeSids, uid, User) {
 
 // Auth method implementations
 async function logAttempt(uid, ip) {
-	console.log('Maxwell Huang: REFACTOR_TEST - logAttempt executed for uid:', uid, 'ip:', ip);
 	if (!(parseInt(uid, 10) > 0)) {
 		return;
 	}
