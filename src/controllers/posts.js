@@ -14,23 +14,14 @@ const helpers = require('./helpers');
 const postsController = module.exports;
 
 postsController.redirectToPost = async function (req, res, next) {
-	const pid = utils.isNumber(req.params.pid) ? parseInt(req.params.pid, 10) : req.params.pid;
+	const pid = parsePid(req.params.pid);
 	if (!pid) {
 		return next();
 	}
 
-	// Kickstart note assertion if applicable
-	if (!utils.isNumber(pid) && req.uid && meta.config.activitypubEnabled) {
-		const exists = await posts.exists(pid);
-		if (!exists) {
-			await activitypub.notes.assert(req.uid, pid);
-		}
-	}
+	await maybeAssertNote(req, pid);
 
-	const [canRead, path] = await Promise.all([
-		privileges.posts.can('topics:read', pid, req.uid),
-		posts.generatePostPath(pid, req.uid),
-	]);
+	const { canRead, path } = await getAccessAndPath(req, pid);
 	if (!path) {
 		return next();
 	}
@@ -38,14 +29,52 @@ postsController.redirectToPost = async function (req, res, next) {
 		return helpers.notAllowed(req, res);
 	}
 
-	if (meta.config.activitypubEnabled) {
-		// Include link header for richer parsing
-		res.set('Link', `<${nconf.get('url')}/post/${req.params.pid}>; rel="alternate"; type="application/activity+json"`);
+	addLinkHeader(res, req.params.pid);
+	redirectWithQuery(res, req.query, path);
+};
+
+function parsePid(rawPid) {
+	if (!rawPid) {
+		return null;
+	}
+	return utils.isNumber(rawPid) ? parseInt(rawPid, 10) : rawPid;
+}
+
+function shouldAssertNote(req, pid) {
+	return !utils.isNumber(pid) && req.uid && meta.config.activitypubEnabled;
+}
+
+async function maybeAssertNote(req, pid) {
+	if (!shouldAssertNote(req, pid)) {
+		return;
 	}
 
-	const qs = querystring.stringify(req.query);
+	const exists = await posts.exists(pid);
+	if (!exists) {
+		await activitypub.notes.assert(req.uid, pid);
+	}
+}
+
+async function getAccessAndPath(req, pid) {
+	const [canRead, path] = await Promise.all([
+		privileges.posts.can('topics:read', pid, req.uid),
+		posts.generatePostPath(pid, req.uid),
+	]);
+	return { canRead, path };
+}
+
+function addLinkHeader(res, rawPid) {
+	if (!meta.config.activitypubEnabled) {
+		return;
+	}
+	res.set('Link', `<${nconf.get('url')}/post/${rawPid}>; rel="alternate"; type="application/activity+json"`);
+}
+
+function redirectWithQuery(res, query, path) {
+	const qs = querystring.stringify(query);
 	helpers.redirect(res, qs ? `${path}?${qs}` : path, true);
-};
+}
+
 
 postsController.getRecentPosts = async function (req, res) {
 	const page = parseInt(req.query.page, 10) || 1;
