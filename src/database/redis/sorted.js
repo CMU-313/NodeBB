@@ -32,7 +32,15 @@ module.exports = function (module) {
 				return [];
 			}
 			const batch = module.client.batch();
-			key.forEach(key => batch[method](genParams(method, key, 0, stop, min, max, true)));
+			key.forEach(key => batch[method](genParams({
+				method, 
+				key, 
+				start: 0, 
+				stop, 
+				min, 
+				max, 
+				withScores: true,
+			})));
 			const data = await helpers.execBatch(batch);
 
 			const batchData = data.map(setData => helpers.zsetToObjectArray(setData));
@@ -48,7 +56,7 @@ module.exports = function (module) {
 			return objects;
 		}
 
-		const params = genParams(method, key, start, stop, min, max, withScores);
+		const params = genParams({method, key, start, stop, min, max, withScores});
 		const data = await module.client[method](params);
 		if (!withScores) {
 			return data;
@@ -57,7 +65,7 @@ module.exports = function (module) {
 		return objects;
 	}
 
-	function genParams(method, key, start, stop, min, max, withScores) {
+	function genParams({method, key, start, stop, min, max, withScores}) {
 		const params = {
 			zrevrange: [key, start, stop],
 			zrange: [key, start, stop],
