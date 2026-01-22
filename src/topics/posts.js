@@ -513,3 +513,5 @@ module.exports = function (Topics) {
 		return add.length + (current - remove);
 	};
 };
+
+//test if this works
