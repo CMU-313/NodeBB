@@ -2737,4 +2737,23 @@ describe('User', () => {
 			});
 		});
 	});
+	describe('parseGroupTitle', () => {
+		it('should keep only first element when multiple badges not allowed', async () => {
+			const uid = await User.create({ username: 'multiplebadgetest' });
+			await db.setObjectField(`user:${uid}`, 'groupTitle', '["title1", "title2", "title3"]');
+			
+			// Save and disable multiple badges
+			const originalSetting = meta.config.allowMultipleBadges;
+			meta.config.allowMultipleBadges = 0;
+			
+			const userData = await User.getUserData(uid);
+			
+			assert(Array.isArray(userData.groupTitleArray));
+			assert.strictEqual(userData.groupTitleArray.length, 1);
+			assert.strictEqual(userData.groupTitleArray[0], 'title1');
+			
+			// Restore original setting
+			meta.config.allowMultipleBadges = originalSetting;
+		});
+	});
 });
