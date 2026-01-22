@@ -107,46 +107,46 @@ Categories.setModerator = async (req, res) => {
 	helpers.formatApiResponse(200, res, privilegeSet);
 };
 const helper = (req) => {
-    // 1. Try to get actor from the logged-in session (req.uid) first (Security Best Practice).
-    // 2. Fallback to req.body.actor (for your tests or specific API calls).
+	// 1. Try to get actor from the logged-in session (req.uid) first (Security Best Practice).
+	// 2. Fallback to req.body.actor (for your tests or specific API calls).
 	console.log('Oliver Graham'); 
-    const actor = req.uid || req.body.actor;
+	const actor = req.uid || req.body.actor;
 
-    const id = parseInt(req.params.cid, 10);
+	const id = parseInt(req.params.cid, 10);
 
-    // Check if ID is invalid OR if we failed to find an actor
-    if (!id || !actor) {
-        return false;
-    }
+	// Check if ID is invalid OR if we failed to find an actor
+	if (!id || !actor) {
+		return false;
+	}
 
-    return { id, actor };
+	return { id, actor };
 };
 
 Categories.follow = async (req, res, next) => {
-    const data = helper(req);
+	const data = helper(req);
 
-    if (data === false) {
-        return next();
-    } else {
-        // console.log('Oliver Graham'); 
+	if (data === false) {
+		return next();
+	} 
+	// console.log('Oliver Graham'); 
 
-        // data.actor is now guaranteed to be defined
-        await activitypub.out.follow('cid', data.id, data.actor);
+	// data.actor is now guaranteed to be defined
+	await activitypub.out.follow('cid', data.id, data.actor);
 
-        helpers.formatApiResponse(200, res, {});
-    }
+	helpers.formatApiResponse(200, res, {});
+    
 };
 
 Categories.unfollow = async (req, res, next) => {
-    const data = helper(req);
+	const data = helper(req);
 
-    if (data === false) {
-        return next();
-    } else {
-        // console.log('Oliver Graham');
+	if (data === false) {
+		return next();
+	} 
+	// console.log('Oliver Graham');
 
-        await activitypub.out.undo.follow('cid', data.id, data.actor);
+	await activitypub.out.undo.follow('cid', data.id, data.actor);
 
-        helpers.formatApiResponse(200, res, {});
-    }
+	helpers.formatApiResponse(200, res, {});
+    
 };
