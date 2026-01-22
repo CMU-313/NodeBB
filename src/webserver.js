@@ -257,7 +257,6 @@ function setupCookie() {
 	return cookie;
 }
 
-const { promisify } = require('util');
 
 function resolvePortOrSocket(rawPort) {
 	// rawPort can be: number|string, array, or socket path string
@@ -338,7 +337,7 @@ async function listen() {
 	const listenArgs = isSocket ? [socketPath] : [port, bindAddress];
 	const onText = formatListenText({ isSocket, socketPath, bindAddress, port });
 
-	const listenAsync = promisify(server.listen.bind(server));
+	const listenAsync = util.promisify(server.listen.bind(server));
 
 	try {
 		await listenAsync(...listenArgs);
