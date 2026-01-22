@@ -531,8 +531,8 @@ function resolvePortOrSocket(rawPort) {
 function maybeEnableTrustProxy(app, port) {
 	const trustProxyCfg = nconf.get('trust_proxy') === true;
 	if ((port !== 80 && port !== 443) || trustProxyCfg) {
-		winston.info(`🤝 Setting 'trust proxy' to ${JSON.stringify(trust_proxy)}`);
-		app.set('trust proxy', trust_proxy);
+		winston.info(`🤝 Setting 'trust proxy' to ${JSON.stringify(trustProxyCfg)}`);
+		app.set('trust proxy', trustProxyCfg);
 	}
 }
 
