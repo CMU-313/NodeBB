@@ -8,7 +8,7 @@
     "postCreateCommand": "redis-server --daemonize yes",
     "postStartCommand": "redis-server --daemonize yes || true",
 
-    "forwardPorts": [4567],
+    "appPort": [4567],
     "portsAttributes": {
         "4567": {
             "label": "NodeBB"
