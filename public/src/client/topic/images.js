@@ -18,19 +18,21 @@ define('forum/topic/images', [], function () {
 			return;
 		}
 
-		if (!imageEl.parent().is('a')) {
-			if (utils.isRelativeUrl(src) && suffixRegex.test(src)) {
-				src = src.replace(suffixRegex, '$1');
-			}
-			const alt = imageEl.attr('alt') || '';
-			const srcExt = src.split('.').slice(1).pop();
-			const altFilename = alt.split('/').pop();
-			const altExt = altFilename.split('.').slice(1).pop();
-
-			imageEl.wrap('<a href="' + src + '" ' +
-				(!srcExt && altExt ? ' download="' + utils.escapeHTML(altFilename) + '" ' : '') +
-				' target="_blank" rel="noopener">');
+		if (imageEl.parent().is('a')) {
+			return;
 		}
+		
+		if (utils.isRelativeUrl(src) && suffixRegex.test(src)) {
+			src = src.replace(suffixRegex, '$1');
+		}
+		const alt = imageEl.attr('alt') || '';
+		const srcExt = src.split('.').slice(1).pop();
+		const altFilename = alt.split('/').pop();
+		const altExt = altFilename.split('.').slice(1).pop();
+
+		imageEl.wrap('<a href="' + src + '" ' +
+			(!srcExt && altExt ? ' download="' + utils.escapeHTML(altFilename) + '" ' : '') +
+			' target="_blank" rel="noopener">');
 	};
 
 	return Images;
