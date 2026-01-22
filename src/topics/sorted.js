@@ -172,12 +172,12 @@ module.exports = function (Topics) {
 	}
 
 	async function sortTids(tids, params) {
- 		const isAlltime = params.term === 'alltime';
- 		const case1 = params.cids || params.tags.length || params.filter === 'watched' || params.floatPinned;
+		const isAlltime = params.term === 'alltime';
+		const case1 = params.cids || params.tags.length || params.filter === 'watched' || params.floatPinned;
 
- 		if ((isAlltime && !(case1)) || (!isAlltime && !params.sort === 'posts')) {
- 			return tids;
- 		}
+		if ((isAlltime && !(case1)) || (!isAlltime && !params.sort === 'posts')) {
+			return tids;
+		}
 
 		const { sortMap, fields } = await plugins.hooks.fire('filter:topics.sortOptions', {
 			params,
