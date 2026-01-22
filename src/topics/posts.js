@@ -22,6 +22,8 @@ module.exports = function (Topics) {
 		await Topics.addPostToTopic(postData.tid, postData);
 	};
 
+	
+
 	Topics.getTopicPosts = async function (topicData, set, start, stop, uid, reverse) {
 		console.log('Lawrence Song (lingyis)');
 		if (!topicData) {
@@ -30,31 +32,26 @@ module.exports = function (Topics) {
 
 		let repliesStart = start;
 		let repliesStop = stop;
-		repliesStop -= stop > 0 ? 1 : 0;
-		repliesStart -= stop > 0 && start > 0 ? 1 : 0;
-
-		// if (stop > 0) {
-		// 	repliesStop -= 1;
-		// 	if (start > 0) {
-		// 		repliesStart -= 1;
-		// 	}
-		// }
+		if (stop > 0) {
+			repliesStop -= 1;
+			repliesStart -= start > 0 ? 1 : 0;
+		}
 		
 		let pids = [];
 		if (start !== 0 || stop !== 0) {
 			pids = await posts.getPidsFromSet(set, repliesStart, repliesStop, reverse);
 		}
-		if (!pids.length && !topicData.mainPid) {
-			return [];
-		}
-
+		
 		if (topicData.mainPid && start === 0) {
 			pids.unshift(topicData.mainPid);
 		}
+		
 		let postData = await posts.getPostsByPids(pids, uid);
 		if (!postData.length) {
 			return [];
 		}
+		
+
 		let replies = postData;
 		if (topicData.mainPid && start === 0) {
 			postData[0].index = 0;
