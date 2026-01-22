@@ -151,14 +151,18 @@ usersController.getUsers = async function (set, uid, query) {
 	};
 };
 
-usersController.getUsersAndCount = async function (set, uid, start, stop) {
+usersController.getUsersAndCount = async function ({set, uid, start, stop}) {
 	async function getCount() {
+		let result;
 		if (set === 'users:online') {
-			return await db.sortedSetCount('users:online', Date.now() - 86400000, '+inf');
+			result = await db.sortedSetCount('users:online', Date.now() - 86400000, '+inf');
 		} else if (set === 'users:banned' || set === 'users:flags') {
-			return await db.sortedSetCard(set);
+			result = await db.sortedSetCard(set);
 		}
-		return await db.getObjectField('global', 'userCount');
+		else {
+			result = await db.getObjectField('global', 'userCount');
+		}
+		return result;
 	}
 	async function getUsers() {
 		if (set === 'users:online') {
