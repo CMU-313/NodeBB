@@ -23,23 +23,30 @@ const activitypub = require('../activitypub');
 const helpers = require('./helpers');
 const controllerHelpers = require('../controllers/helpers');
 
-const Assert = module.exports;
+const Assert = {};
 
 Assert.user = helpers.try(async (req, res, next) => {
+		
 	const uid = req.params.uid || res.locals.uid;
+	const isExposeUidMiddleware = uid !== -2;
+	const isNumberOrUri = utils.isNumber(uid) || activitypub.helpers.isUri(uid);
+	const userExistsById = isNumberOrUri && await user.exists(uid);
+	const isSlugFormat = uid.indexOf('@') !== -1;
+	const userExistsBySlug = isSlugFormat && await user.existsBySlug(uid);
+	const userExists = userExistsById || userExistsBySlug;
 
-	if (
-		uid !== -2 && // exposeUid middleware was in chain (means route is local user only) and resolved to fediverse user
-		(((utils.isNumber(uid) || activitypub.helpers.isUri(uid)) && await user.exists(uid)) ||
-		(uid.indexOf('@') !== -1 && await user.existsBySlug(uid)))
-	) {
+	if (isExposeUidMiddleware && userExists) {
 		return next();
 	}
 
 	controllerHelpers.formatApiResponse(404, res, new Error('[[error:no-user]]'));
 });
 
+module.exports = Assert;
+
+
 Assert.group = helpers.try(async (req, res, next) => {
+	
 	const name = await groups.getGroupNameByGroupSlug(req.params.slug);
 	if (!name || !await groups.exists(name)) {
 		return controllerHelpers.formatApiResponse(404, res, new Error('[[error:no-group]]'));
