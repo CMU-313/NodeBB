@@ -13,14 +13,12 @@ describe('Refactor Coverage: checkPostDelays', function () {
 
 	before(async function () {
 		uid = await User.create({ username: 'coverageUser' });
-		// Save defaults
 		originalPostDelay = meta.config.postDelay;
 		originalNewbieDelay = meta.config.newbiePostDelay;
 		originalInitialDelay = meta.config.initialPostDelay;
 	});
 
 	after(function () {
-		// SAFETY NET: Reset all configs
 		meta.config.postDelay = originalPostDelay || 0;
 		meta.config.newbiePostDelay = originalNewbieDelay || 0;
 		meta.config.initialPostDelay = originalInitialDelay || 0;
@@ -53,21 +51,34 @@ describe('Refactor Coverage: checkPostDelays', function () {
 		}
 	});
 
-	// --- THIS IS THE NEW TEST FOR 100% COVERAGE ---
 	it('should fail if the user JUST joined (Initial Post Delay)', async function () {
-		meta.config.initialPostDelay = 100; // User must wait 100s after joining
-        
-		// Disable other limits so we know for sure it's the Join Delay triggering
+		meta.config.initialPostDelay = 100;
 		meta.config.postDelay = 0;
 		meta.config.newbiePostDelay = 0;
 
 		try {
-			// User joindate is basically "now" since we just created them
-			// We don't need to set lastposttime here
 			await User.isReadyToPost(uid, 1);
 			throw new Error('Should have failed');
 		} catch (err) {
 			assert.ok(err.message.startsWith('[[error:user-too-new'));
+		}
+	});
+
+	// --- NEW TEST FOR 100% (Minutes Formatting) ---
+	it('should fail with minute-format message if newbie delay is multiple of 60', async function () {
+		meta.config.newbiePostDelay = 120; // 2 Minutes (Triggers the % 60 === 0 logic)
+		meta.config.newbieReputationThreshold = 100;
+		meta.config.postDelay = 0;
+		meta.config.initialPostDelay = 0;
+
+		try {
+			await User.setUserField(uid, 'reputation', 0);
+			await db.setObjectField('user:' + uid, 'lastposttime', Date.now());
+			await User.isReadyToPost(uid, 1);
+			throw new Error('Should have failed');
+		} catch (err) {
+			// Check for the "-minutes" error key
+			assert.ok(err.message.startsWith('[[error:too-many-posts-newbie-minutes'));
 		}
 	});
 });
