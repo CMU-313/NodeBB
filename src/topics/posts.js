@@ -209,7 +209,7 @@ module.exports = function (Topics) {
 				parentPost.content = foundPost.content;
 				return;
 			}
-			parentPost = await posts.parsePost(parentPost);
+			await posts.parsePost(parentPost);
 		}));
 
 		const parents = {};
@@ -227,7 +227,7 @@ module.exports = function (Topics) {
 		});
 
 		postData.forEach((post) => {
-			if (parents[post.toPid]) {
+			if (parents[post.toPid] && parents[post.toPid].content) {
 				post.parent = parents[post.toPid];
 			}
 		});
@@ -442,7 +442,7 @@ module.exports = function (Topics) {
 
 		let { content } = postData;
 		// ignore lines that start with `>`
-		content = content.split('\n').filter(line => !line.trim().startsWith('>')).join('\n');
+		content = (content || '').split('\n').filter(line => !line.trim().startsWith('>')).join('\n');
 		// Scan post content for topic links
 		const matches = [...content.matchAll(backlinkRegex)];
 		if (!matches) {

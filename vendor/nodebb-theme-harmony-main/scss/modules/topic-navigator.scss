@@ -1,0 +1,53 @@
+.pagination-block { display: none; }
+
+body.template-topic {
+	// used for both sidebar and bottom bar pagination-block
+	.pagination-block {
+		display: block;
+		transition: opacity 250ms ease-in;
+		opacity: 0;
+		&.ready {
+			opacity: 1;
+		}
+		&.noreplies {
+			pointer-events: none;
+			cursor: none;
+		}
+	}
+}
+
+.topic .pagination-block {
+	.scroller-content {
+		min-width: 170px;
+	}
+	.scroller-container {
+		left: 16px;
+		height: 275px;
+		border-left: 2px solid $border-color;
+
+		.scroller-thumb {
+			left: -5px;
+			&:not(.active) {
+				transition: top 100ms linear;
+			}
+			cursor: grab;
+			&.active {
+				cursor: grabbing;
+			}
+		}
+
+		.unread {
+			width: 1px;
+			height: 0; // initial
+			bottom: 0;
+			background: $primary;
+			transition: $transition-base;
+			left: -1px;
+
+			.meta {
+				left: 5px;
+				font-size: 13px;
+			}
+		}
+	}
+}

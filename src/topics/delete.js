@@ -8,6 +8,7 @@ const categories = require('../categories');
 const flags = require('../flags');
 const plugins = require('../plugins');
 const batch = require('../batch');
+const activitypub = require('../activitypub');
 const utils = require('../utils');
 
 module.exports = function (Topics) {
@@ -24,6 +25,7 @@ module.exports = function (Topics) {
 				deleterUid: uid,
 				deletedTimestamp: Date.now(),
 			}),
+			activitypub.out.remove.context(uid, tid),
 		]);
 
 		await categories.updateRecentTidForCid(cid);
@@ -100,6 +102,7 @@ module.exports = function (Topics) {
 			Topics.deleteTopicTags(tid),
 			Topics.events.purge(tid),
 			Topics.thumbs.deleteAll(tid),
+			Topics.crossposts.removeAll(tid),
 			reduceCounters(tid),
 		]);
 		plugins.hooks.fire('action:topic.purge', { topic: deletedTopic, uid: uid });

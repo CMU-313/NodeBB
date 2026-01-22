@@ -262,6 +262,8 @@ authenticationController.login = async (req, res, next) => {
 			const username = await user.getUsernameByEmail(req.body.username);
 			if (username !== '[[global:guest]]') {
 				req.body.username = username;
+			} else {
+				return errorHandler(req, res, '[[error:invalid-email]]', 400);
 			}
 		}
 		if (isEmailLogin || isUsernameLogin) {
@@ -420,6 +422,10 @@ authenticationController.localLogin = async function (req, username, password, n
 	}
 
 	const userslug = slugify(username);
+	if (!utils.isUserNameValid(username) || !userslug) {
+		return next(new Error('[[error:invalid-username]]'));
+	}
+
 	const uid = await user.getUidByUserslug(userslug);
 	try {
 		const [userData, isAdminOrGlobalMod, canLoginIfBanned] = await Promise.all([
@@ -484,7 +490,7 @@ authenticationController.logout = async function (req, res) {
 		};
 		await plugins.hooks.fire('filter:user.logout', payload);
 
-		if (req.body?.noscript === 'true') {
+		if (req.body?.noscript === 'true' || res.locals.logoutRedirect === true) {
 			return res.redirect(payload.next);
 		}
 		res.status(200).send(payload);

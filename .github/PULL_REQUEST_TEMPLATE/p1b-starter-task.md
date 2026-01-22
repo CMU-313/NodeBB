@@ -8,8 +8,6 @@ Feel free to delete this text at the top after filling out the template.
 
 ## 1. Issue
 
-**Please provide a link to the associated GitHub issue:**
-
 **Link to the associated GitHub issue:**
 
 **Full path to the refactored file:**
@@ -25,17 +23,17 @@ Feel free to delete this text at the top after filling out the template.
 
 ## 2. Refactoring
 
-**How did the specific issue you chose impact the codebase’s adaptability?**
+**How did the specific issue you chose impact the codebase’s maintainability?**
 
 **What changes did you make to resolve the issue?**
 
-**How do your changes improve adaptability? Did you consider alternatives?**
+**How do your changes improve maintainability? Did you consider alternatives?**
 
 ## 3. Validation
 
 **How did you trigger the refactored code path from the UI?**
 
 **Attach a screenshot of the logs and UI demonstrating the trigger.**
-*(Run `./nodebb log`; include the relevant UI view. Temporary logs should be removed before final commit.)*
+*(If you refactored a public/src/ file (front-end related file), watch logging via DevTools (Ctrl+Shift+I to open and then navigate to the 'Console' tab). If you refactored a src/ file, watch logging via ./nodebb log. Include the relevant UI view. Temporary logs should be removed before final commit.)*
 
 **Attach a screenshot of `qlty smells --no-snippets <full/path/to/file.js>` showing fewer reported issues after the changes.**

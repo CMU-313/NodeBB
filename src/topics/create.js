@@ -41,6 +41,12 @@ module.exports = function (Topics) {
 			topicData.tags = data.tags.join(',');
 		}
 
+		if (Array.isArray(data.thumbs) && data.thumbs.length) {
+			const thumbs = Topics.thumbs.filterThumbs(data.thumbs);
+			topicData.thumbs = JSON.stringify(thumbs);
+			topicData.numThumbs = thumbs.length;
+		}
+
 		const result = await plugins.hooks.fire('filter:topic.create', { topic: topicData, data: data });
 		topicData = result.topic;
 		await db.setObject(`topic:${topicData.tid}`, topicData);
@@ -83,11 +89,12 @@ module.exports = function (Topics) {
 	Topics.post = async function (data) {
 		data = await plugins.hooks.fire('filter:topic.post', data);
 		const { uid } = data;
+		const remoteUid = activitypub.helpers.isUri(uid);
 
 		const [categoryExists, canCreate, canTag, isAdmin] = await Promise.all([
 			parseInt(data.cid, 10) > 0 ? categories.exists(data.cid) : true,
-			privileges.categories.can('topics:create', data.cid, uid),
-			privileges.categories.can('topics:tag', data.cid, uid),
+			privileges.categories.can('topics:create', data.cid, remoteUid ? -2 : uid),
+			privileges.categories.can('topics:tag', data.cid, remoteUid ? -2 : uid),
 			privileges.users.isAdministrator(uid),
 		]);
 
@@ -241,7 +248,7 @@ module.exports = function (Topics) {
 
 	async function onNewPost({ pid, tid, uid: postOwner }, { uid, handle }) {
 		const [[postData], [userInfo]] = await Promise.all([
-			posts.getPostSummaryByPids([pid], uid, {}),
+			posts.getPostSummaryByPids([pid], uid, { extraFields: ['attachments'] }),
 			posts.getUserInfoForPosts([postOwner], uid),
 		]);
 		await Promise.all([

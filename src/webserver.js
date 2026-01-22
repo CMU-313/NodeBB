@@ -397,12 +397,10 @@ function setupHelmet(app) {
  */
 function setupFavicon(app) {
 	let faviconPath = meta.config['brand:favicon'] || 'favicon.ico';
-	faviconPath = path.join(
-		nconf.get('base_dir'),
-		'public',
-		faviconPath.replace(/assets\/uploads/, 'uploads')
-	);
-
+	faviconPath = path.join(nconf.get('base_dir'), 'public', faviconPath.replace(/assets\/uploads/, 'uploads'));
+	if (!faviconPath.startsWith(nconf.get('upload_path'))) {
+		faviconPath = path.join(nconf.get('base_dir'), 'public', 'favicon.ico');
+	}
 	if (file.existsSync(faviconPath)) {
 		app.use(nconf.get('relative_path'), favicon(faviconPath));
 	}
@@ -431,11 +429,14 @@ function configureBodyParser(app) {
 	}
 	app.use(bodyParser.urlencoded(urlencodedOpts));
 
-	const jsonOpts =
-		nconf.get('bodyParser:json') || {
-			type: ['application/json', 'application/ld+json', 'application/activity+json'],
-		};
-
+	const jsonOpts = {
+		type: [
+			'application/json',
+			'application/ld+json',
+			'application/activity+json',
+		],
+		...nconf.get('bodyParser:json'),
+	};
 	app.use(bodyParser.json(jsonOpts));
 }
 
@@ -530,8 +531,8 @@ function resolvePortOrSocket(rawPort) {
 function maybeEnableTrustProxy(app, port) {
 	const trustProxyCfg = nconf.get('trust_proxy') === true;
 	if ((port !== 80 && port !== 443) || trustProxyCfg) {
-		winston.info("🤝 Enabling 'trust proxy'");
-		app.enable('trust proxy');
+		winston.info(`🤝 Setting 'trust proxy' to ${JSON.stringify(trust_proxy)}`);
+		app.set('trust proxy', trust_proxy);
 	}
 }
 
