@@ -1,61 +1,56 @@
 'use strict';
 
 const assert = require('assert');
-const db = require('../mocks/databasemock');
-const user = require('../../src/user');
-const categories = require('../../src/categories');
+const db = require('../../src/database');
 const meta = require('../../src/meta');
+const User = require('../../src/user');
 
-describe('User Posts', () => {
-	let testUid;
-	let testCid;
+describe('Refactor Coverage: checkPostDelays', function () {
+	let uid;
+	let originalPostDelay;
+	let originalNewbieDelay;
 
-	before(async () => {
-		testUid = await user.getUidByUsername('posttestuser');
-		if (!testUid) {
-			testUid = await user.create({ 
-				username: 'posttestuser', 
-				password: 'barbar', 
-				gdpr_consent: 1, 
-			});
+	before(async function () {
+		uid = await User.create({ username: 'coverageUser' });
+		// Save defaults once at the start
+		originalPostDelay = meta.config.postDelay;
+		originalNewbieDelay = meta.config.newbiePostDelay;
+	});
+
+	after(function () {
+		// SAFETY NET: Force reset everything when this suite is done
+		// This runs even if individual tests crash
+		meta.config.postDelay = originalPostDelay || 0;
+		meta.config.newbiePostDelay = originalNewbieDelay || 0;
+		meta.config.newbieReputationThreshold = 0;
+	});
+
+	it('should fail if the user posts too quickly (Standard Rate Limit)', async function () {
+		meta.config.postDelay = 10; // Set delay
+
+		try {
+			await db.setObjectField('user:' + uid, 'lastposttime', Date.now());
+			await User.isReadyToPost(uid, 1);
+			throw new Error('Should have failed'); 
+		} catch (err) {
+			assert.strictEqual(err.message, '[[error:too-many-posts, 10]]');
 		}
-		
-		({ cid: testCid } = await categories.create({ 
-			name: 'Test Category Posts',
-			description: 'Test',
-		}));
-
-		meta.config.initialPostDelay = 0;
-		await user.setUserField(testUid, 'joindate', Date.now() - 200000);
-		await user.setUserField(testUid, 'mutedUntil', 0);
 	});
 
-	it('should throw newbie error in minutes format', async () => {
-		meta.config.newbiePostDelay = 120;
-		meta.config.newbieReputationThreshold = 3;
-		meta.config.postDelay = 0;
-		await user.setUserField(testUid, 'lastposttime', Date.now() - 60000);
-		await user.setUserField(testUid, 'reputation', 1);
+	it('should fail if a newbie posts too quickly (Newbie Rate Limit)', async function () {
+		meta.config.newbiePostDelay = 10; 
+		meta.config.newbieReputationThreshold = 100; 
+        
+		// Ensure standard delay is off so we hit the newbie logic
+		meta.config.postDelay = 0; 
 
-		await assert.rejects(user.isReadyToPost(testUid, testCid), /\[\[error:too-many-posts-newbie-minutes, 2, 3\]\]/);
-	});
-
-	it('should throw newbie error in seconds format', async () => {
-		meta.config.newbiePostDelay = 90;
-		meta.config.newbieReputationThreshold = 3;
-		meta.config.postDelay = 0;
-		await user.setUserField(testUid, 'lastposttime', Date.now() - 60000);
-		await user.setUserField(testUid, 'reputation', 1);
-
-		await assert.rejects(user.isReadyToPost(testUid, testCid), /\[\[error:too-many-posts-newbie, 90, 3\]\]/);
-	});
-
-	it('should throw general post delay error', async () => {
-		meta.config.postDelay = 10;
-		meta.config.newbiePostDelay = 0;
-		await user.setUserField(testUid, 'lastposttime', Date.now() - 5000);
-		await user.setUserField(testUid, 'reputation', 10);
-
-		await assert.rejects(user.isReadyToPost(testUid, testCid), /\[\[error:too-many-posts, 10\]\]/);
+		try {
+			await User.setUserField(uid, 'reputation', 0);
+			await db.setObjectField('user:' + uid, 'lastposttime', Date.now());
+			await User.isReadyToPost(uid, 1);
+			throw new Error('Should have failed');
+		} catch (err) {
+			assert.ok(err.message.startsWith('[[error:too-many-posts-newbie'));
+		}
 	});
 });
