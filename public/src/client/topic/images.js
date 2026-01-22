@@ -25,6 +25,7 @@ define('forum/topic/images', [], function () {
 		if (utils.isRelativeUrl(src) && suffixRegex.test(src)) {
 			src = src.replace(suffixRegex, '$1');
 		}
+
 		const alt = imageEl.attr('alt') || '';
 		const srcExt = src.split('.').slice(1).pop();
 		const altFilename = alt.split('/').pop();
