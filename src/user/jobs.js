@@ -27,7 +27,6 @@ function startResetCleanJob(User) {
 module.exports = function (User) {
 	User.startJobs = function () {
 		winston.verbose('[user/jobs] (Re-)starting jobs...');
-		console.log('Junkai Feng');
 
 		const digestHour = getDigesthour(meta.config.digestHour);
 
