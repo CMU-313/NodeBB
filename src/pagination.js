@@ -5,7 +5,33 @@ const _ = require('lodash');
 
 const pagination = module.exports;
 
+
+function parameters(currentPage, pageCount) {
+	const parsePageCount = parseInt(pageCount, 10);
+	const parseCurrentPage = parseInt(currentPage, 10) || 1;
+	return {
+		currentPage: parseCurrentPage, pageCount: parsePageCount,
+		previous: Math.max(1, parseCurrentPage - 1),
+		next: Math.min(parsePageCount, parseCurrentPage + 1),
+	};
+}
+
+function calcPagesToShow(currentPage, pageCount) {
+	let pagesToShow = [1, 2, pageCount - 1, pageCount];
+	let startPage = Math.max(1, currentPage - 2);
+	if (startPage > pageCount - 5) {
+		startPage -= 2 - (pageCount - currentPage);
+	}
+	for (let i = 0; i < 5; i += 1) {
+		pagesToShow.push(startPage + i);
+	}
+
+	pagesToShow = _.uniq(pagesToShow).filter(page => page > 0 && page <= pageCount).sort((a, b) => a - b);
+	return pagesToShow;
+}
+
 pagination.create = function (currentPage, pageCount, queryObj) {
+	console.log('VARIDHI JAIN');
 	if (pageCount <= 1) {
 		return {
 			prev: { page: 1, active: currentPage > 1 },
@@ -18,13 +44,19 @@ pagination.create = function (currentPage, pageCount, queryObj) {
 			pageCount: 1,
 		};
 	}
+	/*
 	pageCount = parseInt(pageCount, 10);
 	let pagesToShow = [1, 2, pageCount - 1, pageCount];
 
 	currentPage = parseInt(currentPage, 10) || 1;
 	const previous = Math.max(1, currentPage - 1);
 	const next = Math.min(pageCount, currentPage + 1);
+	*/
+	const {currentPage: parseCurrentPage, pageCount: parsePageCount, previous, next} = parameters(currentPage, pageCount);
+	currentPage = parseCurrentPage;
+	pageCount = parsePageCount;
 
+	/*
 	let startPage = Math.max(1, currentPage - 2);
 	if (startPage > pageCount - 5) {
 		startPage -= 2 - (pageCount - currentPage);
@@ -34,6 +66,8 @@ pagination.create = function (currentPage, pageCount, queryObj) {
 	}
 
 	pagesToShow = _.uniq(pagesToShow).filter(page => page > 0 && page <= pageCount).sort((a, b) => a - b);
+	*/
+	const pagesToShow = calcPagesToShow(currentPage, pageCount);
 
 	queryObj = { ...(queryObj || {}) };
 
