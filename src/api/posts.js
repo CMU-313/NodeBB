@@ -120,9 +120,7 @@ postsAPI.edit = async function (caller, data) {
 	data.timestamp = parseInt(data.timestamp, 10) || Date.now();
 
 	const editResult = await posts.edit(data);
-	if (editResult.topic.isMainPost) {
-		await topics.thumbs.migrate(data.uuid, editResult.topic.tid);
-	}
+
 	const selfPost = parseInt(caller.uid, 10) === parseInt(editResult.post.uid, 10);
 	if (!selfPost && editResult.post.changed) {
 		await events.log({
@@ -153,7 +151,7 @@ postsAPI.edit = async function (caller, data) {
 	if (!editResult.post.deleted) {
 		websockets.in(`topic_${editResult.topic.tid}`).emit('event:post_edited', editResult);
 		setTimeout(() => {
-			require('.').activitypub.update.note(caller, { post: postObj[0] });
+			activitypub.out.update.note(caller.uid, postObj[0]);
 		}, 5000);
 
 		return returnData;
@@ -192,9 +190,12 @@ async function deleteOrRestore(caller, data, params) {
 	if (!data || !data.pid) {
 		throw new Error('[[error:invalid-data]]');
 	}
-	const postData = await posts.tools[params.command](caller.uid, data.pid);
-	const results = await isMainAndLastPost(data.pid);
-	if (results.isMain && results.isLast) {
+	const [postData, { isMain, isLast }] = await Promise.all([
+		posts.tools[params.command](caller.uid, data.pid),
+		isMainAndLastPost(data.pid),
+		activitypub.out.delete.note(caller.uid, data.pid),
+	]);
+	if (isMain && isLast) {
 		await deleteOrRestoreTopicOf(params.command, data.pid, caller);
 	}
 
@@ -206,11 +207,6 @@ async function deleteOrRestore(caller, data, params) {
 		pid: data.pid,
 		tid: postData.tid,
 		ip: caller.ip,
-	});
-
-	// Explicitly non-awaited
-	posts.getPostSummaryByPids([data.pid], caller.uid, { extraFields: ['edited'] }).then(([post]) => {
-		require('.').activitypub.update.note(caller, { post });
 	});
 }
 
@@ -256,7 +252,7 @@ postsAPI.purge = async function (caller, data) {
 	posts.clearCachedPost(data.pid);
 	await Promise.all([
 		posts.purge(data.pid, caller.uid),
-		require('.').activitypub.delete.note(caller, { pid: data.pid }),
+		activitypub.out.delete.note(caller.uid, data.pid),
 	]);
 
 	websockets.in(`topic_${postData.tid}`).emit('event:post_purged', postData);
@@ -669,3 +665,26 @@ async function sendQueueNotification(type, targetUid, path, notificationText) {
 	const notifObj = await notifications.create(notifData);
 	await notifications.push(notifObj, [targetUid]);
 }
+
+postsAPI.changeOwner = async function (caller, data) {
+	if (!data || !Array.isArray(data.pids) || !data.uid) {
+		throw new Error('[[error:invalid-data]]');
+	}
+	const isAdminOrGlobalMod = await user.isAdminOrGlobalMod(caller.uid);
+	if (!isAdminOrGlobalMod) {
+		throw new Error('[[error:no-privileges]]');
+	}
+
+	const postData = await posts.changeOwner(data.pids, data.uid);
+	const logs = postData.map(({ pid, uid, cid }) => (events.log({
+		type: 'post-change-owner',
+		uid: caller.uid,
+		ip: caller.ip,
+		targetUid: data.uid,
+		pid: pid,
+		originalUid: uid,
+		cid: cid,
+	})));
+
+	await Promise.all(logs);
+};

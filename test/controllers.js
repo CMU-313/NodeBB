@@ -639,7 +639,7 @@ describe('Controllers', () => {
 				});
 
 				assert.strictEqual(response.statusCode, 302);
-				assert.strictEqual(response.headers['set-cookie'], `express.sid=; Path=${nconf.get('relative_path') || '/'}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`);
+				assert.strictEqual(response.headers['set-cookie'], `express.sid=; Path=${nconf.get('relative_path') || '/'}; Expires=Thu, 01 Jan 1970 00:00:00 GMT${nconf.get('secure') ? '; Secure' : ''}; SameSite=Lax`);
 				assert.strictEqual(response.headers.location, `${nconf.get('relative_path')}/`);
 			});
 
@@ -692,15 +692,15 @@ describe('Controllers', () => {
 		assert(body);
 	});
 
-	// it('should 404 if brand:touchIcon is not valid', async () => {
-	// const oldValue = meta.config['brand:touchIcon'];
-	// meta.config['brand:touchIcon'] = '../../not/valid';
+	it('should 404 if brand:touchIcon is not valid', async () => {
+		const oldValue = meta.config['brand:touchIcon'];
+		meta.config['brand:touchIcon'] = '../../not/valid';
 
-	// const { response, body } = await request.get(`${nconf.get('url')}/apple-touch-icon`);
-	// assert.strictEqual(response.statusCode, 404);
-	// assert.strictEqual(body, 'Not found');
-	// meta.config['brand:touchIcon'] = oldValue;
-	// });
+		const { response, body } = await request.get(`${nconf.get('url')}/apple-touch-icon`);
+		assert.strictEqual(response.statusCode, 404);
+		assert.strictEqual(body, 'Not found');
+		meta.config['brand:touchIcon'] = oldValue;
+	});
 
 
 	it('should error if guests do not have search privilege', async () => {
