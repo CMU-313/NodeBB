@@ -23,18 +23,23 @@ module.exports = function (Topics) {
 	};
 
 	Topics.getTopicPosts = async function (topicData, set, start, stop, uid, reverse) {
+		console.log('Lawrence Song (lingyis)');
 		if (!topicData) {
 			return [];
 		}
 
 		let repliesStart = start;
 		let repliesStop = stop;
-		if (stop > 0) {
-			repliesStop -= 1;
-			if (start > 0) {
-				repliesStart -= 1;
-			}
-		}
+		repliesStop -= stop > 0 ? 1 : 0;
+		repliesStart -= stop > 0 && start > 0 ? 1 : 0;
+
+		// if (stop > 0) {
+		// 	repliesStop -= 1;
+		// 	if (start > 0) {
+		// 		repliesStart -= 1;
+		// 	}
+		// }
+		
 		let pids = [];
 		if (start !== 0 || stop !== 0) {
 			pids = await posts.getPidsFromSet(set, repliesStart, repliesStop, reverse);
