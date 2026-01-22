@@ -200,6 +200,7 @@ define('forum/topic/threadTools', [
 					timeout: 5000,
 				});
 			});
+			console.log('AMY MA');
 		}
 	};
 
