@@ -257,65 +257,101 @@ function setupCookie() {
 	return cookie;
 }
 
-async function listen() {
-	let port = nconf.get('port');
-	const isSocket = isNaN(port) && !Array.isArray(port);
-	const socketPath = isSocket ? nconf.get('port') : '';
+const { promisify } = require('util');
 
-	if (Array.isArray(port)) {
-		if (!port.length) {
+function resolvePortOrSocket(rawPort) {
+	// rawPort can be: number|string, array, or socket path string
+	const isSocket = isNaN(rawPort) && !Array.isArray(rawPort);
+	if (isSocket) {
+		return { isSocket: true, port: null, socketPath: String(rawPort) };
+	}
+
+	if (Array.isArray(rawPort)) {
+		if (!rawPort.length) {
 			winston.error('[startup] empty ports array in config.json');
 			process.exit();
 		}
 
 		winston.warn('[startup] If you want to start nodebb on multiple ports please use loader.js');
-		winston.warn(`[startup] Defaulting to first port in array, ${port[0]}`);
-		port = port[0];
-		if (!port) {
+		winston.warn(`[startup] Defaulting to first port in array, ${rawPort[0]}`);
+
+		rawPort = rawPort[0];
+		if (!rawPort) {
 			winston.error('[startup] Invalid port, exiting');
 			process.exit();
 		}
 	}
-	port = parseInt(port, 10);
-	if ((port !== 80 && port !== 443) || nconf.get('trust_proxy') === true) {
+
+	const port = parseInt(rawPort, 10);
+	return { isSocket: false, port, socketPath: '' };
+}
+
+function maybeEnableTrustProxy(app, port) {
+	const trustProxyCfg = nconf.get('trust_proxy') === true;
+	if ((port !== 80 && port !== 443) || trustProxyCfg) {
 		winston.info('🤝 Enabling \'trust proxy\'');
 		app.enable('trust proxy');
 	}
+}
 
+function warnAboutPrivilegedPorts(port) {
 	if ((port === 80 || port === 443) && process.env.NODE_ENV !== 'development') {
 		winston.info('Using ports 80 and 443 is not recommend; use a proxy instead. See README.md');
 	}
+}
 
-	const bind_address = ((nconf.get('bind_address') === '0.0.0.0' || !nconf.get('bind_address')) ? '0.0.0.0' : nconf.get('bind_address'));
-	const args = isSocket ? [socketPath] : [port, bind_address];
-	let oldUmask;
+function getBindAddress() {
+	const bind = nconf.get('bind_address');
+	return (bind === '0.0.0.0' || !bind) ? '0.0.0.0' : bind;
+}
 
-	if (isSocket) {
-		oldUmask = process.umask('0000');
-		try {
-			await exports.testSocket(socketPath);
-		} catch (err) {
-			winston.error(`[startup] NodeBB was unable to secure domain socket access (${socketPath})\n${err.stack}`);
-			throw err;
-		}
+function formatListenText({ isSocket, socketPath, bindAddress, port }) {
+	return isSocket ? socketPath : `${bindAddress}:${port}`;
+}
+
+async function prepareSocket(socketPath) {
+	const oldUmask = process.umask('0000');
+	try {
+		await exports.testSocket(socketPath);
+		return oldUmask;
+	} catch (err) {
+		winston.error(
+			`[startup] NodeBB was unable to secure domain socket access (${socketPath})\n${err.stack}`
+		);
+		process.umask(oldUmask);
+		throw err;
+	}
+}
+
+async function listen() {
+	const { isSocket, port, socketPath } = resolvePortOrSocket(nconf.get('port'));
+
+	// Only meaningful for non-socket
+	if (!isSocket) {
+		maybeEnableTrustProxy(app, port);
+		warnAboutPrivilegedPorts(port);
 	}
 
-	return new Promise((resolve, reject) => {
-		server.listen(...args.concat([function (err) {
-			const onText = `${isSocket ? socketPath : `${bind_address}:${port}`}`;
-			if (err) {
-				winston.error(`[startup] NodeBB was unable to listen on: ${chalk.yellow(onText)}`);
-				reject(err);
-			}
+	const bindAddress = getBindAddress();
+	const oldUmask = isSocket ? await prepareSocket(socketPath) : null;
 
-			winston.info(`📡 NodeBB is now listening on: ${chalk.yellow(onText)}`);
-			winston.info(`🔗 Canonical URL: ${chalk.yellow(nconf.get('url'))}`);
-			if (oldUmask) {
-				process.umask(oldUmask);
-			}
-			resolve();
-		}]));
-	});
+	const listenArgs = isSocket ? [socketPath] : [port, bindAddress];
+	const onText = formatListenText({ isSocket, socketPath, bindAddress, port });
+
+	const listenAsync = promisify(server.listen.bind(server));
+
+	try {
+		await listenAsync(...listenArgs);
+		winston.info(`📡 NodeBB is now listening on: ${chalk.yellow(onText)}`);
+		winston.info(`🔗 Canonical URL: ${chalk.yellow(nconf.get('url'))}`);
+	} catch (err) {
+		winston.error(`[startup] NodeBB was unable to listen on: ${chalk.yellow(onText)}`);
+		throw err;
+	} finally {
+		if (oldUmask !== null && oldUmask !== undefined) {
+			process.umask(oldUmask);
+		}
+	}
 }
 
 exports.testSocket = async function (socketPath) {
