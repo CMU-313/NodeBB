@@ -5,6 +5,7 @@ const plugins = require('../plugins');
 
 // Helper function at module level
 async function toggleBookmark(type, pid, uid, Posts) {
+	console.log('Ben Nematadzira');
 	if (parseInt(uid, 10) <= 0) {
 		throw new Error('[[error:not-logged-in]]');
 	}
@@ -51,6 +52,7 @@ async function hasBookmarked(pid, uid) {
 	if (parseInt(uid, 10) <= 0) {
 		return Array.isArray(pid) ? pid.map(() => false) : false;
 	}
+
 
 	if (Array.isArray(pid)) {
 		const sets = pid.map(pid => `pid:${pid}:users_bookmarked`);
