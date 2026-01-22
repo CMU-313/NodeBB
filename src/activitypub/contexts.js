@@ -81,6 +81,10 @@ Contexts.getItems = async (uid, id, options) => {
 	}
 
 	if (items) {
+		if (options.returnRootId) {
+			return items.pop();
+		}
+
 		items = await Promise.all(items
 			.map(async item => (activitypub.helpers.isUri(item) ? parseString(uid, item) : parseItem(uid, item))));
 		items = items.filter(Boolean);
@@ -111,19 +115,6 @@ Contexts.getItems = async (uid, id, options) => {
 			});
 
 		return chain;
-	}
-
-	// Handle special case where originating object is not actually part of the context collection
-	const inputId = activitypub.helpers.isUri(options.input) ? options.input : options.input.id;
-	const inCollection = Array.from(chain).map(p => p.pid).includes(inputId);
-	if (!inCollection) {
-		const item = activitypub.helpers.isUri(options.input) ?
-			await parseString(uid, options.input) :
-			await parseItem(uid, options.input);
-
-		if (item) {
-			chain.add(item);
-		}
 	}
 
 	return chain;

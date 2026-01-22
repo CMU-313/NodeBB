@@ -1,0 +1,65 @@
+.skin-quartz {
+	// $body-bg-image is gradient in quartz
+	[component="post"] .icon {
+		background-color: transparent !important;
+	}
+	.form-control::placeholder {
+		color:$gray-100!important;
+	}
+}
+
+.skin-solar {
+	.form-control::placeholder {
+		color:$gray-100!important;
+	}
+}
+
+.skin-quartz, .skin-lux, .skin-morph {
+	// $spacer being modified looks bad on this element
+	.topic-list-header .btn, .topic-main-buttons .btn {
+		padding: 6px 12px;
+	}
+}
+
+.skin-yeti {
+	.badge {
+		padding-left: 0.5rem;
+		padding-right: 0.5rem;
+	}
+}
+
+// table color fix, remove once https://github.com/thomaspark/bootswatch/issues/1276 is published
+.skin-darkly, .skin-superhero, .skin-solar, .skin-quartz {
+	table > :not(caption) > * > * {
+		color: white;
+	}
+}
+
+.skin-superhero {
+	// fix read button in dropdowns
+	.mark-read .read {
+		color: $primary!important;
+	}
+}
+
+.skin-slate {
+	// fix unread button colors in dropdowns
+	.mark-read .unread {
+		color: $secondary!important;
+	}
+}
+
+.skin-morph {
+	.text-secondary {
+		color: #7b8ab8!important;
+	}
+}
+
+:root {
+	.skin-darkly, .skin-slate, .skin-cyborg {
+		--bs-border-color: #929292;
+	}
+	.skin-zephyr {
+		--bs-secondary-rgb: var(--bs-secondary-color);
+	}
+}

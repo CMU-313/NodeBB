@@ -44,6 +44,26 @@ describe('Utility Methods', () => {
 		done();
 	});
 
+	describe('utils.stripBidiControls', () => {
+		it('should remove common bidi embedding and override controls', () => {
+			const input = '\u202AHello\u202C \u202BWorld\u202C \u202DDwellers\u202E';
+			const out = utils.stripBidiControls(input);
+			assert.strictEqual(out, 'Hello World Dwellers');
+		});
+
+		it('should remove bidirectional isolate formatting characters', () => {
+			const input = '\u2066abc\u2067def\u2068ghi\u2069';
+			const out = utils.stripBidiControls(input);
+			assert.strictEqual(out, 'abcdefghi');
+		});
+
+		it('should leave normal text unchanged', () => {
+			const input = 'plain text 123';
+			const out = utils.stripBidiControls(input);
+			assert.strictEqual(out, 'plain text 123');
+		});
+	});
+
 	it('should preserve case if requested', (done) => {
 		assert.strictEqual(slugify('UPPER CASE', true), 'UPPER-CASE');
 		done();
@@ -314,6 +334,39 @@ describe('Utility Methods', () => {
 
 	it('should get url params', (done) => {
 		const params = utils.params({ url: 'http://nodebb.org?foo=1&bar=test&herp=2' });
+		assert.strictEqual(params.foo, 1);
+		assert.strictEqual(params.bar, 'test');
+		assert.strictEqual(params.herp, 2);
+		done();
+	});
+
+	it('should get url params for relative url', (done) => {
+		const params = utils.params({
+			url: '/page?foo=1&bar=test&herp=2',
+			relative_path: '',
+		});
+		assert.strictEqual(params.foo, 1);
+		assert.strictEqual(params.bar, 'test');
+		assert.strictEqual(params.herp, 2);
+		done();
+	});
+
+	it('should get url params for relative url', (done) => {
+		const params = utils.params({
+			url: '/page?foo=1&bar=test&herp=2',
+			relative_path: '/forum',
+		});
+		assert.strictEqual(params.foo, 1);
+		assert.strictEqual(params.bar, 'test');
+		assert.strictEqual(params.herp, 2);
+		done();
+	});
+
+	it('should get url params for relative url', (done) => {
+		const params = utils.params({
+			url: '/forum/page?foo=1&bar=test&herp=2',
+			relative_path: '/forum',
+		});
 		assert.strictEqual(params.foo, 1);
 		assert.strictEqual(params.bar, 'test');
 		assert.strictEqual(params.herp, 2);

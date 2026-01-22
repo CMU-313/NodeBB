@@ -5,6 +5,7 @@ const mime = require('mime');
 const path = require('path');
 const validator = require('validator');
 const sanitize = require('sanitize-html');
+const tokenizer = require('sbd');
 
 const db = require('../database');
 const user = require('../user');
@@ -12,6 +13,7 @@ const categories = require('../categories');
 const posts = require('../posts');
 const topics = require('../topics');
 const messaging = require('../messaging');
+const privileges = require('../privileges');
 const plugins = require('../plugins');
 const slugify = require('../slugify');
 const translator = require('../translator');
@@ -32,6 +34,7 @@ const sanitizeConfig = {
 	allowedTags: sanitize.defaults.allowedTags.concat(['img', 'picture', 'source']),
 	allowedClasses: {
 		'*': [],
+		'p': ['quote-inline'],
 	},
 	allowedAttributes: {
 		a: ['href', 'rel'],
@@ -84,7 +87,7 @@ Mocks._normalize = async (object) => {
 		content = '<em>This post did not contain any content.</em>';
 	}
 
-	switch (true) {
+	switch (true) { // image handling
 		case image && image.hasOwnProperty('url') && !!image.url: {
 			image = image.url;
 			break;
@@ -101,7 +104,8 @@ Mocks._normalize = async (object) => {
 	}
 	if (image) {
 		const parsed = new URL(image);
-		if (!mime.getType(parsed.pathname).startsWith('image/')) {
+		const type = mime.getType(parsed.pathname);
+		if (!type || !type.startsWith('image/')) {
 			activitypub.helpers.log(`[activitypub/mocks.post] Received image not identified as image due to MIME type: ${image}`);
 			image = null;
 		}
@@ -191,7 +195,7 @@ Mocks.profile = async (actors) => {
 		const iconBackgrounds = await user.getIconBackgrounds();
 		let bgColor = Array.prototype.reduce.call(preferredUsername, (cur, next) => cur + next.charCodeAt(), 0);
 		bgColor = iconBackgrounds[bgColor % iconBackgrounds.length];
-
+		summary = summary || '';
 		// Replace emoji in summary
 		if (tag && Array.isArray(tag)) {
 			tag
@@ -277,6 +281,7 @@ Mocks.category = async (actors) => {
 		let {
 			url, preferredUsername, icon, /* image, */
 			name, summary, followers, inbox, endpoints, tag,
+			postingRestrictedToMods,
 		} = actor;
 		preferredUsername = slugify(preferredUsername || name);
 		/*
@@ -317,7 +322,7 @@ Mocks.category = async (actors) => {
 		const payload = {
 			cid,
 			name,
-			handle: preferredUsername,
+			handle: `${preferredUsername}@${hostname}`,
 			slug: `${preferredUsername}@${hostname}`,
 			description: summary,
 			descriptionParsed: posts.sanitize(summary),
@@ -334,6 +339,10 @@ Mocks.category = async (actors) => {
 			inbox,
 			sharedInbox: endpoints ? endpoints.sharedInbox : null,
 			followersUrl: followers,
+
+			_activitypub: {
+				postingRestrictedToMods,
+			},
 		};
 
 		return payload;
@@ -408,7 +417,10 @@ Mocks.message = async (object) => {
 		mid: object.id,
 		uid: object.attributedTo,
 		content: object.sourceContent || object.content,
-		// ip: caller.ip,
+
+		_activitypub: {
+			attachment: object.attachment,
+		},
 	};
 
 	return message;
@@ -483,45 +495,54 @@ Mocks.actors.user = async (uid) => {
 	});
 
 	return {
-		'@context': [
-			'https://www.w3.org/ns/activitystreams',
-			'https://w3id.org/security/v1',
-		],
-		id: `${nconf.get('url')}/uid/${uid}`,
-		url: `${nconf.get('url')}/user/${userslug}`,
-		followers: `${nconf.get('url')}/uid/${uid}/followers`,
-		following: `${nconf.get('url')}/uid/${uid}/following`,
-		inbox: `${nconf.get('url')}/uid/${uid}/inbox`,
-		outbox: `${nconf.get('url')}/uid/${uid}/outbox`,
+		...{
+			'@context': [
+				'https://www.w3.org/ns/activitystreams',
+				'https://w3id.org/security/v1',
+			],
+			id: `${nconf.get('url')}/uid/${uid}`,
+			url: `${nconf.get('url')}/user/${userslug}`,
+			followers: `${nconf.get('url')}/uid/${uid}/followers`,
+			following: `${nconf.get('url')}/uid/${uid}/following`,
+			inbox: `${nconf.get('url')}/uid/${uid}/inbox`,
+			outbox: `${nconf.get('url')}/uid/${uid}/outbox`,
 
-		type: 'Person',
-		name: username !== displayname ? fullname : username, // displayname is escaped, fullname is not
-		preferredUsername: userslug,
-		summary: aboutmeParsed,
-		icon: picture,
-		image: cover,
-		published: new Date(joindate).toISOString(),
-		attachment,
+			type: 'Person',
+			name: username !== displayname ? fullname : username, // displayname is escaped, fullname is not
+			preferredUsername: userslug,
+			summary: aboutmeParsed,
+			published: new Date(joindate).toISOString(),
+			attachment,
 
-		publicKey: {
-			id: `${nconf.get('url')}/uid/${uid}#key`,
-			owner: `${nconf.get('url')}/uid/${uid}`,
-			publicKeyPem: publicKey,
+			publicKey: {
+				id: `${nconf.get('url')}/uid/${uid}#key`,
+				owner: `${nconf.get('url')}/uid/${uid}`,
+				publicKeyPem: publicKey,
+			},
+
+			endpoints: {
+				sharedInbox: `${nconf.get('url')}/inbox`,
+			},
 		},
-
-		endpoints: {
-			sharedInbox: `${nconf.get('url')}/inbox`,
-		},
+		...(picture && { icon: picture }),
+		...(cover && { image: cover }),
 	};
 };
 
 Mocks.actors.category = async (cid) => {
-	let {
-		name, handle: preferredUsername, slug,
-		descriptionParsed: summary, federatedDescription, backgroundImage,
-	} = await categories.getCategoryFields(cid,
-		['name', 'handle', 'slug', 'description', 'descriptionParsed', 'federatedDescription', 'backgroundImage']);
-	const publicKey = await activitypub.getPublicKey('cid', cid);
+	const [
+		{
+			name, handle: preferredUsername, slug,
+			descriptionParsed: summary, backgroundImage,
+		},
+		publicKey,
+		canPost,
+	] = await Promise.all([
+		categories.getCategoryFields(cid,
+			['name', 'handle', 'slug', 'description', 'descriptionParsed', 'backgroundImage']),
+		activitypub.getPublicKey('cid', cid),
+		privileges.categories.can('topics:create', cid, -2),
+	]);
 
 	let icon;
 	if (backgroundImage) {
@@ -541,14 +562,11 @@ Mocks.actors.category = async (cid) => {
 		};
 	}
 
-	// Append federated desc.
-	const fallback = await translator.translate('[[admin/manage/categories:federatedDescription.default]]');
-	summary += `<hr /><p dir="auto">${federatedDescription || fallback}</p>\n`;
-
 	return {
 		'@context': [
 			'https://www.w3.org/ns/activitystreams',
 			'https://w3id.org/security/v1',
+			'https://join-lemmy.org/context.json',
 		],
 		id: `${nconf.get('url')}/category/${cid}`,
 		url: `${nconf.get('url')}/category/${slug}`,
@@ -558,11 +576,12 @@ Mocks.actors.category = async (cid) => {
 		outbox: `${nconf.get('url')}/category/${cid}/outbox`,
 
 		type: 'Group',
-		name,
+		name: utils.decodeHTMLEntities(name),
 		preferredUsername,
-		summary,
+		summary: utils.decodeHTMLEntities(summary),
 		// image, // todo once categories have cover photos
 		icon,
+		postingRestrictedToMods: !canPost,
 
 		publicKey: {
 			id: `${nconf.get('url')}/category/${cid}#key`,
@@ -601,7 +620,6 @@ Mocks.notes.public = async (post) => {
 	let inReplyTo = null;
 	let tag = null;
 	let followersUrl;
-	const isMainPost = post.pid === post.topic.mainPid;
 
 	let name = null;
 	({ titleRaw: name } = await topics.getTopicFields(post.tid, ['title']));
@@ -714,9 +732,15 @@ Mocks.notes.public = async (post) => {
 	});
 
 	// Special handling for main posts (as:Article w/ as:Note preview)
-	const noteAttachment = isMainPost ? [...attachment] : null;
-	const uploads = await posts.uploads.listWithSizes(post.pid);
-	const isThumb = await db.isSortedSetMembers(`topic:${post.tid}:thumbs`, uploads.map(u => u.name));
+	const plaintext = posts.sanitizePlaintext(content);
+	const isArticle = post.pid === post.topic.mainPid && plaintext.length > 500;
+	const noteAttachment = isArticle ? [...attachment] : null;
+	const [uploads, thumbs] = await Promise.all([
+		posts.uploads.listWithSizes(post.pid),
+		topics.getTopicField(post.tid, 'thumbs'),
+	]);
+	const isThumb = uploads.map(u => Array.isArray(thumbs) ? thumbs.includes(u.name) : false);
+
 	uploads.forEach(({ name, width, height }, idx) => {
 		const mediaType = mime.getType(name);
 		const url = `${nconf.get('url') + nconf.get('upload_url')}/${name}`;
@@ -742,7 +766,7 @@ Mocks.notes.public = async (post) => {
 	attachment = normalizeAttachment(attachment);
 	let preview;
 	let summary = null;
-	if (isMainPost) {
+	if (isArticle) {
 		preview = {
 			type: 'Note',
 			attributedTo: `${nconf.get('url')}/uid/${post.user.uid}`,
@@ -751,7 +775,25 @@ Mocks.notes.public = async (post) => {
 			attachment: normalizeAttachment(noteAttachment),
 		};
 
-		summary = post.content;
+		const sentences = tokenizer.sentences(post.content, { newline_boundaries: true });
+		// Append sentences to summary until it contains just under 500 characters of content
+		const limit = 500;
+		let remaining = limit;
+		summary = sentences.reduce((memo, sentence) => {
+			const clean = sanitize(sentence, {
+				allowedTags: [],
+				allowedAttributes: {},
+			});
+			remaining = remaining - clean.length;
+			if (remaining > 0) {
+				memo += ` ${sentence}`;
+			}
+
+			return memo;
+		}, '');
+
+		// Final sanitization to clean up tags
+		summary = posts.sanitize(summary);
 	}
 
 	let context = await posts.getPostField(post.pid, 'context');
@@ -774,7 +816,7 @@ Mocks.notes.public = async (post) => {
 	let object = {
 		'@context': 'https://www.w3.org/ns/activitystreams',
 		id,
-		type: isMainPost ? 'Article' : 'Note',
+		type: isArticle ? 'Article' : 'Note',
 		to: Array.from(to),
 		cc: Array.from(cc),
 		inReplyTo,
@@ -816,6 +858,13 @@ Mocks.notes.private = async ({ messageObj }) => {
 	const to = new Set(uids.map(uid => (utils.isNumber(uid) ? `${nconf.get('url')}/uid/${uid}` : uid)));
 	const published = messageObj.timestampISO;
 	const updated = messageObj.edited ? messageObj.editedISO : undefined;
+
+	const content = await messaging.getMessageField(messageObj.mid, 'content');
+	messageObj.content = content; // re-send raw content into parsePost
+	const parsed = await posts.parsePost(messageObj, 'activitypub.note');
+	messageObj.content = sanitize(parsed.content, sanitizeConfig);
+	messageObj.content = posts.relativeToAbsolute(messageObj.content, posts.urlRegex);
+	messageObj.content = posts.relativeToAbsolute(messageObj.content, posts.imgRegex);
 
 	let source;
 	const markdownEnabled = await plugins.isActive('nodebb-plugin-markdown');
