@@ -169,8 +169,6 @@ module.exports = function (User) {
 		if (!utils.isUserNameValid(username) || !userslug) {
 			throw new Error('[[error:invalid-username]]');
 		}
-
-		return userslug;
 	}
 
 	async function checkUsernameUniqueness(userslug, username) {
@@ -202,11 +200,13 @@ module.exports = function (User) {
 			}
 		}
 
-		const userslug = validateUsernameFormat(data.username);
-
-		if (uid && userslug === userData.userslug) {
+		const userslug = slugify(data.username);
+		
+		if (uid && userData && userslug === userData.userslug) {
 			return;
 		}
+
+		validateUsernameFormat(data.username);
 
 		await checkUsernameUniqueness(userslug, data.username);
 	}
