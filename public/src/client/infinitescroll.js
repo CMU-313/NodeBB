@@ -45,7 +45,7 @@ define('forum/infinitescroll', ['hooks', 'alerts', 'api'], function (hooks, aler
 
 		const metrics = getMetrics();
 		const direction = getDirection(metrics.currentScrollTop);
-		
+
 		if (getTrigger(metrics)) {
 			callback(direction);
 		}
