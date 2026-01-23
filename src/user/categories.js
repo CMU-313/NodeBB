@@ -9,34 +9,6 @@ const activitypub = require('../activitypub');
 const plugins = require('../plugins');
 const utils = require('../utils');
 
-// async function setCategoryWatchState(User, uid, cids, state) {
-// 	if (utils.isNumber(uid) && parseInt(uid, 10) <= 0) {
-// 		return;
-// 	}
-
-// 	const isStateValid = Object.values(categories.watchStates).includes(parseInt(state, 10));
-// 	if (!isStateValid) {
-// 		throw new Error('[[error:invalid-watch-state]]');
-// 	}
-
-// 	cids = new Set(Array.isArray(cids) ? cids : [cids]);
-// 	cids.delete(-1); // cannot watch cid -1
-// 	cids.delete('-1');
-// 	cids = Array.from(cids);
-
-// 	const exists = await categories.exists(cids);
-// 	if (exists.includes(false)) {
-// 		throw new Error('[[error:no-category]]');
-// 	}
-
-// 	const apiMethod = state >= categories.watchStates.tracking ? activitypub.out.follow : activitypub.out.undo.follow;
-// 	const follows = cids.filter(cid => !utils.isNumber(cid)).map(cid => apiMethod('uid', uid, cid)); // returns promises
-
-// 	await Promise.all([
-// 		db.sortedSetsAdd(cids.map(cid => `cid:${cid}:uid:watch:state`), state, uid),
-// 		...follows,
-// 	]);
-// }
 
 async function getCategoryWatchState(User, uid) {
     if (!(parseInt(uid, 10) > 0)) {
