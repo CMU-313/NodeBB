@@ -30,7 +30,15 @@ module.exports = function (Groups) {
 	}
 
 	Groups.getUserInviteGroups = async function (uid) {
-		let allGroups = await Groups.getNonPrivilegeGroups('groups:createtime', 0, -1);
+		const caller_info = {
+			set: 'groups:createtime',
+			start: 0,
+			stop: -1,
+			flags: undefined,
+		};
+
+		let allGroups = await Groups.getNonPrivilegeGroups(caller_info);
+		//('groups:createtime', 0, -1);
 		allGroups = allGroups.filter(group => !Groups.ephemeralGroups.includes(group.name));
 
 		const publicGroups = allGroups.filter(group => group.hidden === 0 && group.system === 0 && group.private === 0);
