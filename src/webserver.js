@@ -561,14 +561,14 @@ function warnAboutPrivilegedPorts(port) {
  *
  * Behavior:
  * - Reads `nconf.get('bind_address')`.
- * - If unset or explicitly set to `0.0.0.0`, returns `0.0.0.0` (all interfaces).
+ * - If unset returns `0.0.0.0` (all interfaces).
  * - Otherwise returns the configured value (e.g., `127.0.0.1`, LAN IP, etc.).
  *
  * @returns {string} Bind address for server.listen.
  */
 function getBindAddress() {
 	const bind = nconf.get('bind_address');
-	return (bind === '0.0.0.0' || !bind) ? '0.0.0.0' : bind;
+	return !bind ? '0.0.0.0' : bind;
 }
 
 /**
