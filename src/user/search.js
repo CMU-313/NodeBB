@@ -69,13 +69,13 @@ module.exports = function (User) {
 
 		const { handle, remoteId } = getRemoteIdentifier(data.query);
 		if (!remoteId) {
-            return [];
-        }
+			return [];
+		}
 
 		const localUid = await resolveLocalUserUid(data.query);
 		if (localUid !== null) {
-            return [localUid];
-        }
+			return [localUid];
+		}
 
 		return resolveFromAssertion({
 			User,
