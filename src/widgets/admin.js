@@ -45,7 +45,13 @@ async function getAvailableWidgets() {
 }
 
 async function renderAdminTemplate() {
-	const groupsData = await groups.getNonPrivilegeGroups('groups:createtime', 0, -1);
+	const caller_info = {
+		set: 'groups:createtime',
+		start: 0,
+		stop: -1,
+		flags: undefined,
+	};
+	const groupsData = await groups.getNonPrivilegeGroups(caller_info);
 	groupsData.sort((a, b) => b.system - a.system);
 	return await webserver.app.renderAsync('admin/partials/widget-settings', { groups: groupsData });
 }
