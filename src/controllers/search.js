@@ -34,12 +34,11 @@ searchController.search = async function (req, res, next) {
 	});
 	req.query.in = req.query.in || meta.config.searchDefaultIn || 'titlesposts';
 
-	console.log('-----------BEFORE RUNNING REFACTORED CODE----------------');
 	const canSearchUsers = req.query.in === 'users' && userPrivileges['search:users'];
 	const canTagUsers = req.query.in === 'tags' && userPrivileges['search:tags'];
 	const isCategory = req.query.in === 'cnoategories';
 	const typesInQuery = ['titles', 'titlesposts', 'posts', 'bookmarks'].includes(req.query.in) && userPrivileges['search:content'];
-	console.log('-----------AFTER RUNNING REFACTORED CODE----------------');
+
 	let allowed = canSearchUsers || canTagUsers || isCategory || typesInQuery;
 	
 	({ allowed } = await plugins.hooks.fire('filter:search.isAllowed', {
