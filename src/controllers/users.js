@@ -151,7 +151,9 @@ usersController.getUsers = async function (set, uid, query) {
 	};
 };
 
-usersController.getUsersAndCount = async function ({set, uid, start, stop}) {
+usersController.getUsersAndCount = async function (...args) {
+	const [set, uid, start, stop] = args;
+	
 	async function getCount() {
 		let result;
 		if (set === 'users:online') {
