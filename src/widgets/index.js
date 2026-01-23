@@ -53,7 +53,6 @@ async function renderLocation(location, data, uid, options, config) {
 	return renderedWidgets;
 }
 
-console.log('Lilly Yang');
 async function renderWidget(widget, context, config) {
 	const { uid, options, location } = context;
 
