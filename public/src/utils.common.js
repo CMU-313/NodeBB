@@ -300,7 +300,9 @@ const utils = {
 		const pattern = (tags || ['']).join('|');
 		return String(str).replace(new RegExp('<(\\/)?(' + (pattern || '[^\\s>]+') + ')(\\s+[^<>]*?)?\\s*(\\/)?>', 'gi'), '');
 	},
-
+	stripBidiControls: function (input) {
+		return input.replace(/[\u202A-\u202E\u2066-\u2069]/g, '');
+	},
 	cleanUpTag: function (tag, maxLength) {
 		if (typeof tag !== 'string' || !tag.length) {
 			return '';
@@ -570,10 +572,7 @@ const utils = {
 	params: function (options = {}) {
 		let url;
 		if (options.url && !options.url.startsWith('http')) {
-			// relative path passed in
-			options.url = options.url.replace(new RegExp(`/?${config.relative_path.slice(1)}/`, 'g'), '');
-			url = new URL(document.location);
-			url.pathname = options.url;
+			url = new URL(options.url, 'http://dummybase');
 		} else {
 			url = new URL(options.url || document.location);
 		}

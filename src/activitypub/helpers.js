@@ -5,7 +5,6 @@ const process = require('process');
 const nconf = require('nconf');
 const winston = require('winston');
 const validator = require('validator');
-// const cheerio = require('cheerio');
 const crypto = require('crypto');
 
 const meta = require('../meta');
@@ -21,6 +20,7 @@ const activitypub = require('.');
 
 const webfingerRegex = /^(@|acct:)?[\w-.]+@.+$/;
 const webfingerCache = ttl({
+	name: 'ap-webfinger-cache',
 	max: 5000,
 	ttl: 1000 * 60 * 60 * 24, // 24 hours
 });
@@ -112,6 +112,7 @@ Helpers.query = async (id) => {
 			headers: {
 				accept: 'application/jrd+json',
 			},
+			timeout: 5000,
 		}));
 	} catch (e) {
 		return false;
@@ -128,9 +129,12 @@ Helpers.query = async (id) => {
 		({ href: actorUri } = actorUri);
 	}
 
-	const { subject, publicKey } = body;
+	let { subject, publicKey } = body;
+	// Fix missing scheme
+	if (!subject.startsWith('acct:') && !subject.startsWith('did:')) {
+		subject = `acct:${subject}`;
+	}
 	const payload = { subject, username, hostname, actorUri, publicKey };
-
 	const claimedId = new URL(subject).pathname;
 	webfingerCache.set(claimedId, payload);
 	if (claimedId !== id) {
@@ -192,6 +196,9 @@ Helpers.resolveLocalId = async (input) => {
 
 				case 'message':
 					return { type: 'message', id: value, ...activityData };
+
+				case 'actor':
+					return { type: 'application', id: null };
 			}
 
 			return { type: null, id: null, ...activityData };
@@ -217,7 +224,7 @@ Helpers.resolveActor = (type, id) => {
 
 		case 'category':
 		case 'cid': {
-			return `${nconf.get('url')}/category/${id}`;
+			return `${nconf.get('url')}${id > 0 ? `/category/${id}` : '/actor'}`;
 		}
 
 		default:
@@ -517,4 +524,21 @@ Helpers.generateDigest = (set) => {
 			const result = a.map((x, i) => x ^ b[i]);
 			return result.toString('hex');
 		});
+};
+
+Helpers.addressed = (id, activity) => {
+	// Returns Boolean for if id is found in addressing fields (to, cc, etc.)
+	if (!id || !activity || typeof activity !== 'object') {
+		return false;
+	}
+
+	const combined = new Set([
+		...(activity.to || []),
+		...(activity.cc || []),
+		...(activity.bto || []),
+		...(activity.bcc || []),
+		...(activity.audience || []),
+	]);
+
+	return combined.has(id);
 };

@@ -5,7 +5,6 @@ const validator = require('validator');
 const nconf = require('nconf');
 const toobusy = require('toobusy-js');
 const util = require('util');
-const multipart = require('connect-multiparty');
 const { csrfSynchronisedProtection } = require('./csrf');
 
 const plugins = require('../plugins');
@@ -24,10 +23,11 @@ const controllers = {
 };
 
 const delayCache = cacheCreate({
+	name: 'delay-middleware',
 	ttl: 1000 * 60,
 	max: 200,
 });
-const multipartMiddleware = multipart();
+
 
 const middleware = module.exports;
 
@@ -101,17 +101,30 @@ middleware.pluginHooks = helpers.try(async (req, res, next) => {
 });
 
 middleware.validateFiles = function validateFiles(req, res, next) {
-	if (!req.files.files) {
+	if (!req.files) {
 		return next(new Error(['[[error:invalid-files]]']));
 	}
-
-	if (Array.isArray(req.files.files) && req.files.files.length) {
-		return next();
+	function makeFilesCompatible(files) {
+		if (Array.isArray(files)) {
+			// multer uses originalname and mimetype, but we use name and type
+			files.forEach((file) => {
+				if (file.originalname) {
+					file.name = file.originalname;
+				}
+				if (file.mimetype) {
+					file.type = file.mimetype;
+				}
+			});
+		}
+		next();
+	}
+	if (Array.isArray(req.files) && req.files.length) {
+		return makeFilesCompatible(req.files);
 	}
 
-	if (typeof req.files.files === 'object') {
-		req.files.files = [req.files.files];
-		return next();
+	if (typeof req.files === 'object') {
+		req.files = [req.files];
+		return makeFilesCompatible(req.files);
 	}
 
 	return next(new Error(['[[error:invalid-files]]']));
@@ -132,12 +145,18 @@ middleware.logApiUsage = async function logApiUsage(req, res, next) {
 };
 
 middleware.routeTouchIcon = function routeTouchIcon(req, res) {
-	if (meta.config['brand:touchIcon'] && validator.isURL(meta.config['brand:touchIcon'])) {
-		return res.redirect(meta.config['brand:touchIcon']);
+	const brandTouchIcon = meta.config['brand:touchIcon'];
+	if (brandTouchIcon && validator.isURL(brandTouchIcon)) {
+		return res.redirect(brandTouchIcon);
 	}
+
 	let iconPath = '';
-	if (meta.config['brand:touchIcon']) {
-		iconPath = path.join(nconf.get('upload_path'), meta.config['brand:touchIcon'].replace(/assets\/uploads/, ''));
+	if (brandTouchIcon) {
+		const uploadPath = nconf.get('upload_path');
+		iconPath = path.join(uploadPath, brandTouchIcon.replace(/assets\/uploads/, ''));
+		if (!iconPath.startsWith(uploadPath)) {
+			return res.status(404).send('Not found');
+		}
 	} else {
 		iconPath = path.join(nconf.get('base_dir'), 'public/images/touch/512.png');
 	}
@@ -254,10 +273,19 @@ middleware.buildSkinAsset = helpers.try(async (req, res, next) => {
 middleware.addUploadHeaders = function addUploadHeaders(req, res, next) {
 	// Trim uploaded files' timestamps when downloading + force download if html
 	let basename = path.basename(req.path);
-	const extname = path.extname(req.path);
-	if (req.path.startsWith('/uploads/files/') && middleware.regexes.timestampedUpload.test(basename)) {
-		basename = basename.slice(14);
-		res.header('Content-Disposition', `${extname.startsWith('.htm') ? 'attachment' : 'inline'}; filename="${basename}"`);
+	const extname = path.extname(req.path).toLowerCase();
+	const unsafeExtensions = [
+		'.html', '.htm', '.xhtml', '.mht', '.mhtml', '.stm', '.shtm', '.shtml',
+		'.svg', '.svgz',
+		'.xml', '.xsl', '.xslt',
+	];
+	const isInlineSafe = !unsafeExtensions.includes(extname);
+	const dispositionType = isInlineSafe ? 'inline' : 'attachment';
+	if (req.path.startsWith('/uploads/files/')) {
+		if (middleware.regexes.timestampedUpload.test(basename)) {
+			basename = basename.slice(14);
+		}
+		res.header('Content-Disposition', `${dispositionType}; filename="${basename}"`);
 	}
 
 	next();
@@ -290,15 +318,4 @@ middleware.checkRequired = function (fields, req, res, next) {
 	}
 
 	controllers.helpers.formatApiResponse(400, res, new Error(`[[error:required-parameters-missing, ${missing.join(' ')}]]`));
-};
-
-middleware.handleMultipart = (req, res, next) => {
-	// Applies multipart handler on applicable content-type
-	const { 'content-type': contentType } = req.headers;
-
-	if (contentType && !contentType.startsWith('multipart/form-data')) {
-		return next();
-	}
-
-	multipartMiddleware(req, res, next);
 };

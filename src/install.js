@@ -19,7 +19,7 @@ questions.main = [
 		name: 'url',
 		description: 'URL used to access this NodeBB',
 		default:
-			nconf.get('url') || 'http://localhost:4567',
+			nconf.get('url') || 'http://127.0.0.1:4567',
 		pattern: /^http(?:s)?:\/\//,
 		message: 'Base URL must begin with \'http://\' or \'https://\'',
 	},
@@ -526,6 +526,7 @@ async function enableDefaultPlugins() {
 
 	let defaultEnabled = [
 		'nodebb-plugin-composer-default',
+		'nodebb-plugin-dbsearch',
 		'nodebb-plugin-markdown',
 		'nodebb-plugin-mentions',
 		'nodebb-plugin-web-push',
