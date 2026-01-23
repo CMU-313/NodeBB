@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const os = require('os');
+const path = require('path');
 const async = require('async');
 const winston = require('winston');
 const postcss = require('postcss');
@@ -160,9 +161,13 @@ Minifier.js.bundle = async function (data, fork) {
 actions.buildCSS = async function buildCSS(data) {
 	let css = '';
 	try {
+		const entryPointDirectory = path.resolve(__dirname, '../../');
 		const opts = {
 			loadPaths: data.paths,
 		};
+		if (sass.NodePackageImporter) {
+			opts.importers = [new sass.NodePackageImporter(entryPointDirectory)];
+		}
 		if (data.minify) {
 			opts.silenceDeprecations = [
 				'legacy-js-api', 'mixed-decls', 'color-functions',

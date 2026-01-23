@@ -13,6 +13,7 @@ const activitypub = require('../activitypub');
 const utils = require('../utils');
 const translator = require('../translator');
 const cache = require('../cache');
+// const rooms = require('./rooms');
 
 const relative_path = nconf.get('relative_path');
 
@@ -124,6 +125,22 @@ Messaging.getPublicRoomIdsFromSet = async function (set) {
 	return allRoomIds.slice();
 };
 
+async function canUserAccessRoom(room, uid, isAdmin) {
+	if (!room) {
+		return false;
+	}
+
+	if (!Array.isArray(room.groups) || !room.groups.length) {
+		return true;
+	}
+
+	if (isAdmin) {
+		return true;
+	}
+
+	return await groups.isMemberOfAny(uid, room.groups);
+}
+
 Messaging.getPublicRooms = async (callerUid, uid) => {
 	const ok = await canGet('filter:messaging.canGetPublicChats', callerUid, uid);
 	if (!ok) {
@@ -133,15 +150,9 @@ Messaging.getPublicRooms = async (callerUid, uid) => {
 	const allRoomIds = await Messaging.getPublicRoomIdsFromSet('chat:rooms:public:order');
 	const allRoomData = await Messaging.getRoomsData(allRoomIds);
 	const isAdmin = await privileges.users.isAdministrator(callerUid);
+	console.log('Eugene');
 	const checks = await Promise.all(
-		allRoomData.map(
-			room => room && (
-				!Array.isArray(room.groups) ||
-				!room.groups.length ||
-				isAdmin ||
-				groups.isMemberOfAny(uid, room && room.groups)
-			)
-		)
+		allRoomData.map(room => canUserAccessRoom(room, uid, isAdmin))
 	);
 
 	const roomData = allRoomData.filter((room, idx) => room && checks[idx]);
