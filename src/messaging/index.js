@@ -150,7 +150,6 @@ Messaging.getPublicRooms = async (callerUid, uid) => {
 	const allRoomIds = await Messaging.getPublicRoomIdsFromSet('chat:rooms:public:order');
 	const allRoomData = await Messaging.getRoomsData(allRoomIds);
 	const isAdmin = await privileges.users.isAdministrator(callerUid);
-	console.log('Eugene');
 	const checks = await Promise.all(
 		allRoomData.map(room => canUserAccessRoom(room, uid, isAdmin))
 	);
