@@ -200,7 +200,7 @@ define('admin/manage/categories', [
 		newCategoryId = e.to.dataset.cid;
 	}
 
-	function updateCategoryToggleVisibility(parentCid, isVisible) {				
+	function updateCategoryToggleVisibility(parentCid, isVisible) {
 		const toggle = document.querySelector(`.categories li[data-cid="${parentCid}"] .toggle`);
 		if (toggle) {
 			toggle.classList.toggle('invisible', !isVisible);
