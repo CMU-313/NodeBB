@@ -48,15 +48,12 @@ module.exports = function (User) {
 	}
 
 	async function resolveFromAssertion(ctx) {
-		const { User, handle, remoteId, fallbackUid } = ctx;
+		const {User, handle, remoteId, fallbackUid} = ctx;
 
 		const assertion = await activitypub.actors.assert([remoteId]);
 
 		if (assertion === true) {
-			const uid = handle ?
-				await User.getUidByUserslug(handle) :
-				fallbackUid;
-
+			const uid = handle ? await User.getUidByUserslug(handle) : fallbackUid;
 			return [uid];
 		}
 
@@ -71,10 +68,14 @@ module.exports = function (User) {
 		if (shouldSkipUidSearch(data)) return [];
 
 		const { handle, remoteId } = getRemoteIdentifier(data.query);
-		if (!remoteId) return [];
+		if (!remoteId) {
+            return [];
+        }
 
 		const localUid = await resolveLocalUserUid(data.query);
-		if (localUid !== null) return [localUid];
+		if (localUid !== null) {
+            return [localUid];
+        }
 
 		return resolveFromAssertion({
 			User,
@@ -100,7 +101,6 @@ module.exports = function (User) {
 		} else if (searchBy === 'uid') {
 			uids = [query];
 		} else {
-			console.log('KENDRIC TERRY');
 			uids = await searchActivityPubUids(User,data,query);
 
 			if (!uids.length) {
