@@ -529,10 +529,13 @@ function resolvePortOrSocket(rawPort) {
  * @returns {void}
  */
 function maybeEnableTrustProxy(app, port) {
-	const trustProxyCfg = nconf.get('trust_proxy') === true;
-	if ((port !== 80 && port !== 443) || trustProxyCfg) {
-		winston.info(`🤝 Setting 'trust proxy' to ${JSON.stringify(trustProxyCfg)}`);
-		app.set('trust proxy', trustProxyCfg);
+	let trust_proxy = nconf.get('trust_proxy');
+	if (trust_proxy == null && ![80, 443].includes(port)) {
+		trust_proxy = true;
+	}
+	if (trust_proxy) {
+		winston.info(`🤝 Setting 'trust proxy' to ${JSON.stringify(trust_proxy)}`);
+		app.set('trust proxy', trust_proxy);
 	}
 }
 
@@ -565,7 +568,7 @@ function warnAboutPrivilegedPorts(port) {
  */
 function getBindAddress() {
 	const bind = nconf.get('bind_address');
-	return bind === '0.0.0.0' || !bind ? '0.0.0.0' : bind;
+	return (bind === '0.0.0.0' || !bind) ? '0.0.0.0' : bind;
 }
 
 /**
