@@ -24,7 +24,9 @@ module.exports = function (User) {
 		return isArray ? isBlocked : isBlocked[0];
 	};
 
-	User.blocks.can = async function (callerUid, blockerUid, blockeeUid, type) {
+	User.blocks.can = async function (...args) {
+		const [callerUid, blockerUid, blockeeUid, type] = args;
+		console.log("Yari Gonzalez");
 		// Guests can't block
 		if (blockerUid === 0 || blockeeUid === 0) {
 			throw new Error('[[error:cannot-block-guest]]');
