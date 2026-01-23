@@ -88,50 +88,62 @@ SocketRooms.getOnlineUserCount = function (io) {
 };
 
 SocketRooms.getLocalStats = function () {
+	console.log('Jai Nukala - SocketRooms.getLocalStats called');
 	const Sockets = require('../index');
 	const io = Sockets.server;
 
-	const socketData = {
+	// 1. Default State (Early exit if no IO)
+	const stats = createEmptyStatsObject(webserver.getConnectionCount());
+	if (!io?.sockets?.adapter?.rooms) return stats;
+
+	// 2. Direct Counts
+	stats.onlineGuestCount = Sockets.getCountInRoom('online_guests');
+	stats.onlineRegisteredCount = SocketRooms.getOnlineUserCount(io);
+	stats.socketCount = io.sockets.sockets.size;
+	stats.users.categories = Sockets.getCountInRoom('categories');
+	stats.users.recent = Sockets.getCountInRoom('recent_topics');
+	stats.users.unread = Sockets.getCountInRoom('unread_topics');
+
+	// 3. Process Rooms (Extracted logic to reduce complexity)
+	const topicList = [];
+
+	for (const [room, clients] of io.sockets.adapter.rooms) {
+		processRoomData({
+			room,
+			size: clients.size,
+			stats,
+			topicList,
+		});
+	}
+
+	// 4. Finalize Topics
+	stats.topics = topicList
+		.sort((a, b) => b.count - a.count)
+		.slice(0, 10);
+
+	return stats;
+};
+
+// Helper to keep the main function clean
+function processRoomData({ room, size, stats, topicList }) {
+	if (room.startsWith('topic_')) {
+		const tid = room.split('_')[1];
+		stats.users.topics += size;
+		topicList.push({ tid, count: size });
+	} else if (room.startsWith('category')) {
+		stats.users.category += size;
+	}
+}
+
+function createEmptyStatsObject(connCount) {
+	return {
 		onlineGuestCount: 0,
 		onlineRegisteredCount: 0,
 		socketCount: 0,
-		connectionCount: webserver.getConnectionCount(),
-		users: {
-			categories: 0,
-			recent: 0,
-			unread: 0,
-			topics: 0,
-			category: 0,
-		},
-		topics: {},
+		connectionCount: connCount,
+		users: { categories: 0, recent: 0, unread: 0, topics: 0, category: 0 },
+		topics: [],
 	};
-
-	if (io && io.sockets) {
-		socketData.onlineGuestCount = Sockets.getCountInRoom('online_guests');
-		socketData.onlineRegisteredCount = SocketRooms.getOnlineUserCount(io);
-		socketData.socketCount = io.sockets.sockets.size;
-		socketData.users.categories = Sockets.getCountInRoom('categories');
-		socketData.users.recent = Sockets.getCountInRoom('recent_topics');
-		socketData.users.unread = Sockets.getCountInRoom('unread_topics');
-
-		let topTenTopics = [];
-		let tid;
-
-		for (const [room, clients] of io.sockets.adapter.rooms) {
-			tid = room.match(/^topic_(\d+)/);
-			if (tid) {
-				socketData.users.topics += clients.size;
-				topTenTopics.push({ tid: tid[1], count: clients.size });
-			} else if (room.match(/^category/)) {
-				socketData.users.category += clients.size;
-			}
-		}
-
-		topTenTopics = topTenTopics.sort((a, b) => b.count - a.count).slice(0, 10);
-		socketData.topics = topTenTopics;
-	}
-
-	return socketData;
-};
+}
 
 require('../../promisify')(SocketRooms);
