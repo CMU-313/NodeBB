@@ -92,6 +92,20 @@ module.exports = function (utils, load, warn) {
 				return arr;
 			}
 
+			const parseToken = (tokenContent) => {
+				const result = split(tokenContent);
+				const name = result[0];
+				const args = result.slice(1);
+
+				// make a backup based on the raw string of the token
+				// if there are arguments to the token
+				let backup = '';
+				if (args && args.length) {
+					backup = this.translate(tokenContent);
+				}
+				return this.translateKey(name, args, backup);
+			};
+
 			// move to the first [[
 			cursor = str.indexOf('[[', cursor);
 
@@ -130,22 +144,22 @@ module.exports = function (utils, load, warn) {
 					if (!textBeforeColonFound && validTextRegex.test(char0)) {
 						textBeforeColonFound = true;
 						cursor += 1;
-					// found a colon, so this is probably a translation string
+						// found a colon, so this is probably a translation string
 					} else if (textBeforeColonFound && !colonFound && char0 === ':') {
 						colonFound = true;
 						cursor += 1;
-					// found some text after the colon,
-					// so this is probably a translation string
+						// found some text after the colon,
+						// so this is probably a translation string
 					} else if (colonFound && !textAfterColonFound && validTextRegex.test(char0)) {
 						textAfterColonFound = true;
 						cursor += 1;
 					} else if (textAfterColonFound && !commaAfterNameFound && char0 === ',') {
 						commaAfterNameFound = true;
 						cursor += 1;
-					// a space or comma was found before the name
-					// this isn't a translation string, so back out
+						// a space or comma was found before the name
+						// this isn't a translation string, so back out
 					} else if (!(textBeforeColonFound && colonFound && textAfterColonFound && commaAfterNameFound) &&
-							invalidTextRegex.test(char0)) {
+						invalidTextRegex.test(char0)) {
 						cursor += 1;
 						lastBreak -= 2;
 						// no longer in a token
@@ -155,29 +169,20 @@ module.exports = function (utils, load, warn) {
 						} else {
 							break;
 						}
-					// if we're at the beginning of another translation string,
-					// we're nested, so add to our level
+						// if we're at the beginning of another translation string,
+						// we're nested, so add to our level
 					} else if (char0 === '[' && char1 === '[') {
 						level += 1;
 						cursor += 2;
-					// if we're at the end of a translation string
+						// if we're at the end of a translation string
 					} else if (char0 === ']' && char1 === ']') {
 						// if we're at the base level, then this is the end
 						if (level === 0) {
 							// so grab the name and args
 							const currentSlice = str.slice(lastBreak, cursor);
-							const result = split(currentSlice);
-							const name = result[0];
-							const args = result.slice(1);
 
-							// make a backup based on the raw string of the token
-							// if there are arguments to the token
-							let backup = '';
-							if (args && args.length) {
-								backup = this.translate(currentSlice);
-							}
-							// add the translation promise to the array
-							toTranslate.push(this.translateKey(name, args, backup));
+							toTranslate.push(parseToken(currentSlice));
+
 							// skip past the ending brackets
 							cursor += 2;
 							// set this as our last break
@@ -584,7 +589,7 @@ module.exports = function (utils, load, warn) {
 		 * Get the translations object
 		 */
 		getTranslations: function getTranslations(language, namespace, callback) {
-			callback = callback || function () {};
+			callback = callback || function () { };
 			Translator.create(language).getTranslation(namespace).then(callback);
 		},
 
