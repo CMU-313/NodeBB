@@ -13,7 +13,7 @@ const cache = require('../cache');
 
 module.exports = function (Categories) {
 	Categories.create = async function (data) {
-		const parentCid = data.parentCid ? data.parentCid : 0;
+		const parentCid = data.parentCid || 0;
 		const [cid, firstChild] = await Promise.all([
 			db.incrObjectField('global', 'nextCid'),
 			db.getSortedSetRangeWithScores(`cid:${parentCid}:children`, 0, 0),
@@ -23,16 +23,16 @@ module.exports = function (Categories) {
 		const slug = `${cid}/${slugify(data.name)}`;
 		const handle = await Categories.generateHandle(slugify(data.name));
 		const smallestOrder = firstChild.length ? firstChild[0].score - 1 : 1;
-		const order = data.order || smallestOrder; // If no order provided, place it at the top
+		const order = data.order || smallestOrder;
 		const colours = Categories.assignColours();
 
-		let category = {
+		const category = {
 			cid: cid,
 			name: data.name,
 			handle,
-			description: data.description ? data.description : '',
-			descriptionParsed: data.descriptionParsed ? data.descriptionParsed : '',
-			icon: data.icon ? data.icon : '',
+			description: data.description || '',
+			descriptionParsed: data.descriptionParsed || '',
+			icon: data.icon || '',
 			bgColor: data.bgColor || colours[0],
 			color: data.color || colours[1],
 			slug: slug,
@@ -43,15 +43,12 @@ module.exports = function (Categories) {
 			order: order,
 			link: data.link || '',
 			numRecentReplies: 1,
-			class: (data.class ? data.class : 'col-md-3 col-6'),
+			class: data.class || 'col-md-3 col-6',
 			imageClass: 'cover',
 			isSection: 0,
 			subCategoriesPerPage: 10,
+			...(data.backgroundImage && { backgroundImage: data.backgroundImage }),
 		};
-
-		if (data.backgroundImage) {
-			category.backgroundImage = data.backgroundImage;
-		}
 
 		const defaultPrivileges = [
 			'groups:find',
@@ -81,37 +78,37 @@ module.exports = function (Categories) {
 			modPrivileges: modPrivileges,
 			guestPrivileges: guestPrivileges,
 		});
-		category = result.category;
 
-		await db.setObject(`category:${category.cid}`, category);
-		if (!category.descriptionParsed) {
-			await Categories.parseDescription(category.cid, category.description);
+		await db.setObject(`category:${result.category.cid}`, result.category);
+		if (!result.category.descriptionParsed) {
+			await Categories.parseDescription(result.category.cid, result.category.description);
 		}
 
 		await db.sortedSetAddBulk([
-			['categories:cid', category.order, category.cid],
-			[`cid:${parentCid}:children`, category.order, category.cid],
-			['categories:name', 0, `${data.name.slice(0, 200).toLowerCase()}:${category.cid}`],
+			['categories:cid', result.category.order, result.category.cid],
+			[`cid:${parentCid}:children`, result.category.order, result.category.cid],
+			['categories:name', 0, `${data.name.slice(0, 200).toLowerCase()}:${result.category.cid}`],
 			['categoryhandle:cid', cid, handle],
 		]);
 
-		await privileges.categories.give(result.defaultPrivileges, category.cid, ['registered-users', 'fediverse']);
-		await privileges.categories.give(result.modPrivileges, category.cid, ['administrators', 'Global Moderators']);
-		await privileges.categories.give(result.guestPrivileges, category.cid, ['guests', 'spiders']);
+		await privileges.categories.give(result.defaultPrivileges, result.category.cid, ['registered-users', 'fediverse']);
+		await privileges.categories.give(result.modPrivileges, result.category.cid, ['administrators', 'Global Moderators']);
+		await privileges.categories.give(result.guestPrivileges, result.category.cid, ['guests', 'spiders']);
 
 		cache.del('categories:cid');
 		await clearParentCategoryCache(parentCid);
 
+		let finalCategory = result.category;
 		if (data.cloneFromCid && parseInt(data.cloneFromCid, 10)) {
-			category = await Categories.copySettingsFrom(data.cloneFromCid, category.cid, !data.parentCid);
+			finalCategory = await Categories.copySettingsFrom(data.cloneFromCid, finalCategory.cid, !data.parentCid);
 		}
 
 		if (data.cloneChildren) {
-			await duplicateCategoriesChildren(category.cid, data.cloneFromCid, data.uid);
+			await duplicateCategoriesChildren(finalCategory.cid, data.cloneFromCid, data.uid);
 		}
 
-		plugins.hooks.fire('action:category.create', { category: category });
-		return category;
+		plugins.hooks.fire('action:category.create', { category: finalCategory });
+		return finalCategory;
 	};
 
 	async function clearParentCategoryCache(parentCid) {
