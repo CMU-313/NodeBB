@@ -463,14 +463,23 @@ module.exports = function (Messaging) {
 			user.isAdministrator(uid),
 			user.isGlobalModerator(uid),
 		]);
+
+		console.log('ANNIKA BEGINNING');
+
 		const part1 = (!room || (!room.public && !inRoom));
 		const part2 = (Array.isArray(room.groups) && room.groups.length && !isAdmin && 
 						!(await groups.isMemberOfAny(uid, room.groups)));
 		const part3 = (room.public && (part2));
+		
+		console.log('ANNIKA MIDDLE');
+
 		if (part1 || part3
 		) {
 			return null;
 		}
+
+		console.log('ANNIKA END');
+
 		if (!canChat.includes(true)) {
 			throw new Error('[[error:no-privileges]]');
 		}
