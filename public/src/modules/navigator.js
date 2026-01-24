@@ -29,7 +29,9 @@ define('navigator', [
 		$(window).off('keydown', onKeyDown);
 	});
 
-	navigator.init = function (selector, count, toTop, toBottom, callback) {
+	navigator.init = function (...args) {
+		const [selector, newCount, toTop, toBottom, callback] = args;
+
 		index = 0;
 		navigator.selector = selector;
 		navigator.callback = callback;
@@ -95,7 +97,7 @@ define('navigator', [
 
 		handleKeys();
 
-		navigator.setCount(count);
+		navigator.setCount(newCount);
 		navigator.update();
 	};
 
