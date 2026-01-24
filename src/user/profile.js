@@ -241,41 +241,42 @@ module.exports = function (User) {
 	}
 
 	function isGroupTitleValid(data) {
-		function checkTitle(title) {
-			if (title === 'registered-users' || groups.isPrivilegeGroup(title)) {
-				throw new Error('[[error:invalid-group-title]]');
-			}
-		}
 		if (!data.groupTitle) {
 			return;
 		}
-		let groupTitles = [];
-		if (validator.isJSON(data.groupTitle)) {
-			groupTitles = JSON.parse(data.groupTitle);
-			if (!Array.isArray(groupTitles)) {
+	
+		const groupTitles = parseGroupTitles(data.groupTitle);
+		validateGroupTitles(groupTitles);
+		enforceMultipleBadgeLimit(data, groupTitles);
+	}
+	
+	function parseGroupTitles(groupTitle) {
+		if (!validator.isJSON(groupTitle)) {
+			return [groupTitle];
+		}
+		
+		const parsed = JSON.parse(groupTitle);
+		if (!Array.isArray(parsed)) {
+			throw new Error('[[error:invalid-group-title]]');
+		}
+		
+		return parsed;
+	}
+	
+	function validateGroupTitles(titles) {
+		titles.forEach((groupTitle) => {
+			if (groupTitle === 'registered-users' || groups.isPrivilegeGroup(groupTitle)) {
 				throw new Error('[[error:invalid-group-title]]');
 			}
-			groupTitles.forEach(title => checkTitle(title));
-		} else {
-			groupTitles = [data.groupTitle];
-			checkTitle(data.groupTitle);
-		}
+		});
+	}
+	
+	function enforceMultipleBadgeLimit(data, groupTitles) {
 		if (!meta.config.allowMultipleBadges && groupTitles.length > 1) {
 			data.groupTitle = JSON.stringify(groupTitles[0]);
 		}
 	}
-
-	User.checkMinReputation = async function (callerUid, uid, setting) {
-		const isSelf = parseInt(callerUid, 10) === parseInt(uid, 10);
-		if (!isSelf || meta.config['reputation:disabled']) {
-			return;
-		}
-		const reputation = await User.getUserField(uid, 'reputation');
-		if (reputation < meta.config[setting]) {
-			throw new Error(`[[error:not-enough-reputation-${setting.replace(/:/g, '-')}, ${meta.config[setting]}]]`);
-		}
-	};
-
+	
 	async function updateEmail(uid, newEmail) {
 		let oldEmail = await db.getObjectField(`user:${uid}`, 'email');
 		oldEmail = oldEmail || '';
