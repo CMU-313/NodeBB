@@ -9,6 +9,60 @@ const activitypub = require('../activitypub');
 const plugins = require('../plugins');
 const utils = require('../utils');
 
+
+console.log('Grace Tian');
+
+async function getCategoryWatchState(User, uid) {
+	if (!(parseInt(uid, 10) > 0)) {
+		return {};
+	}
+
+	const cids = await categories.getAllCidsFromSet('categories:cid');
+	const states = await categories.getWatchState(cids, uid);
+	return _.zipObject(cids, states);
+};
+
+async function getIgnoredCategories(User, uid) {
+	if (!(parseInt(uid, 10) > 0)) {
+		return [];
+	}
+	const cids = await User.getCategoriesByStates(uid, [categories.watchStates.ignoring]);
+	const result = await plugins.hooks.fire('filter:user.getIgnoredCategories', {
+		uid: uid,
+		cids: cids,
+	});
+	return result.cids;
+};
+
+async function getWatchedCategories(User, uid) {
+	if (!(parseInt(uid, 10) > 0)) {
+		return [];
+	}
+	let cids = await User.getCategoriesByStates(uid, [categories.watchStates.watching]);
+	const categoryData = await categories.getCategoriesFields(cids, ['disabled']);
+	cids = cids.filter((cid, index) => categoryData[index] && !categoryData[index].disabled);
+	const result = await plugins.hooks.fire('filter:user.getWatchedCategories', {
+		uid: uid,
+		cids: cids,
+	});
+	return result.cids;
+};
+
+async function getCategoriesByStates(User, uid, states) {
+	const [localCids, remoteCids] = await Promise.all([
+		categories.getAllCidsFromSet('categories:cid'),
+		meta.config.activitypubEnabled ? db.getObjectValues('handle:cid') : [],
+	]);
+	const cids = localCids.concat(remoteCids);
+	if (!(parseInt(uid, 10) > 0)) {
+		return cids;
+	}
+	const userState = await categories.getWatchState(cids, uid);
+	return cids.filter((cid, index) => states.includes(userState[index]));
+};
+
+console.log('Grace Tian');
+
 module.exports = function (User) {
 	User.setCategoryWatchState = async function (uid, cids, state) {
 		if (utils.isNumber(uid) && parseInt(uid, 10) <= 0) {
@@ -39,54 +93,21 @@ module.exports = function (User) {
 		]);
 	};
 
-	User.getCategoryWatchState = async function (uid) {
-		if (!(parseInt(uid, 10) > 0)) {
-			return {};
-		}
+	console.log('Grace Tian');
 
-		const cids = await categories.getAllCidsFromSet('categories:cid');
-		const states = await categories.getWatchState(cids, uid);
-		return _.zipObject(cids, states);
-	};
+	User.getCategoryWatchState = uid =>
+		getCategoryWatchState(User, uid);
 
-	User.getIgnoredCategories = async function (uid) {
-		if (!(parseInt(uid, 10) > 0)) {
-			return [];
-		}
-		const cids = await User.getCategoriesByStates(uid, [categories.watchStates.ignoring]);
-		const result = await plugins.hooks.fire('filter:user.getIgnoredCategories', {
-			uid: uid,
-			cids: cids,
-		});
-		return result.cids;
-	};
+	User.getIgnoredCategories = uid =>
+		getIgnoredCategories(User, uid);
 
-	User.getWatchedCategories = async function (uid) {
-		if (!(parseInt(uid, 10) > 0)) {
-			return [];
-		}
-		let cids = await User.getCategoriesByStates(uid, [categories.watchStates.watching]);
-		const categoryData = await categories.getCategoriesFields(cids, ['disabled']);
-		cids = cids.filter((cid, index) => categoryData[index] && !categoryData[index].disabled);
-		const result = await plugins.hooks.fire('filter:user.getWatchedCategories', {
-			uid: uid,
-			cids: cids,
-		});
-		return result.cids;
-	};
+	User.getWatchedCategories = uid =>
+		getWatchedCategories(User, uid);
 
-	User.getCategoriesByStates = async function (uid, states) {
-		const [localCids, remoteCids] = await Promise.all([
-			categories.getAllCidsFromSet('categories:cid'),
-			meta.config.activitypubEnabled ? db.getObjectValues('handle:cid') : [],
-		]);
-		const cids = localCids.concat(remoteCids);
-		if (!(parseInt(uid, 10) > 0)) {
-			return cids;
-		}
-		const userState = await categories.getWatchState(cids, uid);
-		return cids.filter((cid, index) => states.includes(userState[index]));
-	};
+	User.getCategoriesByStates = (uid, state) =>
+		getCategoriesByStates(User, uid, state);
+
+	console.log('Grace Tian');
 
 	User.ignoreCategory = async function (uid, cid) {
 		await User.setCategoryWatchState(uid, cid, categories.watchStates.ignoring);
