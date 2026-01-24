@@ -9,6 +9,7 @@ const _ = require('lodash');
 
 const db = require('./database');
 const User = require('./user');
+const categories = require('./categories');
 const posts = require('./posts');
 const groups = require('./groups');
 const meta = require('./meta');
@@ -22,6 +23,7 @@ const Notifications = module.exports;
 
 // ttlcache for email-only chat notifications
 const notificationCache = ttlCache({
+	name: 'notification-email-cache',
 	max: 1000,
 	ttl: (meta.config.notificationSendDelay || 60) * 1000,
 	noDisposeOnSet: true,
@@ -83,7 +85,24 @@ Notifications.getMultiple = async function (nids) {
 	const notifications = await db.getObjects(keys);
 
 	const userKeys = notifications.map(n => n && n.from);
-	const usersData = await User.getUsersFields(userKeys, ['username', 'userslug', 'picture']);
+	let [usersData, categoriesData] = await Promise.all([
+		User.getUsersFields(userKeys, ['username', 'userslug', 'picture']),
+		categories.getCategoriesFields(userKeys, ['cid', 'name', 'slug', 'picture']),
+	]);
+	// Merge valid categoriesData into usersData
+	usersData = usersData.map((userData, idx) => {
+		const categoryData = categoriesData[idx];
+		if (!userData.uid && categoryData.cid) {
+			return {
+				username: categoryData.slug,
+				displayname: categoryData.name,
+				userslug: categoryData.slug,
+				picture: categoryData.picture,
+			};
+		}
+
+		return userData;
+	});
 
 	notifications.forEach((notification, index) => {
 		if (notification) {
@@ -157,6 +176,9 @@ Notifications.create = async function (data) {
 	});
 	if (!result.data) {
 		return null;
+	}
+	if (data.bodyShort) {
+		data.bodyShort = utils.stripBidiControls(data.bodyShort);
 	}
 	await Promise.all([
 		db.sortedSetAdd('notifications', now, data.nid),
@@ -382,10 +404,20 @@ Notifications.markReadMultiple = async function (nids, uid) {
 	]);
 };
 
-Notifications.markAllRead = async function (uid) {
+Notifications.markAllRead = async function (uid, filter = '') {
 	await batch.processSortedSet(`uid:${uid}:notifications:unread`, async (unreadNotifs) => {
-		const nids = unreadNotifs.map(n => n && n.value);
-		const datetimes = unreadNotifs.map(n => n && n.score);
+		let nids = unreadNotifs.map(n => n && n.value);
+		let datetimes = unreadNotifs.map(n => n && n.score);
+		if (filter !== '') {
+			const notificationKeys = nids.map(nid => `notifications:${nid}`);
+			let notificationData = await db.getObjectsFields(notificationKeys, ['nid', 'type', 'datetime']);
+			notificationData = notificationData.filter(n => n && n.nid && n.type === filter);
+			if (!notificationData.length) {
+				return;
+			}
+			nids = notificationData.map(n => n.nid);
+			datetimes = notificationData.map(n => n.datetime || Date.now());
+		}
 		await Promise.all([
 			db.sortedSetRemove(`uid:${uid}:notifications:unread`, nids),
 			db.sortedSetAdd(`uid:${uid}:notifications:read`, datetimes, nids),

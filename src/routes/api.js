@@ -23,19 +23,18 @@ module.exports = function (app, middleware, controllers) {
 	router.get('/topic/teaser/:topic_id', [...middlewares], helpers.tryRoute(controllers.topics.teaser));
 	router.get('/topic/pagination/:topic_id', [...middlewares], helpers.tryRoute(controllers.topics.pagination));
 
-	router.get('/search', [...middlewares], helpers.tryRoute(controllers.search.search));
+	const upload = require('../middleware/multer');
 
-	const multipart = require('connect-multiparty');
-	const multipartMiddleware = multipart();
 	const postMiddlewares = [
 		middleware.maintenanceMode,
-		multipartMiddleware,
+		upload.array('files[]', 20),
 		middleware.validateFiles,
 		middleware.uploads.ratelimit,
 		middleware.applyCSRF,
 	];
 
 	router.post('/post/upload', postMiddlewares, helpers.tryRoute(uploadsController.uploadPost));
+	router.post('/topic/thumb/upload', postMiddlewares, helpers.tryRoute(uploadsController.uploadThumb));
 	router.post('/user/:userslug/uploadpicture', [
 		...middlewares,
 		...postMiddlewares,

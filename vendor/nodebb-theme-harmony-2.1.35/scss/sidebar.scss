@@ -1,0 +1,123 @@
+.skin-noskin {
+	// only using colors when there is no bootswatch skin applied
+	nav.sidebar, .bottombar-nav {
+		color: $secondary !important;
+		background-color: $light !important;
+	}
+	.bottombar-nav {
+		.dropdown-menu {
+			color: $secondary !important;
+			background-color: $light !important;
+		}
+	}
+}
+
+.sidebar {
+	$hover-color: mix($light, $dark, 90%);
+
+	@include media-breakpoint-up(lg) {
+		&.open {
+			min-width: 200px;
+			max-width: 200px;
+			width: 200px;
+
+			.sidebar-toggle {
+				.fa-angles-right { display: none; }
+				.fa-angles-left { display: inline-block; }
+			}
+			.visible-open { display: initial; }
+			.visible-closed { display: none; }
+			hr.visible-open { display: block; }
+			.truncate-open {
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			.sidebar-toggle-container {
+				width: 100%
+			}
+		}
+	}
+	.visible-open {	display: none; }
+	.visible-closed {display: initial; }
+
+	.truncate-open {
+		overflow: initial;
+		text-overflow: initial;
+		white-space: initial;
+	}
+
+	.nav-link {
+		@extend .ff-secondary;
+		padding: ($spacer * 0.25) ($spacer * 0.5);
+		border-radius: $border-radius-sm;
+		cursor: pointer;
+		&.active {
+			background-color: $hover-color;
+		}
+		&:hover {
+			background-color: $hover-color;
+		}
+	}
+
+	.nav-item {
+		.dropdown-menu .dropdown-item {
+			@extend .rounded-1;
+		}
+	}
+
+	#user_dropdown .avatar {
+		margin: 2px 0; // fixes the avatar so its height is same as the icons on right sidebar
+	}
+
+	.sidebar-toggle {
+		justify-content: start;
+		.fa-angles-right { display: inline-block; }
+		.fa-angles-left { display: none; }
+	}
+
+	.search-dropdown {
+		width: 300px;
+	}
+
+	.chats-dropdown, .notifications-dropdown, .drafts-dropdown {
+		min-width: 300px;
+		width: 300px;
+		.list-container {
+			max-height: 400px;
+			overflow-y: auto;
+		}
+	}
+
+	.badge {
+		font-size: 9px;
+		line-height: 12px;
+		&.visible-open {
+			font-size:12px;
+			line-height: 12px;
+			font-weight: normal;
+		}
+	}
+
+	[data-widget-area="sidebar-footer"] {
+		font-size: $font-size-base * 0.75;
+	}
+}
+
+ /*rtl:begin:ignore*/
+ html[data-dir="rtl"] {
+	.sidebar {
+		&.open {
+			.sidebar-toggle {
+				.fa-angles-right { display: none; }
+				.fa-angles-left { display: inline-block; }
+			}
+		}
+		.sidebar-toggle {
+			.fa-angles-right { display: inline-block; }
+			.fa-angles-left { display: none; }
+		}
+	}
+}
+ /*rtl:end:ignore*/
+
