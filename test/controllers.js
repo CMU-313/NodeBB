@@ -1649,7 +1649,7 @@ describe('Controllers', () => {
 
 		it('should load categories', async () => {
 			const helpers = require('../src/controllers/helpers');
-			const data = await helpers.getCategories('cid:0:children', 1, 'topics:read', 0);
+			const data = await helpers.getCategories({set: 'cid:0:children', uid: 1, privilege: 'topics:read', selectedCid: 0});
 			assert(data.categories.length > 0);
 			assert.strictEqual(data.selectedCategory, null);
 			assert.deepStrictEqual(data.selectedCids, []);

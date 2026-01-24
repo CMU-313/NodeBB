@@ -247,7 +247,7 @@ helpers.buildTitle = function (pageTitle) {
 	return title;
 };
 
-helpers.getCategories = async function (set, uid, privilege, selectedCid) {
+helpers.getCategories = async function ({set, uid, privilege, selectedCid}) {
 	const cids = await categories.getCidsByPrivilege(set, uid, privilege);
 	return await getCategoryData(cids, uid, selectedCid, Object.values(categories.watchStates), privilege);
 };
