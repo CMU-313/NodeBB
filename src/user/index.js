@@ -72,7 +72,7 @@ User.getUidsFromSet = async function (set, start, stop) {
 	return await db.getSortedSetRevRange(set, start, stop);
 };
 
-User.getUsersFromSet = async function (set, uid, start, stop) {
+User.getUsersFromSet = async function ({set, uid, start, stop}) {
 	const uids = await User.getUidsFromSet(set, start, stop);
 	return await User.getUsers(uids, uid);
 };
