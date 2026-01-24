@@ -8,6 +8,16 @@ const db = require('../database');
 const groups = require('../groups');
 const privileges = require('../privileges');
 
+// Convert the given arg to an array if it is not already (judged by isArray param)
+function toArray(arg, isArray) {
+	return isArray ? arg : [arg];
+}
+
+// Take an array and take its first elem if we do not want it to be an array (judged by isArray param)
+function fromArray(arg, isArray, idx) {
+	return isArray ? arg : arg[idx];
+}
+
 module.exports = function (User) {
 	User.bans = {};
 
@@ -64,7 +74,7 @@ module.exports = function (User) {
 
 	User.bans.unban = async function (uids, reason = '') {
 		const isArray = Array.isArray(uids);
-		uids = isArray ? uids : [uids];
+		uids = toArray(uids);
 		const userData = await User.getUsersFields(uids, ['email:confirmed']);
 
 		await db.setObject(uids.map(uid => `user:${uid}`), { banned: 0, 'banned:expire': 0 });
@@ -94,12 +104,12 @@ module.exports = function (User) {
 		}
 
 		await db.sortedSetRemove(['users:banned', 'users:banned:expire'], uids);
-		return isArray ? unbanDataArray : unbanDataArray[0];
+		return fromArray(unbanDataArray, isArray, 0);
 	};
 
 	User.bans.isBanned = async function (uids) {
 		const isArray = Array.isArray(uids);
-		uids = isArray ? uids : [uids];
+		uids = toArray(uids, isArray);
 		const result = await User.bans.unbanIfExpired(uids);
 		return isArray ? result.map(r => r.banned) : result[0].banned;
 	};
@@ -125,13 +135,13 @@ module.exports = function (User) {
 
 	User.bans.calcExpiredFromUserData = function (userData) {
 		const isArray = Array.isArray(userData);
-		userData = isArray ? userData : [userData];
+		userData = toArray(userData, isArray);
 		userData = userData.map(userData => ({
 			banned: !!(userData?.banned),
 			'banned:expire': userData && userData['banned:expire'],
 			banExpired: userData && userData['banned:expire'] <= Date.now() && userData['banned:expire'] !== 0,
 		}));
-		return isArray ? userData : userData[0];
+		return fromArray(userData, isArray, 0);
 	};
 
 	User.bans.filterBanned = async function (uids) {
