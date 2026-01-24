@@ -11,7 +11,6 @@ const groups = require('../../src/groups');
 const request = require('../../src/request');
 const adminUser = require('../../src/socket.io/admin/user');
 
-
 describe('custom user fields', () => {
 	let adminUid;
 	let lowRepUid;
@@ -126,5 +125,113 @@ describe('custom user fields', () => {
 
 		const { body } = await request.get(`${nconf.get('url')}/api/user/highrepuser`);
 		assert.strictEqual(body.website, 'https://nodebb.org');
+	});
+
+	// ======================
+	// Additional validateCustomFields-focused tests
+	// ======================
+	it('should throw error for input-number invalid value', async () => {
+		const fields = [
+			{ key: 'luckyNumber', name: 'Lucky Number', type: 'input-number', 'min:rep': 0 },
+		];
+		await adminUser.saveCustomFields({ uid: adminUid }, fields);
+
+		await assert.rejects(
+			user.updateProfile(highRepUid, {
+				uid: highRepUid,
+				luckyNumber: 'not-a-number',
+			}),
+			{ message: '[[error:custom-user-field-invalid-number, Lucky Number]]' }
+		);
+	});
+
+	it('should throw error for input-text containing URL', async () => {
+		const fields = [
+			{ key: 'location', name: 'Location', type: 'input-text', 'min:rep': 0 },
+		];
+		await adminUser.saveCustomFields({ uid: adminUid }, fields);
+
+		await assert.rejects(
+			user.updateProfile(highRepUid, {
+				uid: highRepUid,
+				location: 'https://spam.com',
+			}),
+			{ message: '[[error:custom-user-field-invalid-text, Location]]' }
+		);
+	});
+
+	it('should throw error for input-date invalid date', async () => {
+		const fields = [
+			{ key: 'anniversary', name: 'Anniversary', type: 'input-date', 'min:rep': 0 },
+		];
+		await adminUser.saveCustomFields({ uid: adminUid }, fields);
+
+		await assert.rejects(
+			user.updateProfile(highRepUid, {
+				uid: highRepUid,
+				anniversary: 'not-a-date',
+			}),
+			{ message: '[[error:custom-user-field-invalid-date, Anniversary]]' }
+		);
+	});
+
+	it('should throw error for input-link invalid URL', async () => {
+		const fields = [
+			{ key: 'website', name: 'Website', type: 'input-link', 'min:rep': 0 },
+		];
+		await adminUser.saveCustomFields({ uid: adminUid }, fields);
+
+		await assert.rejects(
+			user.updateProfile(highRepUid, {
+				uid: highRepUid,
+				website: 'invalid-link',
+			}),
+			{ message: '[[error:custom-user-field-invalid-link, Website]]' }
+		);
+	});
+
+	it('should throw error for select invalid option', async () => {
+		const fields = [
+			{ key: 'soccerTeam', name: 'Soccer Team', type: 'select', 'min:rep': 0, 'select-options': 'Barcelona\nLiverpool' },
+		];
+		await adminUser.saveCustomFields({ uid: adminUid }, fields);
+
+		await assert.rejects(
+			user.updateProfile(highRepUid, {
+				uid: highRepUid,
+				soccerTeam: 'Real Madrid',
+			}),
+			{ message: '[[error:custom-user-field-select-value-invalid, Soccer Team]]' }
+		);
+	});
+
+	it('should throw error for select-multi invalid option', async () => {
+		const fields = [
+			{ key: 'languages', name: 'Languages', type: 'select-multi', 'min:rep': 0, 'select-options': 'C\nJS\nPython' },
+		];
+		await adminUser.saveCustomFields({ uid: adminUid }, fields);
+
+		await assert.rejects(
+			user.updateProfile(highRepUid, {
+				uid: highRepUid,
+				languages: '["C", "Ruby"]',
+			}),
+			{ message: '[[error:custom-user-field-select-value-invalid, Languages]]' }
+		);
+	});
+
+	it('should throw error if string value exceeds 255 chars', async () => {
+		const fields = [
+			{ key: 'bio', name: 'Bio', type: 'input-text', 'min:rep': 0 },
+		];
+		await adminUser.saveCustomFields({ uid: adminUid }, fields);
+
+		await assert.rejects(
+			user.updateProfile(highRepUid, {
+				uid: highRepUid,
+				bio: 'a'.repeat(300),
+			}),
+			{ message: '[[error:custom-user-field-value-too-long, Bio]]' }
+		);
 	});
 });
