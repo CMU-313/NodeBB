@@ -187,7 +187,7 @@ module.exports = function (User) {
 	async function filterAndSortUids(uids, data) {
 		
 		uids = uids.filter(uid => parseInt(uid, 10) || activitypub.helpers.isUri(uid));
-		console.log('Roger Jin filterAndSortUids');
+		
 		const filters = normalizeFilters(data.filters);
 		const fields = buildFields(filters, data.sortBy);
 	
