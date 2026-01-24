@@ -150,12 +150,17 @@ module.exports = function (Topics) {
 
 		const filterCids = params.cid && params.cid.map(cid => utils.isNumber(cid) ? parseInt(cid, 10) : cid);
 		const filterTags = params.tag && params.tag.map(tag => String(tag));
-
-		topicData.forEach((topic) => {
-			if (topic && topic.cid &&
-				(!filterCids || filterCids.includes(topic.cid)) &&
-				(!filterTags || filterTags.every(tag => topic.tags.find(topicTag => topicTag.value === tag))) &&
-				!blockedUids.includes(topic.uid)) {
+		// update `unreadCids` and `tidsByFilter` based on topicData
+		topicData
+			.filter(topic => !!topic?.cid)
+			.filter(topic => !filterCids || filterCids.includes(topic.cid))
+			.filter((topic) => {
+				const topicContainsAllFilterTags = (filterTags ?? [])
+					.every(tag => topic.tags.find(topicTag => topicTag.value === tag));
+				return topicContainsAllFilterTags;
+			})
+			.filter(topic => !blockedUids.includes(topic.uid))
+			.forEach((topic) => {
 				if (isTopicsFollowed[topic.tid] ||
 					[categories.watchStates.watching, categories.watchStates.tracking].includes(userCidState[topic.cid])) {
 					tidsByFilter[''].push(topic.tid);
@@ -173,8 +178,8 @@ module.exports = function (Topics) {
 				if (!userReadTimes[topic.tid]) {
 					tidsByFilter.new.push(topic.tid);
 				}
-			}
-		});
+
+			});
 
 		counts[''] = tidsByFilter[''].length;
 		counts.watched = tidsByFilter.watched.length;
@@ -377,7 +382,7 @@ module.exports = function (Topics) {
 		const result = tids.map((tid, index) => {
 			const read = !tids_unread[index] &&
 				((topicScores[index] || remoteTopicScores[index]) < cutoff ||
-				!!(userScores[index] && userScores[index] >= topicScores[index]));
+					!!(userScores[index] && userScores[index] >= topicScores[index]));
 			return { tid: tid, read: read, index: index };
 		});
 
