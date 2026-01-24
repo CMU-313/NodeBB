@@ -18,7 +18,6 @@ const utils = require('../utils');
 const helpers = require('./helpers');
 
 const searchController = module.exports;
-
 searchController.search = async function (req, res, next) {
 	if (!plugins.hooks.hasListeners('filter:search.query')) {
 		return next();
@@ -33,18 +32,39 @@ searchController.search = async function (req, res, next) {
 		'search:tags': privileges.global.can('search:tags', req.uid),
 	});
 	req.query.in = req.query.in || meta.config.searchDefaultIn || 'titlesposts';
-	let allowed = (req.query.in === 'users' && userPrivileges['search:users']) ||
-					(req.query.in === 'tags' && userPrivileges['search:tags']) ||
-					(req.query.in === 'categories') ||
-					(['titles', 'titlesposts', 'posts', 'bookmarks'].includes(req.query.in) && userPrivileges['search:content']);
+	console.log('Phasakorn Chivaxaranukul');
+	// Scope checks
+	const inUsers = req.query.in === 'users';
+	const inTags = req.query.in === 'tags';
+	const inCategories = req.query.in === 'categories';
+	const inContent = ['titles', 'titlesposts', 'posts', 'bookmarks'].includes(req.query.in);
+
+	// Privilege gates
+	const canUsers = !!userPrivileges['search:users'];
+	const canContent = !!userPrivileges['search:content'];
+	const canTags = !!userPrivileges['search:tags'];
+
+	// Compute sub-permissions first (avoids complex && inside final expression)
+	const allowUsers = inUsers && canUsers;
+	const allowTags = inTags && canTags;
+	const allowCategories = inCategories;
+	const allowContent = inContent && canContent;
+
+	// Final decision (no complex inline logic)
+	let allowed = [allowUsers, allowTags, allowCategories, allowContent].some(Boolean);
+
+	// Allow plugins to override
 	({ allowed } = await plugins.hooks.fire('filter:search.isAllowed', {
 		uid: req.uid,
 		query: req.query,
 		allowed,
 	}));
+
 	if (!allowed) {
+		console.log('Phasakorn Chivaxaranukul');
 		return helpers.notAllowed(req, res);
 	}
+	console.log('Phasakorn Chivaxaranukul');
 
 	if (req.query.categories && !Array.isArray(req.query.categories)) {
 		req.query.categories = [req.query.categories];
