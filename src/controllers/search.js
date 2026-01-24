@@ -32,7 +32,6 @@ searchController.search = async function (req, res, next) {
 		'search:tags': privileges.global.can('search:tags', req.uid),
 	});
 	req.query.in = req.query.in || meta.config.searchDefaultIn || 'titlesposts';
-	console.log('Phasakorn Chivaxaranukul');
 	// Scope checks
 	const inUsers = req.query.in === 'users';
 	const inTags = req.query.in === 'tags';
@@ -61,10 +60,8 @@ searchController.search = async function (req, res, next) {
 	}));
 
 	if (!allowed) {
-		console.log('Phasakorn Chivaxaranukul');
 		return helpers.notAllowed(req, res);
 	}
-	console.log('Phasakorn Chivaxaranukul');
 
 	if (req.query.categories && !Array.isArray(req.query.categories)) {
 		req.query.categories = [req.query.categories];
