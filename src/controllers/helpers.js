@@ -122,6 +122,45 @@ helpers.buildTerms = function (url, term, query) {
 	}];
 };
 
+// handles 403 api response for authenticated users
+async function handleForbiddenApi(req, res, error) {
+	if (req.originalUrl.startsWith(`${relative_path}/api/v3`)) {
+		await helpers.formatApiResponse(403, res, error);
+	} else {
+		res.status(403).json({
+			path: req.path.replace(/^\/api/, ''),
+			loggedIn: req.loggedIn,
+			error: error,
+			title: '[[global:403.title]]',
+			bodyClass: middlewareHelpers.buildBodyClass(req, res),
+		});
+	}
+}
+
+// handles 403 page render for authenticated users
+async function handleForbiddenPage(req, res, error) {
+	const middleware = require('../middleware');
+	await middleware.buildHeaderAsync(req, res);
+	res.status(403).render('403', {
+		path: req.path,
+		loggedIn: req.loggedIn,
+		error,
+		title: '[[global:403.title]]',
+	});
+}
+
+// handles response for unauthenticated users
+async function handleUnauthenticated(req, res, error) {
+	if (res.locals.isAPI) {
+		req.session.returnTo = req.url.replace(/^\/api/, '');
+		await helpers.formatApiResponse(401, res, error);
+	} else {
+		req.session.returnTo = req.url;
+		const loginQuery = req.path.startsWith('/admin') ? '?local=1' : '';
+		res.redirect(`${relative_path}/login${loginQuery}`);
+	}
+}
+
 helpers.notAllowed = async function (req, res, error) {
 	({ error } = await plugins.hooks.fire('filter:helpers.notAllowed', { req, res, error }));
 
@@ -130,35 +169,15 @@ helpers.notAllowed = async function (req, res, error) {
 		return;
 	}
 
-	if (req.loggedIn || req.uid === -1) {
-		if (res.locals.isAPI) {
-			if (req.originalUrl.startsWith(`${relative_path}/api/v3`)) {
-				await helpers.formatApiResponse(403, res, error);
-			} else {
-				res.status(403).json({
-					path: req.path.replace(/^\/api/, ''),
-					loggedIn: req.loggedIn,
-					error: error,
-					title: '[[global:403.title]]',
-					bodyClass: middlewareHelpers.buildBodyClass(req, res),
-				});
-			}
-		} else {
-			const middleware = require('../middleware');
-			await middleware.buildHeaderAsync(req, res);
-			res.status(403).render('403', {
-				path: req.path,
-				loggedIn: req.loggedIn,
-				error,
-				title: '[[global:403.title]]',
-			});
-		}
-	} else if (res.locals.isAPI) {
-		req.session.returnTo = req.url.replace(/^\/api/, '');
-		await helpers.formatApiResponse(401, res, error);
+	const isAuthenticated = req.loggedIn || req.uid === -1;
+	if (!isAuthenticated) {
+		return await handleUnauthenticated(req, res, error);
+	}
+
+	if (res.locals.isAPI) {
+		await handleForbiddenApi(req, res, error);
 	} else {
-		req.session.returnTo = req.url;
-		res.redirect(`${relative_path}/login${req.path.startsWith('/admin') ? '?local=1' : ''}`);
+		await handleForbiddenPage(req, res, error);
 	}
 };
 
