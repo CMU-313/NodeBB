@@ -31,9 +31,7 @@ module.exports = function (User) {
 			timestamp: now,
 			expire: until > now ? until : 0,
 		};
-		if (reason) {
-			banData.reason = reason;
-		}
+		banData.reason = reason;
 
 		// Leaving all other system groups to have privileges constrained to the "banned-users" group
 		const systemGroups = groups.systemGroups.filter(group => group !== groups.BANNED_USERS);
@@ -150,6 +148,6 @@ module.exports = function (User) {
 			return '';
 		}
 		const banObj = await db.getObject(keys[0]);
-		return banObj && banObj.reason ? banObj.reason : '';
+		return banObj?.reason ? banObj.reason : '';
 	};
 };
