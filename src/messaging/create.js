@@ -36,29 +36,16 @@ module.exports = function (Messaging) {
 		}
 	};
 
-	Messaging.addMessage = async (data) => {
-		const { uid, roomId } = data;
-		const roomData = await Messaging.getRoomData(roomId);
-		if (!roomData) {
-			throw new Error('[[error:no-room]]');
-		}
-		if (data.toMid) {
-			if (!await Messaging.messageExists(data.toMid)) {
-				throw new Error('[[error:invalid-mid]]');
-			}
-			if (!await Messaging.canViewMessage(data.toMid, roomId, uid)) {
-				throw new Error('[[error:no-privileges]]');
-			}
-		}
-		const mid = data.mid || await db.incrObjectField('global', 'nextMid');
-		const timestamp = data.timestamp || Date.now();
-		let message = {
+	// helper function for building message
+	function buildMessage(data, mid, timestamp) {
+		const message = {
 			mid: mid,
 			content: String(data.content),
 			timestamp: timestamp,
-			fromuid: uid,
-			roomId: roomId,
+			fromuid: data.uid,
+			roomId: data.roomId,
 		};
+
 		if (data.toMid) {
 			message.toMid = data.toMid;
 		}
@@ -70,10 +57,13 @@ module.exports = function (Messaging) {
 			message.ip = data.ip;
 		}
 
-		message = await plugins.hooks.fire('filter:messaging.save', message);
-		await db.setObject(`message:${mid}`, message);
-		const isNewSet = await Messaging.isNewSet(uid, roomId, timestamp);
+		return message;
 
+	}
+
+	// helper function for building message tasks
+	async function buildMessageTasks(data, roomData, mid, timestamp, uid) {
+		const { roomId } = data;
 		const tasks = [
 			Messaging.addMessageToRoom(roomId, mid, timestamp),
 			Messaging.markRead(uid, roomId),
@@ -90,11 +80,55 @@ module.exports = function (Messaging) {
 		} else {
 			let uids = await Messaging.getUidsInRoom(roomId, 0, -1);
 			uids = await user.blocks.filterUids(uid, uids);
+
 			tasks.push(
 				Messaging.addRoomToUsers(roomId, uids, timestamp),
 				Messaging.markUnread(uids.filter(uid => uid !== String(data.uid)), roomId),
 			);
 		}
+		return tasks;
+	}
+
+	Messaging.addMessage = async (data) => {
+		const { uid, roomId } = data;
+		const roomData = await Messaging.getRoomData(roomId);
+		if (!roomData) {
+			throw new Error('[[error:no-room]]');
+		}
+		if (data.toMid) {
+			if (!await Messaging.messageExists(data.toMid)) {
+				throw new Error('[[error:invalid-mid]]');
+			}
+			if (!await Messaging.canViewMessage(data.toMid, roomId, uid)) {
+				throw new Error('[[error:no-privileges]]');
+			}
+		}
+		const mid = data.mid || await db.incrObjectField('global', 'nextMid');
+		const timestamp = data.timestamp || Date.now();
+		
+		// call helper function
+		let message = buildMessage(data, mid, timestamp);
+
+		// print after refactored code
+		// console.log('Jessica');
+
+		message = await plugins.hooks.fire('filter:messaging.save', message);
+		await db.setObject(`message:${mid}`, message);
+
+		const isNewSet = await Messaging.isNewSet(uid, roomId, timestamp);
+		
+		// call helper function
+		const tasks = await buildMessageTasks(
+			data, 
+			roomData,
+			mid,
+			timestamp,
+			uid
+		);
+
+		// print after refactored code
+		// console.log('Jessica');
+
 		await Promise.all(tasks);
 
 		const messages = await Messaging.getMessagesData([mid], uid, roomId, true);
