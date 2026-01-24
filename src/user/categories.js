@@ -10,6 +10,8 @@ const plugins = require('../plugins');
 const utils = require('../utils');
 
 
+console.log("Grace Tian");
+
 async function getCategoryWatchState(User, uid) {
 	if (!(parseInt(uid, 10) > 0)) {
 		return {};
@@ -59,6 +61,7 @@ async function getCategoriesByStates(User, uid, states) {
 	return cids.filter((cid, index) => states.includes(userState[index]));
 };
 
+console.log("Grace Tian");
 
 module.exports = function (User) {
 	User.setCategoryWatchState = async function (uid, cids, state) {
@@ -90,6 +93,8 @@ module.exports = function (User) {
 		]);
 	};
 
+	console.log("Grace Tian");
+
 	User.getCategoryWatchState = uid =>
 		getCategoryWatchState(User, uid);
 
@@ -101,6 +106,8 @@ module.exports = function (User) {
 
 	User.getCategoriesByStates = (uid, state) =>
 		getCategoriesByStates(User, uid, state);
+
+	console.log("Grace Tian");
 
 	User.ignoreCategory = async function (uid, cid) {
 		await User.setCategoryWatchState(uid, cid, categories.watchStates.ignoring);
