@@ -40,6 +40,13 @@ adminApi.listGroups = async () => {
 	// N.B. Returns all groups, even hidden. Beware of leakage.
 	// Access control handled at controller level
 
-	const payload = await groups.getNonPrivilegeGroups('groups:createtime', 0, -1, { ephemeral: false });
+	const caller_info = {
+		set: 'groups:createtime',
+		start: 0,
+		stop: -1,
+		flags: { ephemeral: false },
+	};
+	const payload = await groups.getNonPrivilegeGroups(caller_info);
+	//'groups:createtime', 0, -1, { ephemeral: false }
 	return { groups: payload };
 };

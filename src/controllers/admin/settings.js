@@ -35,9 +35,16 @@ settingsController.general = async (req, res) => {
 };
 
 settingsController.navigation = async function (req, res) {
+	const caller_info = {
+		set: 'groups:createtime',
+		start: 0,
+		stop: -1,
+		flags: undefined,
+	};
 	const [admin, allGroups] = await Promise.all([
 		navigationAdmin.getAdmin(),
-		groups.getNonPrivilegeGroups('groups:createtime', 0, -1),
+		groups.getNonPrivilegeGroups(caller_info),
+		//groups.getNonPrivilegeGroups('groups:createtime', 0, -1),
 	]);
 
 	allGroups.sort((a, b) => b.system - a.system);
@@ -65,9 +72,16 @@ settingsController.navigation = async function (req, res) {
 };
 
 settingsController.user = async (req, res) => {
+	const caller_info = {
+		set: 'groups:createtime',
+		start: 0,
+		stop: -1,
+		flags: undefined,
+	};
 	const [notificationTypes, groupData] = await Promise.all([
 		notifications.getAllNotificationTypes(),
-		groups.getNonPrivilegeGroups('groups:createtime', 0, -1),
+		groups.getNonPrivilegeGroups(caller_info),
+		//groups.getNonPrivilegeGroups('groups:createtime', 0, -1),
 	]);
 	const notificationSettings = notificationTypes.map(type => ({
 		name: type,
@@ -99,7 +113,13 @@ settingsController.tags = async (req, res) => {
 };
 
 settingsController.post = async (req, res) => {
-	const groupData = await groups.getNonPrivilegeGroups('groups:createtime', 0, -1);
+	const caller_info = {
+		set: 'groups:createtime',
+		start: 0,
+		stop: -1,
+		flags: undefined,
+	};
+	const groupData = await groups.getNonPrivilegeGroups(caller_info);
 	res.render('admin/settings/post', {
 		title: '[[admin/menu:settings/post]]',
 		groupsExemptFromPostQueue: groupData,
@@ -186,7 +206,13 @@ settingsController.webCrawler = async (req, res) => {
 };
 
 settingsController.advanced = async (req, res) => {
-	const groupData = await groups.getNonPrivilegeGroups('groups:createtime', 0, -1);
+	const caller_info = {
+		set: 'groups:createtime',
+		start: 0,
+		stop: -1,
+		flags: undefined,
+	};
+	const groupData = await groups.getNonPrivilegeGroups(caller_info);
 	res.render('admin/settings/advanced', {
 		title: '[[admin/menu:settings/advanced]]',
 		groupsExemptFromMaintenanceMode: groupData,

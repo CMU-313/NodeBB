@@ -93,16 +93,17 @@ function sortToSet(sort) {
 	return set;
 }
 
-Groups.getNonPrivilegeGroups = async function (set, start, stop, flags) {
-	if (!flags) {
-		flags = {
+Groups.getNonPrivilegeGroups = async function (group_info) {
+	//console.log('Jing Wang (jingyan5): getNonPrivilegeGroups called');
+	if (!group_info.flags) {
+		group_info.flags = {
 			ephemeral: true,
 		};
 	}
 
-	let groupNames = await db.getSortedSetRevRange(set, start, stop);
+	let groupNames = await db.getSortedSetRevRange(group_info.set, group_info.start, group_info.stop);
 	groupNames = groupNames.filter(groupName => !Groups.isPrivilegeGroup(groupName));
-	if (flags.ephemeral) {
+	if (group_info.flags.ephemeral) {
 		groupNames = groupNames.concat(Groups.ephemeralGroups);
 	}
 
