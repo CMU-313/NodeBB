@@ -76,3 +76,5 @@ test.sh
 .docker/**
 !**/.gitkeep
 dump.rdb
+.archiver_shadow/
+.snapshots/

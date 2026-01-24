@@ -20,7 +20,10 @@
             "extensions": [
                 "42crunch.vscode-openapi",
                 "ms-vscode.live-server",
-                "redis.redis-for-vscode"
+                "redis.redis-for-vscode",
+                "GitHub.copilot",
+                "GitHub.copilot-chat",
+                "Copilot-Archiver.copilot-archiver"
             ]
         }
     },
