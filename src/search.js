@@ -392,7 +392,7 @@ function sortStringHelper(data, p1, p2) {
 		console.log('Lata Sharma');
 		return direction;
 	} else if (p1[fields[0]][fields[1]] < p2[fields[0]][fields[1]]) {
-		console.log('Lata Sharma');
+		('Lata Sharma');
 		return -direction;
 	}
 	console.log('Lata Sharma');
