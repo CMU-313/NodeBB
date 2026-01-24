@@ -1,6 +1,8 @@
 
 'use strict';
 
+console.log('Alexandra Scharpf');
+
 const validator = require('validator');
 
 const meta = require('../meta');
