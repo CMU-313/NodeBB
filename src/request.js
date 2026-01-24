@@ -47,26 +47,34 @@ async function init() {
  *  - For whatever reason `undici` needs to be required so that lookup can be overwritten properly.
  */
 function lookup(hostname, options, callback) {
-	let { ok, lookup } = checkCache.get(hostname);
-	lookup = lookup && [...lookup];
+	const cached = checkCache.get(hostname);
+	if (!cached) {
+		// No cache entry - do regular lookup (this can happen for trusted hosts)
+		dns.lookup(hostname, options).then((addresses) => {
+			callback(null, addresses);
+		}).catch(callback);
+		return;
+	}
+	const { ok, lookup: lookupResult } = cached;
+	const lookupCopy = lookupResult && [...lookupResult];
 	if (!ok) {
 		throw new Error('lookup-failed');
 	}
 
-	if (!lookup) {
+	if (!lookupCopy) {
 		// trusted, do regular lookup
 		dns.lookup(hostname, options).then((addresses) => {
 			callback(null, addresses);
-		});
+		}).catch(callback);
 		return;
 	}
 
 	// Lookup needs to behave asynchronously — https://github.com/nodejs/node/issues/28664
 	process.nextTick(() => {
 		if (options.all === true) {
-			callback(null, lookup);
+			callback(null, lookupCopy);
 		} else {
-			const { address, family } = lookup.shift();
+			const { address, family } = lookupCopy.shift();
 			callback(null, address, family);
 		}
 	});
