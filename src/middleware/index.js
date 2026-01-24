@@ -175,27 +175,44 @@ middleware.privateTagListing = helpers.try(async (req, res, next) => {
 });
 
 middleware.exposeGroupName = helpers.try(async (req, res, next) => {
-	await expose('groupName', groups.getGroupNameByGroupSlug, 'slug', req, res, next);
+	await expose({
+		exposedField: 'groupName',
+		method: groups.getGroupNameByGroupSlug,
+		field: 'slug',
+		req,
+		res,
+		next,
+	});
 });
 
 middleware.exposeUid = helpers.try(async (req, res, next) => {
-	await expose('uid', user.getUidByUserslug, 'userslug', req, res, next);
+	await expose({
+		exposedField: 'uid',
+		method: user.getUidByUserslug,
+		field: 'userslug',
+		req,
+		res,
+		next,
+	});
 });
 
-async function expose(exposedField, method, field, req, res, next) {
-	if (!req.params.hasOwnProperty(field)) {
+async function expose(options) { 
+	const { exposedField,method, field, req, res, next } = options;
+
+	if (!req.params.hasOwnProperty(field)) { 
 		return next();
 	}
+
 	const param = String(req.params[field]).toLowerCase();
 
-	// potential hostname — ActivityPub
-	if (param.indexOf('@') !== -1) {
+	// potential hostname - ActivityPub
+	if (param.indexOf('@') !== -1) { 
 		res.locals[exposedField] = -2;
 		return next();
 	}
 
 	const value = await method(param);
-	if (!value) {
+	if (!value) { 
 		next('route');
 		return;
 	}
