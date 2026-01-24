@@ -8,6 +8,16 @@ const db = require('../database');
 const groups = require('../groups');
 const privileges = require('../privileges');
 
+// Convert the given arg to an array if it is not already (judged by isArray param)
+function toArray(arg, isArray) {
+	return isArray ? arg : [arg];
+}
+
+// Take an array and take its first elem if we do not want it to be an array (judged by isArray param)
+function fromArray(arg, isArray, idx) {
+	return isArray ? arg : arg[idx];
+}
+
 module.exports = function (User) {
 	User.bans = {};
 
@@ -29,11 +39,9 @@ module.exports = function (User) {
 			type: 'ban',
 			uid: uid,
 			timestamp: now,
-			expire: until > now ? until : 0,
+			expire: (until > now) * until, // Value should be 0 if until <= now, until otherwise
 		};
-		if (reason) {
-			banData.reason = reason;
-		}
+		banData.reason = reason;
 
 		// Leaving all other system groups to have privileges constrained to the "banned-users" group
 		const systemGroups = groups.systemGroups.filter(group => group !== groups.BANNED_USERS);
@@ -66,7 +74,7 @@ module.exports = function (User) {
 
 	User.bans.unban = async function (uids, reason = '') {
 		const isArray = Array.isArray(uids);
-		uids = isArray ? uids : [uids];
+		uids = toArray(uids);
 		const userData = await User.getUsersFields(uids, ['email:confirmed']);
 
 		await db.setObject(uids.map(uid => `user:${uid}`), { banned: 0, 'banned:expire': 0 });
@@ -96,12 +104,12 @@ module.exports = function (User) {
 		}
 
 		await db.sortedSetRemove(['users:banned', 'users:banned:expire'], uids);
-		return isArray ? unbanDataArray : unbanDataArray[0];
+		return fromArray(unbanDataArray, isArray, 0);
 	};
 
 	User.bans.isBanned = async function (uids) {
 		const isArray = Array.isArray(uids);
-		uids = isArray ? uids : [uids];
+		uids = toArray(uids, isArray);
 		const result = await User.bans.unbanIfExpired(uids);
 		return isArray ? result.map(r => r.banned) : result[0].banned;
 	};
@@ -111,15 +119,12 @@ module.exports = function (User) {
 
 		const { banned } = (await User.bans.unbanIfExpired([uid]))[0];
 		// Group privilege overshadows individual one
-		if (banned) {
-			canLogin = await privileges.global.canGroup('local:login', groups.BANNED_USERS);
-		}
-		if (banned && !canLogin) {
-			// Checking a single privilege of user
-			canLogin = await groups.isMember(uid, 'cid:0:privileges:local:login');
+		if(!banned) {
+			return true;
 		}
 
-		return canLogin;
+		canLogin = await privileges.global.canGroup('local:login', groups.BANNED_USERS);
+		return canLogin || await groups.isMember(uid, 'cid:0:privileges:local:login');
 	};
 
 	User.bans.unbanIfExpired = async function (uids) {
@@ -130,13 +135,13 @@ module.exports = function (User) {
 
 	User.bans.calcExpiredFromUserData = function (userData) {
 		const isArray = Array.isArray(userData);
-		userData = isArray ? userData : [userData];
+		userData = toArray(userData, isArray);
 		userData = userData.map(userData => ({
-			banned: !!(userData && userData.banned),
+			banned: !!(userData?.banned),
 			'banned:expire': userData && userData['banned:expire'],
 			banExpired: userData && userData['banned:expire'] <= Date.now() && userData['banned:expire'] !== 0,
 		}));
-		return isArray ? userData : userData[0];
+		return fromArray(userData, isArray, 0);
 	};
 
 	User.bans.filterBanned = async function (uids) {
@@ -153,6 +158,6 @@ module.exports = function (User) {
 			return '';
 		}
 		const banObj = await db.getObject(keys[0]);
-		return banObj && banObj.reason ? banObj.reason : '';
+		return banObj?.reason ?? '';
 	};
 };
