@@ -148,6 +148,6 @@ module.exports = function (User) {
 			return '';
 		}
 		const banObj = await db.getObject(keys[0]);
-		return banObj?.reason ? banObj.reason : '';
+		return banObj?.reason ?? '';
 	};
 };
