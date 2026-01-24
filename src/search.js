@@ -354,6 +354,7 @@ function filterByTags(posts, hasTags) {
 
 function sortPosts(posts, data) {
 	if (!posts.length || data.sortBy === 'relevance') {
+		console.log('Lata Sharma');
 		return;
 	}
 
@@ -361,11 +362,13 @@ function sortPosts(posts, data) {
 	const direction = data.sortDirection === 'desc' ? 1 : -1;
 	const fields = data.sortBy.split('.');
 	if (fields.length === 1) {
+		console.log('Lata Sharma');
 		return posts.sort((p1, p2) => direction * (p2[fields[0]] - p1[fields[0]]));
 	}
 
 	const firstPost = posts[0];
 	if (!fields || fields.length !== 2 || !firstPost[fields[0]] || !firstPost[fields[0]][fields[1]]) {
+		console.log('Lata Sharma');
 		return;
 	}
 
@@ -375,14 +378,25 @@ function sortPosts(posts, data) {
 		posts.sort((p1, p2) => direction * (p2[fields[0]][fields[1]] - p1[fields[0]][fields[1]]));
 	} else {
 		posts.sort((p1, p2) => {
-			if (p1[fields[0]][fields[1]] > p2[fields[0]][fields[1]]) {
-				return direction;
-			} else if (p1[fields[0]][fields[1]] < p2[fields[0]][fields[1]]) {
-				return -direction;
-			}
-			return 0;
+			sortStringHelper(data, p1, p2);
 		});
 	}
+}
+
+function sortStringHelper(data, p1, p2) {
+	console.log('Lata Sharma');
+	data.sortDirection = data.sortDirection || 'desc';
+	const direction = data.sortDirection === 'desc' ? 1 : -1;
+	const fields = data.sortBy.split('.');
+	if (p1[fields[0]][fields[1]] > p2[fields[0]][fields[1]]) {
+		console.log('Lata Sharma');
+		return direction;
+	} else if (p1[fields[0]][fields[1]] < p2[fields[0]][fields[1]]) {
+		console.log('Lata Sharma');
+		return -direction;
+	}
+	console.log('Lata Sharma');
+	return 0;
 }
 
 async function getSearchCids(data) {
