@@ -25,6 +25,7 @@ module.exports = function (module) {
 	}
 
 	module.sortedSetsAdd = async function (keys, scores, value) {
+		console.log('HELEN sortedSetsAdd hit');
 		if (!Array.isArray(keys) || !keys.length) {
 			return;
 		}
