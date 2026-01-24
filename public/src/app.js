@@ -327,7 +327,13 @@ if (document.readyState === 'loading') {
 		});
 	};
 
-	app.parseAndTranslate = function (template, blockName, data, callback) {
+	app.parseAndTranslate = function (template, options, callback) {
+		if (typeof options !== 'object' || options === null) {
+			options = { data: options };
+		}
+	
+		let { blockName, data } = options;
+
 		if (typeof blockName !== 'string') {
 			callback = data;
 			data = blockName;
