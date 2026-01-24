@@ -29,7 +29,7 @@ module.exports = function (User) {
 			type: 'ban',
 			uid: uid,
 			timestamp: now,
-			expire: until > now ? until : 0,
+			expire: (until > now) * until, // Value should be 0 if until <= now, until otherwise
 		};
 		banData.reason = reason;
 
@@ -127,7 +127,7 @@ module.exports = function (User) {
 		const isArray = Array.isArray(userData);
 		userData = isArray ? userData : [userData];
 		userData = userData.map(userData => ({
-			banned: !!(userData && userData.banned),
+			banned: !!(userData?.banned),
 			'banned:expire': userData && userData['banned:expire'],
 			banExpired: userData && userData['banned:expire'] <= Date.now() && userData['banned:expire'] !== 0,
 		}));
