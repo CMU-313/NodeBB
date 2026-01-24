@@ -47,7 +47,17 @@ async function init() {
  *  - For whatever reason `undici` needs to be required so that lookup can be overwritten properly.
  */
 function lookup(hostname, options, callback) {
-	let { ok, lookup } = checkCache.get(hostname);
+	const cached = checkCache.get(hostname);
+	if (!cached) {
+		// No cache entry, do regular DNS lookup
+		dns.lookup(hostname, options).then((addresses) => {
+			callback(null, addresses);
+		}).catch((err) => {
+			callback(err);
+		});
+		return;
+	}
+	let { ok, lookup } = cached;
 	lookup = lookup && [...lookup];
 	if (!ok) {
 		throw new Error('lookup-failed');
