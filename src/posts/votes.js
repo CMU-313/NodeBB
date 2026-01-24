@@ -1,5 +1,4 @@
 'use strict';
-
 const meta = require('../meta');
 const db = require('../database');
 const flags = require('../flags');
@@ -66,8 +65,7 @@ module.exports = function (Posts) {
 
 		putVoteInProgress(pid, uid);
 		try {
-			const voteStatus = await Posts.hasVoted(pid, uid);
-			return await unvote(pid, uid, 'unvote', voteStatus);
+			return await unvote(pid, uid, 'unvote');
 		} finally {
 			clearVoteProgress(pid, uid);
 		}
@@ -119,11 +117,12 @@ module.exports = function (Posts) {
 
 	async function toggleVote(type, pid, uid) {
 		const voteStatus = await Posts.hasVoted(pid, uid);
-		await unvote(pid, uid, type, voteStatus);
+		await unvote(pid, uid, type);
 		return await vote(type, false, pid, uid, voteStatus);
 	}
 
-	async function unvote(pid, uid, type, voteStatus) {
+	async function unvote(pid, uid, type) {
+		const voteStatus = await Posts.hasVoted(pid, uid);
 		const owner = await Posts.getPostField(pid, 'uid');
 		if (parseInt(uid, 10) === parseInt(owner, 10)) {
 			throw new Error('[[error:self-vote]]');
