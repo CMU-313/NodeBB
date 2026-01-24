@@ -23,6 +23,8 @@ module.exports = function (app, middleware, controllers) {
 	router.get('/topic/teaser/:topic_id', [...middlewares], helpers.tryRoute(controllers.topics.teaser));
 	router.get('/topic/pagination/:topic_id', [...middlewares], helpers.tryRoute(controllers.topics.pagination));
 
+	router.get('/search', [...middlewares], helpers.tryRoute(controllers.search.search));
+
 	const multipart = require('connect-multiparty');
 	const multipartMiddleware = multipart();
 	const postMiddlewares = [
