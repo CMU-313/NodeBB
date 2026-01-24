@@ -133,50 +133,80 @@ module.exports = function (User) {
 		return uids;
 	}
 
-	async function filterAndSortUids(uids, data) {
-		uids = uids.filter(uid => parseInt(uid, 10) || activitypub.helpers.isUri(uid));
-		let filters = data.filters || [];
-		filters = Array.isArray(filters) ? filters : [data.filters];
-		const fields = [];
-
-		if (data.sortBy) {
-			fields.push(data.sortBy);
+	function normalizeFilters(filters) {
+		if (!filters) {
+			return [];
 		}
-
+		return Array.isArray(filters) ? filters : [filters];
+	}
+	
+	function buildFields(filters, sortBy) {
+		const fields = [];
+		if (sortBy) {
+			fields.push(sortBy);
+		}
 		filters.forEach((filter) => {
 			if (filterFieldMap[filter]) {
 				fields.push(...filterFieldMap[filter]);
 			}
 		});
-
-		if (data.groupName) {
-			const isMembers = await groups.isMembers(uids, data.groupName);
-			uids = uids.filter((uid, index) => isMembers[index]);
-		}
-
-		if (!fields.length) {
+		return fields;
+	}
+	
+	async function applyGroupFilter(uids, groupName) {
+		if (!groupName) {
 			return uids;
 		}
-
-		if (filters.includes('banned') || filters.includes('notbanned')) {
-			const isMembersOfBanned = await groups.isMembers(uids, groups.BANNED_USERS);
-			const checkBanned = filters.includes('banned');
-			uids = uids.filter((uid, index) => (checkBanned ? isMembersOfBanned[index] : !isMembersOfBanned[index]));
+		const isMembers = await groups.isMembers(uids, groupName);
+		return uids.filter((uid, index) => isMembers[index]);
+	}
+	
+	async function applyBannedFilter(uids, filters) {
+		const hasBannedFilter = filters.includes('banned');
+		const hasNotBannedFilter = filters.includes('notbanned');
+	
+		if (!hasBannedFilter && !hasNotBannedFilter) {
+			return uids;
 		}
-
-		fields.push('uid');
-		let userData = await User.getUsersFields(uids, fields);
-
+	
+		const isMembersOfBanned = await groups.isMembers(uids, groups.BANNED_USERS);
+		const checkBanned = hasBannedFilter;
+		return uids.filter((uid, index) => (checkBanned ? isMembersOfBanned[index] : !isMembersOfBanned[index]));
+	}
+	
+	function applyUserFilters(userData, filters) {
 		filters.forEach((filter) => {
 			if (filterFnMap[filter]) {
 				userData = userData.filter(filterFnMap[filter]);
 			}
 		});
-
+		return userData;
+	}
+	
+	async function filterAndSortUids(uids, data) {
+		
+		uids = uids.filter(uid => parseInt(uid, 10) || activitypub.helpers.isUri(uid));
+		
+		const filters = normalizeFilters(data.filters);
+		const fields = buildFields(filters, data.sortBy);
+	
+		uids = await applyGroupFilter(uids, data.groupName);
+	
+		if (!fields.length) {
+			return uids;
+		}
+	
+		uids = await applyBannedFilter(uids, filters);
+	
+		fields.push('uid');
+		let userData = await User.getUsersFields(uids, fields);
+	
+		userData = applyUserFilters(userData, filters);
+	
 		if (data.sortBy) {
 			sortUsers(userData, data.sortBy, data.sortDirection);
 		}
-
+	
 		return userData.map(user => user.uid);
 	}
 
