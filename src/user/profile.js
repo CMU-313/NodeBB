@@ -156,6 +156,36 @@ module.exports = function (User) {
 		}
 	}
 
+	function validateUsernameFormat(username) {
+		if (username.length < meta.config.minimumUsernameLength) {
+			throw new Error('[[error:username-too-short]]');
+		}
+
+		if (username.length > meta.config.maximumUsernameLength) {
+			throw new Error('[[error:username-too-long]]');
+		}
+
+		const userslug = slugify(username);
+		if (!utils.isUserNameValid(username) || !userslug) {
+			throw new Error('[[error:invalid-username]]');
+		}
+	}
+
+	async function checkUsernameUniqueness(userslug, username) {
+		const exists = await User.existsBySlug(userslug);
+		if (exists) {
+			throw new Error('[[error:username-taken]]');
+		}
+
+		const { error } = await plugins.hooks.fire('filter:username.check', {
+			username: username,
+			error: undefined,
+		});
+		if (error) {
+			throw error;
+		}
+	}
+
 	async function isUsernameAvailable(data, uid) {
 		if (!data.username) {
 			return;
@@ -170,35 +200,17 @@ module.exports = function (User) {
 			}
 		}
 
-		if (data.username.length < meta.config.minimumUsernameLength) {
-			throw new Error('[[error:username-too-short]]');
-		}
-
-		if (data.username.length > meta.config.maximumUsernameLength) {
-			throw new Error('[[error:username-too-long]]');
-		}
-
 		const userslug = slugify(data.username);
-		if (!utils.isUserNameValid(data.username) || !userslug) {
-			throw new Error('[[error:invalid-username]]');
-		}
-
-		if (uid && userslug === userData.userslug) {
+		
+		if (uid && userData && userslug === userData.userslug) {
 			return;
 		}
-		const exists = await User.existsBySlug(userslug);
-		if (exists) {
-			throw new Error('[[error:username-taken]]');
-		}
 
-		const { error } = await plugins.hooks.fire('filter:username.check', {
-			username: data.username,
-			error: undefined,
-		});
-		if (error) {
-			throw error;
-		}
+		validateUsernameFormat(data.username);
+
+		await checkUsernameUniqueness(userslug, data.username);
 	}
+
 	User.checkUsername = async username => isUsernameAvailable({ username });
 
 	async function isAboutMeValid(callerUid, data) {
