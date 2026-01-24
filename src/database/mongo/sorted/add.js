@@ -4,29 +4,6 @@ module.exports = function (module) {
     const helpers = require('../helpers');
     const utils = require('../../../utils');
 
-	function normalizeScores(keys, scores) {
-		const isArray = Array.isArray(scores);
-		if (!isArray) {
-			if (!utils.isNumber(scores)) {
-				throw new Error(`[[error:invalid-score, ${scores}]]`);
-			}
-			return { isArrayOfScores: false, scores };
-		}
- 
- 
-		if (scores.length !== keys.length) {
-			throw new Error('[[error:invalid-data]]');
-		}
- 
- 
-		if (!scores.every(utils.isNumber)) {
-			throw new Error(`[[error:invalid-score, ${scores}]]`);
-		}
- 
- 
-		return { isArrayOfScores: true, scores };
-	}
- 
     module.sortedSetAdd = async function (key, score, value) {
         if (!key) {
             return;
