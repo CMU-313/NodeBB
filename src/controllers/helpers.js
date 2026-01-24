@@ -248,7 +248,6 @@ helpers.buildTitle = function (pageTitle) {
 };
 
 helpers.getCategories = async function ({set, uid, privilege, selectedCid}) {
-	console.log('Amani');
 	const cids = await categories.getCidsByPrivilege(set, uid, privilege);
 	return await getCategoryData(cids, uid, selectedCid, Object.values(categories.watchStates), privilege);
 };
