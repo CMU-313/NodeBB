@@ -276,7 +276,18 @@ module.exports = function (User) {
 			data.groupTitle = JSON.stringify(groupTitles[0]);
 		}
 	}
-	
+
+	User.checkMinReputation = async function (callerUid, uid, setting) {
+		const isSelf = parseInt(callerUid, 10) === parseInt(uid, 10);
+		if (!isSelf || meta.config['reputation:disabled']) {
+			return;
+		}
+		const reputation = await User.getUserField(uid, 'reputation');
+		if (reputation < meta.config[setting]) {
+			throw new Error(`[[error:not-enough-reputation-${setting.replace(/:/g, '-')}, ${meta.config[setting]}]]`);
+		}
+	};
+
 	async function updateEmail(uid, newEmail) {
 		let oldEmail = await db.getObjectField(`user:${uid}`, 'email');
 		oldEmail = oldEmail || '';
