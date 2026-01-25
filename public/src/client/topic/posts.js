@@ -153,47 +153,70 @@ define('forum/topic/posts', [
 		}
 	}
 
+	function checkSamePids(newPosts, dataPosts) {
+		if (newPosts.length !== dataPosts.length) {
+			return false;
+		}
+
+		let allSamePids = true;
+		newPosts.each(function (index, el) {
+			if (parseInt($(el).attr('data-pid'), 10) !== parseInt(dataPosts[index].pid, 10)) {
+				allSamePids = false;
+			}
+		});
+		return allSamePids;
+	}
+
+	function removeAlreadyAddedPosts(data) {
+		const newPosts = $('[component="post"].new');
+
+		if (checkSamePids(newPosts, data.posts)) {
+			newPosts.removeClass('new');
+			data.posts.length = 0;
+			return;
+		}
+
+		if (newPosts.length && data.posts.length > 1) {
+			data.posts.forEach(function (post) {
+				const p = components.get('post', 'pid', post.pid);
+				if (p.hasClass('new')) {
+					p.remove();
+				}
+			});
+		}
+
+		data.posts = data.posts.filter(function (post) {
+			return post.allowDupe || $('[component="post"][data-pid="' + post.pid + '"]').length === 0;
+		});
+	}
+
+	function insertHtmlIntoDocument(html, config) {
+		const { after, before, userScrolled } = config;
+		if (after) {
+			html.insertAfter(after);
+		} else if (before) {
+			// Save document height and position for future reference (about 5 lines down)
+			const height = $(document).height();
+			const scrollTop = $window.scrollTop();
+
+			html.insertBefore(before);
+
+			// Now restore the relative position the user was on prior to new post insertion
+			if (userScrolled || scrollTop > 0) {
+				$window.scrollTop(scrollTop + ($(document).height() - height));
+			}
+		} else {
+			components.get('topic').append(html);
+		}
+	}
+
 	function createNewPosts(data, repliesSelector, direction, userScrolled, callback) {
 		callback = callback || function () {};
 		if (!data || (data.posts && !data.posts.length)) {
 			return callback();
 		}
 
-		function removeAlreadyAddedPosts() {
-			const newPosts = $('[component="post"].new');
-
-			if (newPosts.length === data.posts.length) {
-				let allSamePids = true;
-				newPosts.each(function (index, el) {
-					if (parseInt($(el).attr('data-pid'), 10) !== parseInt(data.posts[index].pid, 10)) {
-						allSamePids = false;
-					}
-				});
-
-				if (allSamePids) {
-					newPosts.each(function () {
-						$(this).removeClass('new');
-					});
-					data.posts.length = 0;
-					return;
-				}
-			}
-
-			if (newPosts.length && data.posts.length > 1) {
-				data.posts.forEach(function (post) {
-					const p = components.get('post', 'pid', post.pid);
-					if (p.hasClass('new')) {
-						p.remove();
-					}
-				});
-			}
-
-			data.posts = data.posts.filter(function (post) {
-				return post.allowDupe || $('[component="post"][data-pid="' + post.pid + '"]').length === 0;
-			});
-		}
-
-		removeAlreadyAddedPosts();
+		removeAlreadyAddedPosts(data);
 
 		if (!data.posts.length) {
 			return callback();
@@ -221,22 +244,7 @@ define('forum/topic/posts', [
 
 			const removedEls = infinitescroll.removeExtra($('[component="post"]'), direction, Math.max(20, config.postsPerPage * 2));
 
-			if (after) {
-				html.insertAfter(after);
-			} else if (before) {
-				// Save document height and position for future reference (about 5 lines down)
-				const height = $(document).height();
-				const scrollTop = $window.scrollTop();
-
-				html.insertBefore(before);
-
-				// Now restore the relative position the user was on prior to new post insertion
-				if (userScrolled || scrollTop > 0) {
-					$window.scrollTop(scrollTop + ($(document).height() - height));
-				}
-			} else {
-				components.get('topic').append(html);
-			}
+			insertHtmlIntoDocument(html, {after, before, userScrolled});
 
 			await Posts.onNewPostsAddedToDom(html);
 			removeNecroPostMessages(removedEls);
