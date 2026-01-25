@@ -23,18 +23,18 @@ module.exports = function (Topics) {
 	};
 
 	Topics.follow = async function (tid, uid) {
-		await setWatching(follow, unignore, 'action:topic.follow', tid, uid);
+		await setWatching({method1:follow, method2:unignore, hook:'action:topic.follow'}, tid, uid);
 	};
 
 	Topics.unfollow = async function (tid, uid) {
-		await setWatching(unfollow, unignore, 'action:topic.unfollow', tid, uid);
+		await setWatching({method1:unfollow, method2:unignore, hook:'action:topic.unfollow'}, tid, uid);
 	};
 
 	Topics.ignore = async function (tid, uid) {
-		await setWatching(ignore, unfollow, 'action:topic.ignore', tid, uid);
+		await setWatching({method1:ignore, method2:unfollow, hook:'action:topic.ignore'}, tid, uid);
 	};
 
-	async function setWatching(method1, method2, hook, tid, uid) {
+	async function setWatching({method1, method2, hook}, tid, uid) {
 		if (!(parseInt(uid, 10) > 0)) {
 			throw new Error('[[error:not-logged-in]]');
 		}
