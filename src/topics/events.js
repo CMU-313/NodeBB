@@ -55,23 +55,23 @@ Events._types = {
 	},
 	move: {
 		icon: 'fa-arrow-circle-right',
-		translation: async (event, language) => translateEventArgs(event, language, 'topic:user-moved-topic-from', renderUser(event), `${event.fromCategory.name}`, renderTimeago(event)),
+		translation: async (event, language) => translateEventArgs({event:event, language:language, prefix:'topic:user-moved-topic-from', args:[renderUser(event), `${event.fromCategory.name}`, renderTimeago(event)]}),
 	},
 	share: {
 		icon: 'fa-share-alt',
-		translation: async (event, language) => translateEventArgs(event, language, 'topic:user-shared-topic', renderUser(event), renderTimeago(event)),
+		translation: async (event, language) => translateEventArgs({event:event, language:language, prefix:'topic:user-shared-topic', args:[renderUser(event), renderTimeago(event)]}),
 	},
 	'post-queue': {
 		icon: 'fa-history',
-		translation: async (event, language) => translateEventArgs(event, language, 'topic:user-queued-post', renderUser(event), `${relative_path}${event.href}`, renderTimeago(event)),
+		translation: async (event, language) => translateEventArgs({event:event, language:language, prefix:'topic:user-queued-post', args:[renderUser(event), `${relative_path}${event.href}`, renderTimeago(event)]}),
 	},
 	backlink: {
 		icon: 'fa-link',
-		translation: async (event, language) => translateEventArgs(event, language, 'topic:user-referenced-topic', renderUser(event), `${relative_path}${event.href}`, renderTimeago(event)),
+		translation: async (event, language) => translateEventArgs({event:event, language:language, prefix:'topic:user-referenced-topic', args:[renderUser(event), `${relative_path}${event.href}`, renderTimeago(event)]}),
 	},
 	fork: {
 		icon: 'fa-code-fork',
-		translation: async (event, language) => translateEventArgs(event, language, 'topic:user-forked-topic', renderUser(event), `${relative_path}${event.href}`, renderTimeago(event)),
+		translation: async (event, language) => translateEventArgs({event:event, language:language, prefix:'topic:user-forked-topic', args:[renderUser(event), `${relative_path}${event.href}`, renderTimeago(event)]}),
 	},
 };
 
@@ -81,14 +81,18 @@ Events.init = async () => {
 	Events._types = types;
 };
 
-async function translateEventArgs(event, language, prefix, ...args) {
+async function translateEventArgs({event, language, prefix, args = []}) {
 	const key = getTranslationKey(event, prefix);
 	const compiled = translator.compile.apply(null, [key, ...args]);
 	return utils.decodeHTMLEntities(await translator.translate(compiled, language));
 }
 
 async function translateSimple(event, language, prefix) {
-	return await translateEventArgs(event, language, prefix, renderUser(event), renderTimeago(event));
+	return await translateEventArgs({
+		event:event, 
+		language:language, prefix:prefix, 
+		args:[renderUser(event), renderTimeago(event)],
+	});
 }
 
 Events.translateSimple = translateSimple; // so plugins can perform translate
