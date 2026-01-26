@@ -11,19 +11,43 @@ module.exports = function (module) {
 	require('./sorted/intersect')(module);
 
 	module.getSortedSetRange = async function (key, start, stop) {
-		return await sortedSetRange(key, start, stop, '-inf', '+inf', false, false, false);
+		return await sortedSetRange(key, start, stop, {
+			min: '-inf', 
+			max: '+inf', 
+			withScores: false,
+			rev: false,
+			byScore: false,
+		});
 	};
 
 	module.getSortedSetRevRange = async function (key, start, stop) {
-		return await sortedSetRange(key, start, stop, '-inf', '+inf', false, true, false);
+		return await sortedSetRange(key, start, stop, {
+			min: '-inf', 
+			max: '+inf', 
+			withScores: false,
+			rev: true,
+			byScore: false,
+		});
 	};
 
 	module.getSortedSetRangeWithScores = async function (key, start, stop) {
-		return await sortedSetRange(key, start, stop, '-inf', '+inf', true, false, false);
+		return await sortedSetRange(key, start, stop, {
+			min: '-inf', 
+			max: '+inf', 
+			withScores: true,
+			rev: false,
+			byScore: false,
+		});
 	};
 
 	module.getSortedSetRevRangeWithScores = async function (key, start, stop) {
-		return await sortedSetRange(key, start, stop, '-inf', '+inf', true, true, false);
+		return await sortedSetRange(key, start, stop, {
+			min: '-inf', 
+			max: '+inf', 
+			withScores: true,
+			rev: true,
+			byScore: false,
+		});
 	};
 
 	module.getSortedSetRangeByScore = async function (key, start, count, min, max) {
@@ -47,10 +71,24 @@ module.exports = function (module) {
 			return [];
 		}
 		const stop = (parseInt(count, 10) === -1) ? -1 : (start + count - 1);
-		return await sortedSetRange(key, start, stop, min, max, withScores, rev, true);
+		return await sortedSetRange(key, start, stop, {
+			min, 
+			max, 
+			withScores, 
+			rev, 
+			byScore: true,
+		});
 	}
 
-	async function sortedSetRange(key, start, stop, min, max, withScores, rev, byScore) {
+	async function sortedSetRange(key, start, stop, options) {
+		const {
+			min = '-inf',
+			max = '+inf',
+			withScores = false,
+			rev = false,
+			byScore = false,
+		} = options || {};
+		
 		const opts = {};
 		const cmd = withScores ? 'zRangeWithScores' : 'zRange';
 		if (byScore) {
