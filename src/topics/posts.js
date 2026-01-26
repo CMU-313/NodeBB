@@ -22,34 +22,44 @@ module.exports = function (Topics) {
 		await Topics.addPostToTopic(postData.tid, postData);
 	};
 
-	Topics.getTopicPosts = async function (topicData, set, start, stop, uid, reverse) {
-		if (!topicData) {
-			return [];
-		}
-
+	
+	Topics.getPidsInRange = async function (topicData, set, start, stop, reverse) {
 		let repliesStart = start;
 		let repliesStop = stop;
 		if (stop > 0) {
 			repliesStop -= 1;
-			if (start > 0) {
-				repliesStart -= 1;
-			}
+			repliesStart -= start > 0 ? 1 : 0;
 		}
+		
 		let pids = [];
 		if (start !== 0 || stop !== 0) {
 			pids = await posts.getPidsFromSet(set, repliesStart, repliesStop, reverse);
 		}
-		if (!pids.length && !topicData.mainPid) {
-			return [];
-		}
-
+		
 		if (topicData.mainPid && start === 0) {
 			pids.unshift(topicData.mainPid);
 		}
+
+		return pids;
+	};
+
+	Topics.getTopicPosts = async function (topicData, set, start, stop, uid, reverse) {
+		// console.log('Lawrence Song (lingyis)');
+		if (!topicData) {
+			return [];
+		}
+
+		const pids = await Topics.getPidsInRange(topicData, set, start, stop, reverse); 
 		let postData = await posts.getPostsByPids(pids, uid);
 		if (!postData.length) {
 			return [];
 		}
+
+		let repliesStart = start;
+		if (stop > 0 && start > 0) {
+			repliesStart -= 1;
+		}
+
 		let replies = postData;
 		if (topicData.mainPid && start === 0) {
 			postData[0].index = 0;
