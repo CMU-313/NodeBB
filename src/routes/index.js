@@ -104,6 +104,7 @@ _mounts.groups = (app, name, middleware, controllers) => {
 };
 
 module.exports = async function (app, middleware) {
+
 	const router = express.Router();
 	router.render = function (...args) {
 		app.render(...args);
