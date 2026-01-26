@@ -7,30 +7,40 @@ const meta = require('../meta');
 
 const jobs = {};
 
+function getDigesthour(dhour) {
+	// Fix digest hour if invalid
+	if (isNaN(dhour)) {
+		return 17;
+	}
+	if (dhour > 23 || dhour < 0) {
+		return 0;
+	}
+	return dhour;
+}
+	
+
+function startResetCleanJob(User) {
+	jobs['reset.clean'] = new cronJob('0 0 * * *', User.reset.clean, null, true);
+	winston.verbose('[user/jobs] Starting job (reset.clean)');
+}
+
 module.exports = function (User) {
 	User.startJobs = function () {
 		winston.verbose('[user/jobs] (Re-)starting jobs...');
 
-		let { digestHour } = meta.config;
-
-		// Fix digest hour if invalid
-		if (isNaN(digestHour)) {
-			digestHour = 17;
-		} else if (digestHour > 23 || digestHour < 0) {
-			digestHour = 0;
-		}
+		const digestHour = getDigesthour(meta.config.digestHour);
 
 		User.stopJobs();
 
 		startDigestJob('digest.daily', `0 ${digestHour} * * *`, 'day');
 		startDigestJob('digest.weekly', `0 ${digestHour} * * 0`, 'week');
 		startDigestJob('digest.monthly', `0 ${digestHour} 1 * *`, 'month');
+		startResetCleanJob(User);
 
-		jobs['reset.clean'] = new cronJob('0 0 * * *', User.reset.clean, null, true);
-		winston.verbose('[user/jobs] Starting job (reset.clean)');
 
 		winston.verbose(`[user/jobs] jobs started`);
 	};
+
 
 	function startDigestJob(name, cronString, term) {
 		jobs[name] = new cronJob(cronString, (async () => {
