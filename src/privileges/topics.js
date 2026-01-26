@@ -191,12 +191,12 @@ privsTopics.isAdminOrMod = async function (tid, uid) {
 	return await privsCategories.isAdminOrMod(cid, uid);
 };
 
-privsTopics.canViewDeletedScheduled = function (topic, privileges = {}, viewDeleted = false, viewScheduled = false) {
+privsTopics.canViewDeletedScheduled = function (topic, privileges = {}) {
 	if (!topic) {
 		return false;
 	}
 	const { deleted = false, scheduled = false } = topic;
-	const { view_deleted = viewDeleted, view_scheduled = viewScheduled } = privileges;
+	const { view_deleted = false, view_scheduled = false } = privileges;
 
 	// conceptually exclusive, scheduled topics deemed to be not deleted (they can only be purged)
 	if (scheduled) {
