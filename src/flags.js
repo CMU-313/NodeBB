@@ -42,37 +42,37 @@ Flags._states = new Map([
 
 Flags.init = async function () {
 	// Query plugins for custom filter strategies and merge into core filter strategies
-	function prepareSets(sets, orSets, prefix, value) {
+	function prepareSets(sets, prefix, value) {
 		if (!Array.isArray(value)) {
-			sets.push(prefix + value);
+			sets['sets'].push(prefix + value);
 		} else if (value.length) {
 			if (value.length === 1) {
-				sets.push(prefix + value[0]);
+				sets['sets'].push(prefix + value[0]);
 			} else {
-				orSets.push(value.map(x => prefix + x));
+				sets['orSets'].push(value.map(x => prefix + x));
 			}
 		}
 	}
-
+	
 	const hookData = {
 		filters: {
 			type: function (sets, orSets, key) {
-				prepareSets(sets, orSets, 'flags:byType:', key);
+				prepareSets({'sets': sets, 'orSets': orSets}, 'flags:byType:', key);
 			},
 			state: function (sets, orSets, key) {
-				prepareSets(sets, orSets, 'flags:byState:', key);
+				prepareSets({'sets': sets, 'orSets': orSets}, 'flags:byState:', key);
 			},
 			reporterId: function (sets, orSets, key) {
-				prepareSets(sets, orSets, 'flags:byReporter:', key);
+				prepareSets({'sets': sets, 'orSets': orSets}, 'flags:byReporter:', key);
 			},
 			assignee: function (sets, orSets, key) {
-				prepareSets(sets, orSets, 'flags:byAssignee:', key);
+				prepareSets({'sets': sets, 'orSets': orSets}, 'flags:byAssignee:', key);
 			},
 			targetUid: function (sets, orSets, key) {
-				prepareSets(sets, orSets, 'flags:byTargetUid:', key);
+				prepareSets({'sets': sets, 'orSets': orSets}, 'flags:byTargetUid:', key);
 			},
 			cid: function (sets, orSets, key) {
-				prepareSets(sets, orSets, 'flags:byCid:', key);
+				prepareSets({'sets': sets, 'orSets': orSets}, 'flags:byCid:', key);
 			},
 			page: function () { /* noop */ },
 			perPage: function () { /* noop */ },
@@ -83,7 +83,7 @@ Flags.init = async function () {
 						break;
 
 					case 'unresolved':
-						prepareSets(sets, orSets, 'flags:byState:', ['open', 'wip']);
+						prepareSets({'sets': sets, 'orSets': orSets}, 'flags:byState:', ['open', 'wip']);
 						break;
 				}
 			},
