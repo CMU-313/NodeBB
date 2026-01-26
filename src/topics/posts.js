@@ -81,27 +81,78 @@ module.exports = function (Topics) {
 		if (!postData.length) {
 			return;
 		}
-		postData.forEach((p, index) => {
-			if (p && p.index === 0 && reverse) {
-				p.eventStart = topicData.lastposttime;
-				p.eventEnd = Date.now();
-			} else if (p && postData[index + 1]) {
-				p.eventStart = reverse ? postData[index + 1].timestamp : p.timestamp;
-				p.eventEnd = reverse ? p.timestamp : postData[index + 1].timestamp;
-			}
+
+		const context = { postData, set, reverse, topicData };
+
+		// Process all posts
+		postData.forEach((post, index) => {
+			if (!post) return;
+			setPostEventTimes(post, index, context);
 		});
+
+		// Handle last post separately (may need DB lookup)
+		await handleLastPost(context);
+	}
+
+	function setPostEventTimes(post, index, { postData, reverse, topicData }) {
+		const isFirstPost = post.index === 0;
+		const nextPost = postData[index + 1];
+
+		if (isFirstPost && reverse) {
+			post.eventStart = topicData.lastposttime;
+			post.eventEnd = Date.now();
+			return;
+		}
+
+		if (!nextPost) {
+			return; // Last post handled separately
+		}
+
+		if (reverse) {
+			post.eventStart = nextPost.timestamp;
+			post.eventEnd = post.timestamp;
+		} else {
+			post.eventStart = post.timestamp;
+			post.eventEnd = nextPost.timestamp;
+		}
+	}
+
+	async function handleLastPost({ postData, set, reverse, topicData }) {
 		const lastPost = postData[postData.length - 1];
-		if (lastPost) {
-			lastPost.eventStart = reverse ? topicData.timestamp : lastPost.timestamp;
-			lastPost.eventEnd = reverse ? lastPost.timestamp : Date.now();
-			if (lastPost.index) {
-				const nextPost = await db[reverse ? 'getSortedSetRevRangeWithScores' : 'getSortedSetRangeWithScores'](set, lastPost.index, lastPost.index);
-				if (reverse) {
-					lastPost.eventStart = nextPost.length ? nextPost[0].score : lastPost.eventStart;
-				} else {
-					lastPost.eventEnd = nextPost.length ? nextPost[0].score : lastPost.eventEnd;
-				}
-			}
+		if (!lastPost) {
+			return;
+		}
+
+		if (reverse) {
+			lastPost.eventStart = topicData.timestamp;
+			lastPost.eventEnd = lastPost.timestamp;
+		} else {
+			lastPost.eventStart = lastPost.timestamp;
+			lastPost.eventEnd = Date.now();
+		}
+
+		if (!lastPost.index) {
+			return;
+		}
+
+		await updateLastPostFromDatabase(lastPost, set, reverse);
+	}
+
+	async function updateLastPostFromDatabase(lastPost, set, reverse) {
+		const method = reverse ? 
+			'getSortedSetRevRangeWithScores' : 
+			'getSortedSetRangeWithScores';
+		
+		const nextPost = await db[method](set, lastPost.index, lastPost.index);
+		
+		if (!nextPost.length) {
+			return;
+		}
+
+		if (reverse) {
+			lastPost.eventStart = nextPost[0].score;
+		} else {
+			lastPost.eventEnd = nextPost[0].score;
 		}
 	}
 
@@ -209,7 +260,7 @@ module.exports = function (Topics) {
 				parentPost.content = foundPost.content;
 				return;
 			}
-			await posts.parsePost(parentPost);
+			parentPost = await posts.parsePost(parentPost);
 		}));
 
 		const parents = {};
@@ -227,7 +278,7 @@ module.exports = function (Topics) {
 		});
 
 		postData.forEach((post) => {
-			if (parents[post.toPid] && parents[post.toPid].content) {
+			if (parents[post.toPid]) {
 				post.parent = parents[post.toPid];
 			}
 		});
@@ -442,7 +493,7 @@ module.exports = function (Topics) {
 
 		let { content } = postData;
 		// ignore lines that start with `>`
-		content = (content || '').split('\n').filter(line => !line.trim().startsWith('>')).join('\n');
+		content = content.split('\n').filter(line => !line.trim().startsWith('>')).join('\n');
 		// Scan post content for topic links
 		const matches = [...content.matchAll(backlinkRegex)];
 		if (!matches) {
