@@ -15,25 +15,23 @@ userController.getCurrentUser = async function (req, res) {
 	res.json(userData);
 };
 
-userController.getUserByUID = async function (req, res, next) {
-	await byType('uid', req, res, next);
-};
-
-userController.getUserByUsername = async function (req, res, next) {
-	await byType('username', req, res, next);
-};
-
-userController.getUserByEmail = async function (req, res, next) {
-	await byType('email', req, res, next);
-};
-
-async function byType(type, req, res, next) {
-	const userData = await userController.getUserDataByField(req.uid, type, req.params[type]);
-	if (!userData) {
-		return next();
-	}
-	res.json(userData);
+function byType (type) {
+	return async function (req, res, next) {
+		const userData = await userController.getUserDataByField(
+			req.uid, type, req.params[type]
+		);
+		if (!userData) {
+			return next();
+		}
+		res.json(userData);
+	};
 }
+
+userController.getUserByUID = byType('uid');
+
+userController.getUserByUsername = byType('username');
+
+userController.getUserByEmail = byType('email');
 
 userController.getUserDataByField = async function (callerUid, field, fieldValue) {
 	let uid = null;
