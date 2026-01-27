@@ -38,30 +38,77 @@ define('forum/infinitescroll', ['hooks', 'alerts', 'api'], function (hooks, aler
 	}
 
 	function onScroll() {
-		const bsEnv = utils.findBootstrapEnvironment();
-		const mobileComposerOpen = (bsEnv === 'xs' || bsEnv === 'sm') && $('html').hasClass('composing');
-		if (loadingMore || mobileComposerOpen || app.flags._glance) {
+
+		if (skipScroll()) {
 			return;
 		}
+
+		const metrics = getMetrics();
+		const direction = getDirection(metrics.currentScrollTop);
+
+		if (getTrigger(metrics)) {
+			callback(direction);
+		}
+
+		previousScrollTop = metrics.currentScrollTop;
+
+	}
+
+	function skipScroll() {
+
+		const bsEnv = utils.findBootstrapEnvironment();
+		const mobileComposerOpen = (bsEnv === 'xs' || bsEnv === 'sm') && $('html').hasClass('composing');
+		
+		return loadingMore || mobileComposerOpen || app.flags._glance;
+
+	}
+
+	function getMetrics() {
+		
 		const currentScrollTop = $(window).scrollTop();
 		const wh = $(window).height();
+		
+		const offset = container.offset();
+		const offsetTop = offset ? offset.top : 0;
+		
 		const viewportHeight = container.height() - wh;
-		const offsetTop = container.offset() ? container.offset().top : 0;
-		const scrollPercent = 100 * (currentScrollTop - offsetTop) / (viewportHeight <= 0 ? wh : viewportHeight);
+		
+		const denominator = viewportHeight <= 0 ? wh : viewportHeight;
+		
+		const scrollPercent = 100 * (currentScrollTop - offsetTop) / denominator;
+
+		return { currentScrollTop, viewportHeight, scrollPercent };
+
+	}
+
+	function getDirection(currentScrollTop) {
+
+		return currentScrollTop > previousScrollTop ? 1 : -1;
+	
+	}
+
+	function getTrigger(metrics) {
 
 		const top = 15;
 		const bottom = 85;
-		const direction = currentScrollTop > previousScrollTop ? 1 : -1;
 
-		if (scrollPercent < top && currentScrollTop < previousScrollTop) {
-			callback(direction);
-		} else if (scrollPercent > bottom && currentScrollTop > previousScrollTop) {
-			callback(direction);
-		} else if (scrollPercent < 0 && direction > 0 && viewportHeight < 0) {
-			callback(direction);
+		const scrollUp = metrics.currentScrollTop < previousScrollTop;
+		const scrollDown = metrics.currentScrollTop > previousScrollTop;
+
+		if (metrics.scrollPercent < top && scrollUp) {
+			return true;
+		} 
+
+		if (metrics.scrollPercent > bottom && scrollDown) {
+			return true;
+		} 
+
+		if (metrics.scrollPercent < 0 && scrollDown && metrics.viewportHeight < 0) {
+			return true;
 		}
 
-		previousScrollTop = currentScrollTop;
+		return false;
+
 	}
 
 	scroll.loadMore = function (method, data, callback) {
