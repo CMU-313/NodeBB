@@ -358,6 +358,18 @@ module.exports = function (Topics) {
 
 	async function getPostReplies(postData, callerUid) {
 		const pids = postData.map(p => p && p.pid);
+
+		const replyContext = await fetchReplyContext(pids, callerUid);
+		replyContext.postDataMap = _.zipObject(pids, postData);
+		return await Promise.all(replyContext.arrayOfReplyPids.map((replyPids, idx) =>
+			buildReplyMetadataForPost(
+				replyPids,
+				postData[idx],
+				replyContext
+			)));
+	}
+
+	async function fetchReplyContext(pids, callerUid) {
 		const keys = pids.map(pid => `pid:${pid}:replies`);
 		const [arrayOfReplyPids, userSettings] = await Promise.all([
 			db.getSortedSetsMembers(keys),
@@ -365,73 +377,100 @@ module.exports = function (Topics) {
 		]);
 
 		const uniquePids = _.uniq(_.flatten(arrayOfReplyPids));
-
 		let replyData = await posts.getPostsFields(uniquePids, ['pid', 'uid', 'timestamp']);
+
 		const result = await plugins.hooks.fire('filter:topics.getPostReplies', {
 			uid: callerUid,
 			replies: replyData,
 		});
 		replyData = await user.blocks.filter(callerUid, result.replies);
 
-		const uids = replyData.map(replyData => replyData && replyData.uid);
+		const uniqueUids = _.uniq(replyData.map(r => r && r.uid));
+		const userData = await user.getUsersWithFields(
+			uniqueUids,
+			['uid', 'username', 'userslug', 'picture'],
+			callerUid
+		);
 
-		const uniqueUids = _.uniq(uids);
+		return {
+			arrayOfReplyPids,
+			userSettings,
+			uidMap: _.zipObject(uniqueUids, userData),
+			pidMap: _.zipObject(replyData.map(r => r.pid), replyData),
+		};
+	}
 
-		const userData = await user.getUsersWithFields(uniqueUids, ['uid', 'username', 'userslug', 'picture'], callerUid);
+	async function buildReplyMetadataForPost(replyPids, currentPost, replyContext) {
+		const { pidMap, uidMap } = replyContext;
 
-		const uidMap = _.zipObject(uniqueUids, userData);
-		const pidMap = _.zipObject(replyData.map(r => r.pid), replyData);
-		const postDataMap = _.zipObject(pids, postData);
+		const validPids = replyPids
+			.filter(pid => pidMap[pid])
+			.sort((a, b) => pidMap[a].timestamp - pidMap[b].timestamp);
 
-		const returnData = await Promise.all(arrayOfReplyPids.map(async (replyPids, idx) => {
-			const currentPost = postData[idx];
-			replyPids = replyPids.filter(pid => pidMap[pid]);
-			const uidsUsed = {};
-			const currentData = {
-				hasMore: false,
-				hasSingleImmediateReply: false,
-				users: [],
-				text: replyPids.length > 1 ? `[[topic:replies-to-this-post, ${replyPids.length}]]` : '[[topic:one-reply-to-this-post]]',
-				count: replyPids.length,
-				timestampISO: replyPids.length ? utils.toISOString(pidMap[replyPids[0]].timestamp) : undefined,
+		const { users, hasMore } = buildUniqueUserList(validPids, pidMap, uidMap);
+
+		const metadata = {
+			hasMore,
+			hasSingleImmediateReply: false,
+			users,
+			text: validPids.length > 1 ?
+				`[[topic:replies-to-this-post, ${validPids.length}]]` :
+				'[[topic:one-reply-to-this-post]]',
+			count: validPids.length,
+			timestampISO: validPids.length ?
+				utils.toISOString(pidMap[validPids[0]].timestamp) :
+				undefined,
+		};
+
+		if (validPids.length === 1) {
+			metadata.hasSingleImmediateReply = await checkIsImmediateReply(
+				currentPost,
+				validPids[0],
+				replyContext
+			);
+		}
+
+		return metadata;
+	}
+
+	function buildUniqueUserList(validPids, pidMap, uidMap) {
+		const seenUids = new Set();
+		const users = [];
+
+		for (const pid of validPids) {
+			const { uid } = pidMap[pid];
+			if (!seenUids.has(uid) && users.length < 6) {
+				users.push(uidMap[uid]);
+				seenUids.add(uid);
+			}
+		}
+
+		const hasMore = users.length > 5;
+		if (hasMore) {
+			users.pop();
+		}
+
+		return { users, hasMore };
+	}
+
+	async function checkIsImmediateReply(currentPost, replyPid, replyContext) {
+		const { postDataMap, userSettings } = replyContext;
+
+		if (!currentPost || currentPost.index == null) {
+			return false;
+		}
+
+		let replyPost = postDataMap[replyPid];
+		if (!replyPost) {
+			const tid = await posts.getPostField(replyPid, 'tid');
+			replyPost = {
+				index: await posts.getPidIndex(replyPid, tid, userSettings.topicPostSort),
+				tid: tid,
 			};
+		}
 
-			replyPids.sort((a, b) => pidMap[a].timestamp - pidMap[b].timestamp);
-
-			replyPids.forEach((replyPid) => {
-				const replyData = pidMap[replyPid];
-				if (!uidsUsed[replyData.uid] && currentData.users.length < 6) {
-					currentData.users.push(uidMap[replyData.uid]);
-					uidsUsed[replyData.uid] = true;
-				}
-			});
-
-			if (currentData.users.length > 5) {
-				currentData.users.pop();
-				currentData.hasMore = true;
-			}
-
-			if (replyPids.length === 1) {
-				const currentIndex = currentPost ? currentPost.index : null;
-				const replyPid = replyPids[0];
-				// only load index of nested reply if we can't find it in the postDataMap
-				let replyPost = postDataMap[replyPid];
-				if (!replyPost) {
-					const tid = await posts.getPostField(replyPid, 'tid');
-					replyPost = {
-						index: await posts.getPidIndex(replyPid, tid, userSettings.topicPostSort),
-						tid: tid,
-					};
-				}
-				currentData.hasSingleImmediateReply =
-					(currentPost && currentPost.tid === replyPost.tid) &&
-					Math.abs(currentIndex - replyPost.index) === 1;
-			}
-
-			return currentData;
-		}));
-
-		return returnData;
+		return currentPost.tid === replyPost.tid &&
+			Math.abs(currentPost.index - replyPost.index) === 1;
 	}
 
 	Topics.syncBacklinks = async (postData) => {
@@ -474,3 +513,5 @@ module.exports = function (Topics) {
 		return add.length + (current - remove);
 	};
 };
+
+//test if this works
