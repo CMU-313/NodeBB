@@ -338,28 +338,31 @@ module.exports = function (User) {
 		));
 	}
 
+
 	function parseGroupTitle(user) {
+		const raw = user.groupTitle;
+
+		user.groupTitleArray = normalizeToArray(parseMaybeJson(raw));
+		if (!meta.config.allowMultipleBadges) {
+			user.groupTitleArray = user.groupTitleArray.slice(0, 1);
+		}
+		if (!raw) user.groupTitle = '';
+	}
+
+	function parseMaybeJson(value) {
+		if (!value) return null;
 		try {
-			user.groupTitleArray = JSON.parse(user.groupTitle);
-		} catch (err) {
-			if (user.groupTitle) {
-				user.groupTitleArray = [user.groupTitle];
-			} else {
-				user.groupTitle = '';
-				user.groupTitleArray = [];
-			}
-		}
-		if (!Array.isArray(user.groupTitleArray)) {
-			if (user.groupTitleArray) {
-				user.groupTitleArray = [user.groupTitleArray];
-			} else {
-				user.groupTitleArray = [];
-			}
-		}
-		if (!meta.config.allowMultipleBadges && user.groupTitleArray.length) {
-			user.groupTitleArray = [user.groupTitleArray[0]];
+			return JSON.parse(value);
+		} catch {
+			return value; 
 		}
 	}
+
+	function normalizeToArray(value) {
+		if (value == null) return [];
+		return Array.isArray(value) ? value : [value];
+	}
+
 
 
 	User.getIconBackgrounds = async () => {
