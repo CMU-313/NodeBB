@@ -106,29 +106,47 @@ Categories.setModerator = async (req, res) => {
 	const privilegeSet = await api.categories.getPrivileges(req, { cid: req.params.cid });
 	helpers.formatApiResponse(200, res, privilegeSet);
 };
+const helper = (req) => {
+	// 1. Try to get actor from the logged-in session (req.uid) first (Security Best Practice).
+	// 2. Fallback to req.body.actor (for your tests or specific API calls).
+	//console.log('Oliver Graham'); 
+	const actor = req.uid || req.body.actor;
 
-Categories.follow = async (req, res, next) => {
-	// Priv check done in route middleware
-	const { actor } = req.body;
 	const id = parseInt(req.params.cid, 10);
 
-	if (!id) { // disallow cid 0
-		return next();
+	// Check if ID is invalid OR if we failed to find an actor
+	if (!id || !actor) {
+		return false;
 	}
 
-	await activitypub.out.follow('cid', id, actor);
+	return { id, actor };
+};
+
+Categories.follow = async (req, res, next) => {
+	const data = helper(req);
+
+	if (data === false) {
+		return next();
+	} 
+	// console.log('Oliver Graham'); 
+
+	// data.actor is now guaranteed to be defined
+	await activitypub.out.follow('cid', data.id, data.actor);
 
 	helpers.formatApiResponse(200, res, {});
+    
 };
 
 Categories.unfollow = async (req, res, next) => {
-	const { actor } = req.body;
-	const id = parseInt(req.params.cid, 10);
+	const data = helper(req);
 
-	if (!id) { // disallow cid 0
+	if (data === false) {
 		return next();
-	}
+	} 
+	// console.log('Oliver Graham');
 
-	await activitypub.out.undo.follow('cid', id, actor);
+	await activitypub.out.undo.follow('cid', data.id, data.actor);
+
 	helpers.formatApiResponse(200, res, {});
+    
 };
