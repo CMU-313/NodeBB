@@ -78,3 +78,6 @@ test.sh
 dump.rdb
 .archiver_shadow/
 .snapshots/
+
+# Dev Container start script
+start-dev.sh
