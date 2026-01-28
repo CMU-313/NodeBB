@@ -338,11 +338,16 @@ module.exports = function (User) {
 		}
 	}
 
-	User.changePassword = async function (uid, data) {
+	function validatePasswordRequest(uid, data) {
 		if (uid <= 0 || !data || !data.uid) {
 			throw new Error('[[error:invalid-uid]]');
 		}
 		User.isPasswordValid(data.newPassword);
+	}
+
+	User.changePassword = async function (uid, data) {
+		validatePasswordRequest(uid, data);
+
 		const [isAdmin, hasPassword] = await Promise.all([
 			User.isAdministrator(uid),
 			User.hasPassword(uid),
