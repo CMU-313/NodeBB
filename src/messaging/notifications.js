@@ -99,12 +99,17 @@ module.exports = function (Messaging) {
 		const roomDefault = roomData.notificationSetting;
 		const uidsToNotify = [];
 		const { ALLMESSAGES } = Messaging.notificationSettings;
+		console.log('Andrew ID: ASRN');
 		await batch.processSortedSet(`chat:room:${roomId}:uids:online`, async (uids) => {
 			uids = uids.filter(
-				uid => utils.isNumber(uid) &&
-					(parseInt((settings && settings[uid]) || roomDefault, 10) === ALLMESSAGES) &&
-					String(fromUid) !== String(uid) &&
-					!realtimeUids.includes(parseInt(uid, 10))
+				(uid) => {
+					const isNumeric = utils.isNumber(uid);
+					const isNotSelf = String(fromUid) !== String(uid);
+					const combinedSettings = (settings && settings[uid]);
+					const showAll = parseInt(combinedSettings || roomDefault, 10) === ALLMESSAGES;
+					const isPresent = realtimeUids.includes(parseInt(uid, 10));
+					return Boolean(isNumeric && isNotSelf && showAll && !isPresent);
+				}
 			);
 			const hasRead = await Messaging.hasRead(uids, roomId);
 			uidsToNotify.push(...uids.filter((uid, index) => !hasRead[index]));
