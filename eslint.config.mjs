@@ -9,6 +9,57 @@ import stylisticJs from '@stylistic/eslint-plugin'
 import js from '@eslint/js';
 import globals from 'globals';
 
+function normalizeQuotesRule(rule) {
+	if (!Array.isArray(rule) || typeof rule[2] !== 'object' || rule[2] === null) {
+		return rule;
+	}
+
+	const options = rule[2];
+	if (typeof options.allowTemplateLiterals !== 'boolean') {
+		return rule;
+	}
+
+	return [
+		rule[0],
+		rule[1],
+		{
+			...options,
+			allowTemplateLiterals: options.allowTemplateLiterals ? 'always' : 'never',
+		},
+	];
+}
+
+function normalizeQuotesInRules(rules = {}) {
+	const normalizedRules = {
+		...rules,
+	};
+
+	if (Object.hasOwn(rules, '@stylistic/js/quotes')) {
+		normalizedRules['@stylistic/js/quotes'] = normalizeQuotesRule(rules['@stylistic/js/quotes']);
+	}
+
+	if (Object.hasOwn(rules, 'quotes')) {
+		normalizedRules.quotes = normalizeQuotesRule(rules.quotes);
+	}
+
+	return normalizedRules;
+}
+
+function normalizeConfigQuotes(config) {
+	if (!config || typeof config !== 'object' || !config.rules) {
+		return config;
+	}
+
+	return {
+		...config,
+		rules: normalizeQuotesInRules(config.rules),
+	};
+}
+
+const normalizedCommonRules = normalizeQuotesInRules(commonRules);
+const normalizedPublicConfig = publicConfig.map(normalizeConfigQuotes);
+const normalizedServerConfig = serverConfig.map(normalizeConfigQuotes);
+
 export default defineConfig([
 	{
 		ignores: [
@@ -54,12 +105,12 @@ export default defineConfig([
 			},
 		},
 		rules: {
-			...commonRules,
+			...normalizedCommonRules,
 			'no-unused-vars': 'off',
 			'no-prototype-builtins': 'off',
 		}
 	},
-	...publicConfig,
-	...serverConfig
+	...normalizedPublicConfig,
+	...normalizedServerConfig
 ]);
 
