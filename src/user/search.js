@@ -41,35 +41,7 @@ module.exports = function (User) {
 		} else if (searchBy === 'uid') {
 			uids = [query];
 		} else {
-			if (!data.findUids && data.uid) {
-				const handle = activitypub.helpers.isWebfinger(data.query);
-				if (handle || activitypub.helpers.isUri(data.query)) {
-					const local = await activitypub.helpers.resolveLocalId(data.query);
-					if (local.type === 'user' && utils.isNumber(local.id)) {
-						uids = [local.id];
-					} else {
-						const assertion = await activitypub.actors.assert([handle || data.query]);
-						if (assertion === true) {
-							uids = [handle ? await User.getUidByUserslug(handle) : query];
-						} else if (Array.isArray(assertion) && assertion.length) {
-							uids = assertion.map(u => u.id);
-						}
-					}
-				}
-			}
-
-			if (!uids.length) {
-				const searchMethod = data.findUids || findUids;
-				uids = await searchMethod(query, searchBy, data.hardCap);
-
-				const mapping = {
-					username: 'ap.preferredUsername',
-					fullname: 'ap.name',
-				};
-				if (meta.config.activitypubEnabled && mapping.hasOwnProperty(searchBy)) {
-					uids = uids.concat(await searchMethod(query, mapping[searchBy], data.hardCap));
-				}
-			}
+			uids = await resolveDefaultSearchUids(data, query, searchBy);
 		}
 
 		uids = await filterAndSortUids(uids, data);
@@ -111,6 +83,54 @@ module.exports = function (User) {
 		return searchResult;
 	};
 
+	async function resolveDefaultSearchUids(data, query, searchBy) {
+		const fromActivityPub = await tryActivityPubUidsFromQuery(data);
+		if (fromActivityPub.length) {
+			return fromActivityPub;
+		}
+		return findUidsWithOptionalApLexSearch(data, query, searchBy);
+	}
+
+	async function tryActivityPubUidsFromQuery(data) {
+		if (data.findUids || !data.uid) {
+			return [];
+		}
+		const handle = activitypub.helpers.isWebfinger(data.query);
+		if (!handle && !activitypub.helpers.isUri(data.query)) {
+			return [];
+		}
+		const local = await activitypub.helpers.resolveLocalId(data.query);
+		if (local.type === 'user' && utils.isNumber(local.id)) {
+			return [local.id];
+		}
+		return uidsFromActorAssertion(data, handle);
+	}
+
+	async function uidsFromActorAssertion(data, handle) {
+		const assertion = await activitypub.actors.assert([handle || data.query]);
+		if (assertion === true) {
+			const uid = handle ? await User.getUidByUserslug(handle) : data.query;
+			return [uid];
+		}
+		if (Array.isArray(assertion) && assertion.length) {
+			return assertion.map(u => u.id);
+		}
+		return [];
+	}
+
+	async function findUidsWithOptionalApLexSearch(data, query, searchBy) {
+		const searchMethod = data.findUids || findUids;
+		let uids = await searchMethod(query, searchBy, data.hardCap);
+		const mapping = {
+			username: 'ap.preferredUsername',
+			fullname: 'ap.name',
+		};
+		if (meta.config.activitypubEnabled && mapping.hasOwnProperty(searchBy)) {
+			uids = uids.concat(await searchMethod(query, mapping[searchBy], data.hardCap));
+		}
+		return uids;
+	}
+
 	async function findUids(query, searchBy, hardCap) {
 		if (!query) {
 			return [];
@@ -133,21 +153,37 @@ module.exports = function (User) {
 		return uids;
 	}
 
-	async function filterAndSortUids(uids, data) {
-		uids = uids.filter(uid => parseInt(uid, 10) || activitypub.helpers.isUri(uid));
-		let filters = data.filters || [];
-		filters = Array.isArray(filters) ? filters : [data.filters];
-		const fields = [];
+	function normalizeFilters(data) {
+		const filters = data.filters || [];
+		return Array.isArray(filters) ? filters : [data.filters];
+	}
 
+	function collectFilterAndSortFields(filters, data) {
+		const fields = [];
 		if (data.sortBy) {
 			fields.push(data.sortBy);
 		}
-
 		filters.forEach((filter) => {
 			if (filterFieldMap[filter]) {
 				fields.push(...filterFieldMap[filter]);
 			}
 		});
+		return fields;
+	}
+
+	async function filterUidsByBannedState(uids, filters) {
+		if (!filters.includes('banned') && !filters.includes('notbanned')) {
+			return uids;
+		}
+		const isMembersOfBanned = await groups.isMembers(uids, groups.BANNED_USERS);
+		const wantBanned = filters.includes('banned');
+		return uids.filter((uid, index) => (wantBanned ? isMembersOfBanned[index] : !isMembersOfBanned[index]));
+	}
+
+	async function filterAndSortUids(uids, data) {
+		uids = uids.filter(uid => parseInt(uid, 10) || activitypub.helpers.isUri(uid));
+		const filters = normalizeFilters(data);
+		const fields = collectFilterAndSortFields(filters, data);
 
 		if (data.groupName) {
 			const isMembers = await groups.isMembers(uids, data.groupName);
@@ -158,11 +194,7 @@ module.exports = function (User) {
 			return uids;
 		}
 
-		if (filters.includes('banned') || filters.includes('notbanned')) {
-			const isMembersOfBanned = await groups.isMembers(uids, groups.BANNED_USERS);
-			const checkBanned = filters.includes('banned');
-			uids = uids.filter((uid, index) => (checkBanned ? isMembersOfBanned[index] : !isMembersOfBanned[index]));
-		}
+		uids = await filterUidsByBannedState(uids, filters);
 
 		fields.push('uid');
 		let userData = await User.getUsersFields(uids, fields);
